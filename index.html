@@ -150,11 +150,11 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.7</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.8</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
-<div id="offerModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Make Offer</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input id="offerToken" class="input" disabled></div><div class="field"><label>Offer (ZEC)</label><input id="offerPrice" class="input" inputmode="decimal"></div><div class="notice">Offers move no ZEC. Seller selects one buyer and chain-locks the NFT first. Only the selected buyer can then pay with Noir.</div><div class="controls"><button id="publishOfferBtn" class="btn gold">Sign & Publish Offer</button></div></div></div>
+<div id="offerModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Request Purchase</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input id="offerToken" class="input" disabled></div><div class="field"><label>Fixed listing price (ZEC)</label><input id="offerPrice" class="input" disabled></div><div class="notice"><b>Fixed-price request.</b> The buyer cannot change the seller's listing price. This request moves no ZEC. If the seller accepts, the NFT is locked to this buyer for the checkout window, then the selected buyer pays 3% protocol + 97% seller.</div><div class="controls"><button id="publishOfferBtn" class="btn gold">Request Purchase at List Price</button></div></div></div>
 <div id="transferModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Transfer ZEC BLOCK</h3><button class="xbtn" data-close="transferModal">×</button></div><div class="field"><label>Token</label><input id="transferToken" class="input" disabled></div><div class="field"><label>Recipient owner commitment (64 hex)</label><input id="recipientCommit" class="input" placeholder="SHA-256 owner commitment"></div><div class="notice bad">Transfers are irreversible protocol events. Verify the recipient commitment carefully before approving the Zcash transaction.</div><div class="controls"><button id="submitTransferBtn" class="btn red">Sign & Submit Transfer</button></div></div></div>
 <div id="toast" class="toast"></div>
 <script>
@@ -1059,7 +1059,7 @@ function renderMarket(){
       action.title='The listing stays visible while ownership discovery catches up. It cannot be traded unless the seller resolves as current owner.'
     }else if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
       action.textContent='Cancel Listing';action.onclick=()=>cancelListing(l);
-    }else{action.textContent='Make Offer';action.onclick=()=>openOffer(l)}
+    }else{action.textContent='Request Purchase';action.onclick=()=>openOffer(l)}
     g.appendChild(card)}
 }
 $('marketSearch').oninput=renderMarket;$('marketSort').onchange=renderMarket;$('refreshMarketBtn').onclick=()=>refreshAll().catch(e=>toast(e.message));
@@ -1087,8 +1087,61 @@ async function cancelListing(l){
     await fetchRelay();
   }catch(e){toast(e.message||String(e),7000)}
 }
-function openOffer(l){if(!S.ownerCommitment)return toast('Connect Noir Wallet first.');S.currentOfferListing=l;$('offerToken').value='ZEC BLOCK #'+l.tokenId;$('offerPrice').value=l.price;modal('offerModal',true)}
-$('publishOfferBtn').onclick=async()=>{try{const l=S.currentOfferListing;if(!l)throw new Error('No listing selected.');if(tokenIsAtomicLocked(l.tokenId))throw new Error('This NFT is already atomic-locked.');const price=$('offerPrice').value.trim();if(!decimalValid(price))throw new Error('Enter a valid ZEC offer.');const nonce=crypto.randomUUID(),msg=`ZB1:OFFER:v1|L=${l.listingId}|T=${l.tokenId}|P=${price}|B=${S.ownerCommitment}|X=${nonce}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'OFFER',eventId:'offer:'+nonce,listingId:l.listingId,tokenId:l.tokenId,price,buyerCommitment:S.ownerCommitment,sellerCommitment:l.sellerCommitment,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('offerModal',false);toast(pr.ok?`Offer published · ${pr.ok}/${pr.total} relays accepted`:'Offer saved locally. Refresh will retry.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
+function sameZecAmount(a,b){
+  try{
+    const x=zecToZat(String(a)),y=zecToZat(String(b));
+    return x!=null&&y!=null&&x===y
+  }catch{return false}
+}
+function offerMatchesListing(o,l){
+  return !!o&&!!l
+    && String(o.listingId||'')===String(l.listingId||'')
+    && Number(o.tokenId)===Number(l.tokenId)
+    && String(o.sellerCommitment||'').toLowerCase()===String(l.sellerCommitment||'').toLowerCase()
+    && sameZecAmount(o.price,l.price)
+}
+function openOffer(l){
+  if(!S.ownerCommitment)return toast('Connect Noir Wallet first.');
+  if(!l||!activeListings().some(x=>x.listingId===l.listingId))return toast('This listing is no longer active.');
+  if(tokenIsAtomicLocked(l.tokenId))return toast('This NFT is already locked to a selected buyer.');
+  const owner=currentOwner(l.tokenId);
+  if(!owner||owner!==String(l.sellerCommitment||'').toLowerCase())return toast('Seller ownership is still syncing. Try again shortly.');
+  S.currentOfferListing=l;
+  $('offerToken').value='ZEC BLOCK #'+l.tokenId;
+  $('offerPrice').value=String(l.price);
+  modal('offerModal',true)
+}
+$('publishOfferBtn').onclick=async()=>{
+  try{
+    const l=S.currentOfferListing;
+    if(!l)throw new Error('No listing selected.');
+    const live=activeListings().find(x=>x.listingId===l.listingId);
+    if(!live)throw new Error('This listing is no longer active.');
+    if(tokenIsAtomicLocked(l.tokenId))throw new Error('This NFT is already locked to a selected buyer.');
+    if(currentOwner(l.tokenId)!==String(l.sellerCommitment||'').toLowerCase())throw new Error('Seller is no longer the verified current owner.');
+
+    // Protocol rule: buyer request price is ALWAYS copied from the signed SALE.
+    // Ignore the DOM field completely so a modified browser/client cannot change it.
+    const price=String(l.price);
+    if(!decimalValid(price))throw new Error('Listing has an invalid price.');
+
+    const nonce=crypto.randomUUID();
+    const msg=`ZB1:OFFER:v2|L=${l.listingId}|T=${l.tokenId}|P=${price}|B=${S.ownerCommitment}|S=${l.sellerCommitment}|X=${nonce}`;
+    const sig=await signDerived(msg);
+    const e=normalizeEvent({
+      protocol:'ZB1',v:2,type:'OFFER',eventId:'offer:'+nonce,
+      listingId:l.listingId,tokenId:l.tokenId,price,
+      fixedListingPrice:true,
+      buyerCommitment:S.ownerCommitment,sellerCommitment:l.sellerCommitment,
+      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)
+    });
+    rememberRuntimeEvent(e);
+    const pr=await publishRelay(e);
+    modal('offerModal',false);
+    toast(pr.ok?`Purchase request published at fixed list price ${price} ZEC · ${pr.ok}/${pr.total} relays`:'Purchase request saved locally. Relay retry will continue.',8000);
+    await fetchRelay();rebuildState();renderAtomicDesk();renderPortfolio()
+  }catch(e){toast(e.message||String(e),8000)}
+};
 
 function atomicLockId(o){const x=String(o.eventId||o.offerId||'').replace(/[^a-zA-Z0-9]/g,'');return 'L'+x.slice(-24)}
 function atomicLockMessage(x){
@@ -1109,10 +1162,24 @@ function lockForOffer(o){
 }
 function sellerOffers(){
   if(!S.ownerCommitment)return[];
-  return S.offers.filter(o=>{
+  const now=Math.floor(Date.now()/1000),latest=new Map();
+  for(const o of S.offers){
     const l=S.listings.get(o.listingId);
-    return l&&o.sellerCommitment===S.ownerCommitment&&currentOwner(o.tokenId)===S.ownerCommitment&&!tokenIsAtomicLocked(o.tokenId)&&!S.verifiedAtomic.has(atomicLockId(o))
-  }).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+    if(!l)continue;
+    if(Number(l.expires||0)<=now)continue;
+    if(String(l.sellerCommitment||'').toLowerCase()!==String(S.ownerCommitment).toLowerCase())continue;
+    if(currentOwner(o.tokenId)!==String(S.ownerCommitment).toLowerCase())continue;
+    if(tokenIsAtomicLocked(o.tokenId))continue;
+    if(S.verifiedAtomic.has(atomicLockId(o)))continue;
+
+    // Invalid manipulated/legacy offers with a different amount are ignored.
+    if(!offerMatchesListing(o,l))continue;
+
+    const k=`${o.listingId}:${String(o.buyerCommitment||'').toLowerCase()}`;
+    const old=latest.get(k);
+    if(!old||(Number(o.timestamp)||0)>(Number(old.timestamp)||0))latest.set(k,o)
+  }
+  return [...latest.values()].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
 }
 function buyerLocks(){
   if(!S.ownerCommitment)return[];
@@ -1569,15 +1636,20 @@ async function atomicAcceptAndLock(o){
     if(String(o.sellerCommitment).toLowerCase()!==String(S.ownerCommitment).toLowerCase())throw new Error('Only the seller can accept this offer.');
     if(currentOwner(o.tokenId)!==S.ownerCommitment)throw new Error('Seller is no longer the current owner.');
     if(tokenIsAtomicLocked(o.tokenId))throw new Error('This token is already locked to another buyer.');
-    const l=S.listings.get(o.listingId);if(!l||!activeListings().some(x=>x.listingId===o.listingId))throw new Error('Listing is no longer active.');
+    const l=S.listings.get(o.listingId);
+    if(!l||!activeListings().some(x=>x.listingId===o.listingId))throw new Error('Listing is no longer active.');
+    if(!offerMatchesListing(o,l))throw new Error('Rejected: buyer request does not exactly match the signed listing price.');
     const payout=String(S.connection?.transparent||'');
     if(!/^t[13][A-Za-z0-9]{20,}$/.test(payout))throw new Error('Noir Wallet did not expose a transparent seller payout address.');
 
-    const lockId=atomicLockId(o),expires=Math.floor(Date.now()/1000)+CFG.atomicLockSeconds,sp=atomicSplit(o.price);
+    // Never derive lock economics from buyer-controlled offer data.
+    // The seller's signed listing is the only price authority.
+    const fixedPrice=String(l.price);
+    const lockId=atomicLockId(o),expires=Math.floor(Date.now()/1000)+CFG.atomicLockSeconds,sp=atomicSplit(fixedPrice);
     const provenance=S.claims.get(Number(o.tokenId))||S.walletRecoveredClaims.get(Number(o.tokenId))||{};
     const base={
       protocol:'ZB1',v:4,type:'NOIR_LOCK',eventId:'noir-lock:'+lockId,lockId,
-      listingId:o.listingId,offerId:o.eventId,tokenId:Number(o.tokenId),price:String(o.price),
+      listingId:o.listingId,offerId:o.eventId,tokenId:Number(o.tokenId),price:fixedPrice,
       feeZat:String(sp.fee),feeZec:sp.feeZec,sellerZat:String(sp.seller),sellerZec:sp.sellerZec,treasury:CFG.treasury,
       sellerCommitment:S.ownerCommitment,buyerCommitment:o.buyerCommitment,sellerPayout:payout,expires,
       sourceHeight:provenance.sourceHeight||null,sourceHash:provenance.sourceHash||null,claimTxid:provenance.txid||null,
@@ -1587,7 +1659,7 @@ async function atomicAcceptAndLock(o){
     base.pubkey=sigPub(sig);base.signature=sigVal(sig);
     base.anchorAddress=await atomicLockAnchorAddress(base);
 
-    toast(`Approve seller lock anchor (${zatToZec(BigInt(CFG.atomicAnchorZat))} ZEC). Buyer checkout will be 2 steps: ${base.feeZec} ZEC protocol fee + ${base.sellerZec} ZEC seller payout.`,11000);
+    toast(`FIXED PRICE ${fixedPrice} ZEC · Locking ZEC BLOCK #${o.tokenId} to ${short(o.buyerCommitment,7)} for up to ${Math.floor(CFG.atomicLockSeconds/60)} min. Buyer has NOT paid yet. Approve the lock anchor to continue.`,13000);
     const txid=await rpc('zcash_sendTransaction',[{to:base.anchorAddress,amount:zatToZec(BigInt(CFG.atomicAnchorZat)),fundingSource:'shielded'}]);
     const ev=normalizeEvent({...base,txid,anchorTxid:txid});
     rememberRuntimeEvent(ev);
@@ -1719,10 +1791,11 @@ function renderAtomicDesk(){
   for(const o of offers){
     const raw=lockForOffer(o),confirmed=raw&&S.confirmedLocks.has(raw.lockId),locked=confirmed?S.confirmedLocks.get(raw.lockId):raw;
     const item=document.createElement('div');item.className='atomicItem';
-    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(o.tokenId)} · ${esc(o.price)} ZEC</b><span class="atomicState ${confirmed?'atomicLocked':''}">${confirmed?'LOCKED TO BUYER':raw?'LOCK CONFIRMING':'NEW OFFER'}</span></div>
-      <div class="atomicInfo"><span>Buyer ${esc(short(o.buyerCommitment,7))}</span><span>3% protocol · 97% seller</span>${confirmed?`<span>${esc(String(locked.confirmations||CFG.atomicLockConfirmations))}+ lock conf</span><span>2-step watch active</span>`:''}</div><div class="controls"></div>`;
+    const listing=S.listings.get(o.listingId),fixed=listing?.price||o.price;
+    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(o.tokenId)} · ${esc(fixed)} ZEC</b><span class="atomicState ${confirmed?'atomicLocked':''}">${confirmed?'LOCKED TO BUYER':raw?'LOCK CONFIRMING':'FIXED PRICE REQUEST'}</span></div>
+      <div class="atomicInfo"><span>Buyer ${esc(short(o.buyerCommitment,7))}</span><span>Exact listing price</span><span>3% protocol · 97% seller</span><span>${Math.floor(CFG.atomicLockSeconds/60)} min unpaid lock window</span>${confirmed?`<span>${esc(String(locked.confirmations||CFG.atomicLockConfirmations))}+ lock conf</span>`:''}</div><div class="notice" style="margin-top:8px"><b>Seller protection:</b> this buyer cannot change the listing price. Accepting only locks the NFT to this buyer; it does not mean the buyer has paid yet.</div><div class="controls"></div>`;
     const ctl=item.querySelector('.controls'),b=document.createElement('button');b.className='btn '+(raw?'':'green')+' small';
-    b.textContent=confirmed?'Waiting for Selected Buyer':raw?'Lock Confirmation Pending':'Accept & Lock to Buyer';
+    b.textContent=confirmed?'Waiting for Selected Buyer':raw?'Lock Confirmation Pending':`Accept ${fixed} ZEC & Lock`;
     b.disabled=!!raw;b.onclick=()=>atomicAcceptAndLock(o);ctl.appendChild(b);sl.appendChild(item)
   }
 
@@ -1778,7 +1851,7 @@ function renderAtomicDesk(){
   }
 }
 function renderPortfolio(){
-  const own=ownedTokens();$('ownedCount').textContent=own.length;$('listingCount').textContent=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;$('offerCount').textContent=S.ownerCommitment?S.offers.filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;
+  const own=ownedTokens();$('ownedCount').textContent=own.length;$('listingCount').textContent=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;$('offerCount').textContent=S.ownerCommitment?sellerOffers().length:0;
   const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';renderAtomicDesk();return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS are currently resolved to this owner commitment. Recover & Sync checks wallet history, public discovery, and chain-verified marketplace settlements.</div>';renderAtomicDesk();return}
   for(const c of own){
     if(!c.sourceHash)ensurePortfolioSource(c.tokenId);

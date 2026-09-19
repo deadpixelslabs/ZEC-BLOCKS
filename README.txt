@@ -1,83 +1,65 @@
-ZEC BLOCKS MAIN V9.7 — PAYMENT RECOVERY / DOUBLE-PAY FIX
+ZEC BLOCKS MAIN V9.8 — FIXED-PRICE PURCHASE REQUESTS
 
-BUG OBSERVED
-Buyer had already paid Step 2 (97% seller payout), but the UI still showed:
-  "2. Pay Seller"
+PROBLEM FIXED
+A buyer could manually enter an arbitrary offer price, including an absurdly high
+price. A seller might accept it expecting that amount, chain-lock the NFT, and
+then the buyer simply never pays. The NFT stays unavailable until lock expiry.
 
-STEP 1 was already confirmed.
+V9.8 REMOVES BUYER-CONTROLLED OFFER PRICES.
 
-ROOT CAUSE
-In V9.1-V9.6 the sequence was:
+NEW RULE
+A purchase request MUST equal the seller's signed listing price exactly.
 
-  send ZEC -> get TXID -> ask Noir to sign payment notice -> save event
+EXAMPLE
+Seller lists ZEC BLOCK #123 at 0.003 ZEC.
+Buyer can only request purchase at 0.003 ZEC.
+The buyer cannot submit 1 ZEC, 100 ZEC, 0.001 ZEC, etc.
 
-If Noir became slow or errored AFTER the ZEC transaction was already broadcast,
-the post-payment sign/save step could fail.
+PROTECTION EXISTS AT MULTIPLE LEVELS
+1. Offer modal price field is disabled.
+2. Browser ignores the price field entirely and copies price from the SALE event.
+3. New purchase request is signed as ZB1:OFFER:v2.
+4. Seller dashboard filters out any request whose amount differs from listing.
+5. Existing manipulated / legacy wrong-price offers are not actionable.
+6. Accept & Lock performs the exact-price check again.
+7. Lock economics are derived from the SELLER'S SIGNED LISTING, never the buyer's
+   offer event.
 
-The money was already sent, but the website had no NOIR_SELLER_PAYMENT event.
-Therefore Pay Seller remained enabled and clicking it again could double-pay.
+Therefore modifying HTML/devtools or publishing a custom relay OFFER with a fake
+price cannot make the official V9.8 seller client lock at that fake amount.
 
-V9.7 CHANGES
+ANTI-SPAM
+For each listing + buyer, only the newest valid purchase request is shown to the
+seller. Repeated requests from the same buyer do not fill the Seller Offers panel.
 
-1. PRE-AUTHORIZATION BEFORE PAYMENT
-Before Step 1 or Step 2 sends any ZEC, Noir signs an authorization bound to:
-- lock ID
-- token ID
-- exact amount
-- exact destination
-- selected buyer commitment
+SELLER UX
+The seller sees:
+- FIXED PRICE REQUEST
+- exact listing price
+- selected buyer
+- 3% protocol / 97% seller
+- unpaid lock window (60 minutes)
 
-Then the transaction is sent.
+The Accept button includes the exact fixed price.
 
-2. SAVE TXID IMMEDIATELY
-The very first operation after Noir returns a payment TXID is:
-- save event locally
-- save durable payment recovery journal
+IMPORTANT
+Accepting a purchase request still means:
+NFT LOCK FIRST -> BUYER PAYMENT SECOND.
 
-No later relay/signing failure can make the website forget that payment.
+A fixed-price buyer can still choose not to pay after the seller accepts. The
+unpaid lock therefore expires after the existing 60-minute lock window. V9.8
+prevents price-bait griefing, but it does not pretend that an unpaid buyer request
+is funded.
 
-3. BACKWARD COMPATIBILITY
-V9.7 verifies:
-- old V2 payment notices that signed the TXID after sending
-- new V3 pre-authorized payment notices
-
-4. RECOVER AN ALREADY-SENT STEP 2
-For the current old V9.6-style failure:
-- Click "Check Payments", NOT "Pay Seller".
-- V9.7 scans the seller transparent address.
-- It verifies an exact 97% payment on Zcash after the lock-specific Step 1 fee.
-- It checks the payment maps unambiguously to exactly one unresolved lock.
-- Connected buyer signs a non-spending V3 repair authorization.
-- The recovered payment notice is saved + mirrored to relays.
-- Normal confirmation/finality handling continues.
-
-A payment TX cannot be reused by an already settled sale.
-
-5. NO DOUBLE PAY
-The checkout now explicitly warns:
-If you already approved Step 2 in Noir, DO NOT click Pay Seller again.
-Use Check Payments.
-
-SECURITY NOTE
-The fallback chain recovery only auto-binds a seller payment when it maps
-unambiguously to one unresolved lock for that seller/amount and the connected
-Noir identity is the designated buyer. If ambiguous, it does not guess.
-
-RETAINED
-- seller locks NFT before buyer payment
-- Step 1 = 3% protocol fee
-- Step 2 = 97% seller payout
-- 6-confirmation final settlement
+RETAINED FROM V9.7
+- payment recovery / no-double-pay protection
+- 3% protocol fee + 97% seller payout
+- seller lock before payment
 - historical settlement recovery
-- stable listings
+- stable listing discovery
 - latest 30 Activity
 
 DEPLOY
 Upload every file in this ZIP to www.zecblocks.xyz.
-
-FOR THE CURRENT #22 TEST
-After deploying V9.7:
-1. Connect the SAME buyer Noir Wallet.
-2. Do NOT click Pay Seller again.
-3. Click Check Payments.
-4. V9.7 will attempt to recover the already-sent seller payment from Zcash.
+Old wrong-price offers will automatically disappear from the actionable Seller
+Offers panel after deployment.
