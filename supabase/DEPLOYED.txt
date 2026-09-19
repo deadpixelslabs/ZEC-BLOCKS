@@ -1,18 +1,35 @@
 Supabase project ref: tvwvenyomlwvjtwxasca
 
-Deployed tables:
-- public.zecblocks_tokens
-- public.zecblocks_usdc_listings
-- public.zecblocks_sales
-- public.zecblocks_events
-- public.zecblocks_indexer_state
+Production persistent tables include:
+- zecblocks_tokens
+- zecblocks_ownership_events
+- zecblocks_usdc_listings
+- zecblocks_sales
+- zecblocks_events
+- zecblocks_zec_listings
+- zecblocks_claims_seen
+- zecblocks_protocol_stats
+- zecblocks_indexer_health
+- zecblocks_indexer_state
 
-Deployed RPC functions:
-- public.zecblocks_market_snapshot()
-- public.zecblocks_portfolio_snapshot(text)
+Production RPC functions:
+- zecblocks_market_snapshot()
+- zecblocks_portfolio_snapshot(text)
+- zecblocks_claim_stats()
+- zecblocks_rebuild_ownership()
+- zecblocks_index_health()
 
-Deployed Edge Functions:
-- zecblocks-index-usdc (JWT required)
-- zecblocks-cache-claims (JWT required)
+Production Edge Functions:
+- zecblocks-index-usdc
+- zecblocks-ingest-relay
+- zecblocks-verify-events
+- zecblocks-index-zec-sales
+- zecblocks-cache-claims
 
-No service-role credential is included in this ZIP.
+Scheduled workers:
+- Base USDC index: every minute
+- Relay ingest: every minute
+- Event verifier: every minute
+- ZEC settlement verifier: every 2 minutes
+
+No service-role credential is included in this deploy ZIP.

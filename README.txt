@@ -1,55 +1,80 @@
-ZEC BLOCKS MARKETPLACE V10.0 — SUPABASE PERSISTENT INDEX
+ZEC BLOCKS MARKETPLACE V10.2 — PRODUCTION PERSISTENT INDEX
 
-GOAL
-Stop treating every visitor's browser as the main indexer.
-The marketplace now renders persistent server snapshots first, then performs
-normal relay / Base / Zcash verification in the background.
+PURPOSE
+Production hardening for ZEC BLOCKS marketplace and portfolio. Browsers are no
+longer treated as the primary indexer. Persistent Supabase workers continuously
+index Base USDC activity, relay protocol events, verified ownership transitions,
+and verified ZEC settlements.
 
-WHAT IS LIVE
-- Supabase tables use the zecblocks_* prefix and do not modify legacy project tables.
-- Base USDC production contract indexer is deployed as Supabase Edge Function:
-  zecblocks-index-usdc
-- Noir/ZB-1 verified claim cache is deployed as Supabase Edge Function:
-  zecblocks-cache-claims
-- Production USDC contract:
-  0x7674a240004fa434bb1082de28e591abb1dc645d
+PRODUCTION CONTRACT
+Base USDC marketplace:
+0x7674a240004fa434bb1082de28e591abb1dc645d
 
-REFRESH FLOW
-1. Browser local cache renders immediately.
-2. Supabase USDC snapshot is fetched immediately.
-3. When Noir connects, Supabase portfolio snapshot is loaded first.
-4. Relay / Zcash / Base verification continues in the background.
-5. Newly reconstructed valid Noir claims are re-verified server-side and cached.
-6. USDC List / Cancel / Buy Now triggers the server Base indexer in the background.
+SERVER-SIDE PIPELINE
+1. Base contract logs -> zecblocks-index-usdc -> persistent USDC listing/sale DB.
+2. ZB-1 relay events -> zecblocks-ingest-relay -> persistent event DB.
+3. zecblocks-verify-events verifies CLAIM / TRANSFER / SALE / CANCEL / USDC intent
+   signatures and rebuilds the current owner state.
+4. zecblocks-index-zec-sales independently verifies Noir locks + Zcash payment
+   settlements and writes final ownership transitions.
+5. Cron invokes production workers continuously. Browser refresh is no longer the
+   thing that keeps the index alive.
 
-SECURITY
-- Browser has only the normal public Supabase anon credential.
-- RLS allows public SELECT on marketplace/token snapshots only.
-- Browser cannot directly write zecblocks index tables.
-- Base writes come from chain logs processed by the Edge Function service role.
-- Claim-cache writes are accepted only after server-side PoW, compact-signature,
-  source-block and confirmed-transaction checks.
-- Buy Now still performs the existing client/on-chain verification path.
+PERSISTENT DATA
+- zecblocks_tokens: current indexed owner for each verified token
+- zecblocks_ownership_events: verified ownership transitions
+- zecblocks_usdc_listings: Base listing state
+- zecblocks_sales: Base USDC + verified ZEC sales
+- zecblocks_events: persistent relay protocol history + verification state
+- zecblocks_zec_listings: verified ZEC listing lifecycle
+- zecblocks_claims_seen / zecblocks_protocol_stats: global claim counter
+- zecblocks_indexer_health: worker health and last successful sync
 
 USDC MARKET
-- Listings remain sorted lowest price first.
-- Total USDC volume/sales/listed/floor can be recovered from persistent DB state.
-- Refresh no longer needs to rebuild USDC market history from zero.
+- Base index is canonical once caught up.
+- Listings do not disappear just because the visitor refreshes or a relay is slow.
+- Server state is merged with local state; browser recovery can no longer replace a
+  complete server snapshot with an empty/partial scan.
+- USDC listings stay ordered from lowest price to highest price.
+- USDC floor / listed / sales / total volume come from persistent Base settlement data.
+- Buy Now still does a fresh contract check before sending the buyer transaction.
+- Signed ZB-1 listing intent and indexed ownership are checked before Buy Now is enabled.
 
-PORTFOLIO
-- First wallet recovery still verifies Noir history.
-- Valid claim ownership is then cached in Supabase.
-- Subsequent reconnect/refresh can restore known holdings from the server snapshot
-  before the slower wallet-history repair finishes.
-- Base USDC purchases update zecblocks_tokens from the settlement contract indexer.
+PORTFOLIO / OWNERSHIP
+- Connect Noir -> server portfolio snapshot is loaded first.
+- Current owner is reconstructed from verified CLAIM -> TRANSFER -> ZEC SALE ->
+  USDC SALE ownership events.
+- Wallet history and relay discovery still run as repair/fallback layers, not the
+  primary source after refresh.
+- Verified server ownership is persistent and does not disappear when a browser cache
+  is cleared or a relay temporarily fails.
+
+CLAIMS SEEN
+- Production counter uses the persistent protocol total.
+- Initial production baseline: 2,916 claimed ZEC BLOCKS at deployment time.
+- Verified newly indexed claims increase the total after the baseline.
+
+CURRENT PRODUCTION WORKERS
+- zecblocks-index-usdc        : every minute
+- zecblocks-ingest-relay      : every minute
+- zecblocks-verify-events     : every minute
+- zecblocks-index-zec-sales   : every 2 minutes
+
+SECURITY
+- No service-role key is shipped in the frontend.
+- Public frontend uses only the Supabase publishable key.
+- RLS prevents public writes to index tables.
+- Worker writes use Supabase Edge Function service-role environment only.
+- CLAIM / TRANSFER / listing intents are cryptographically verified server-side.
+- ZEC sale settlement is independently checked against Zcash chain data.
+- USDC sales/volume/listing state come directly from Base contract events.
 
 DEPLOY
-Upload the whole folder/ZIP to the existing ZEC BLOCKS Vercel project.
-No additional Supabase setup is required for the schema/functions already deployed.
-On the first V10 visit, the Base indexer bootstraps a recent ~50k-block window;
-after that it is incremental.
+Upload the entire folder/ZIP to the current ZEC BLOCKS Vercel project.
+Do not delete api/zcash.js, logo/favicon, contract files, or vercel.json.
 
-IMPORTANT
-Keep api/zcash.js and all existing files. V10 is additive; it does not remove the
-old ZEC/Noir market, relay discovery, direct chain verification, local cache,
-portfolio recovery, or USDC Buy Now flow.
+IMPORTANT INITIAL BOOTSTRAP
+The Base USDC index is already caught up server-side. Global event verification can
+continue processing historical ZB-1 events for several minutes after this build is
+first deployed. The website can still render persistent market data immediately;
+portfolio coverage improves automatically as the verification queue completes.

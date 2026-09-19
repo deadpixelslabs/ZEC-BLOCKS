@@ -17,7 +17,11 @@ const CFG={
   usdcMarketContract:'0x7674a240004fa434bb1082de28e591abb1dc645d',
   atomicLockSeconds:3600,atomicPayCutoffSeconds:900,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFeeStepConfirmations:1,atomicFinalConfirmations:6,atomicFundedGraceSeconds:3600,atomicFinalityGraceSeconds:7200
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false};
+const INDEX_CFG={
+  url:'https://tvwvenyomlwvjtwxasca.supabase.co',
+  key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
+};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverIndexing:false,serverPortfolioLoaded:new Set(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -157,10 +161,137 @@ async function verifyZcashCompactSignature(message,signature,pubkey){
   }catch(e){console.warn('signature verify',e);return false}
 }
 
+function indexHeaders(){return {'apikey':INDEX_CFG.key,'Content-Type':'application/json'}}
+async function indexRpc(name,args={}){
+  const r=await fetch(`${INDEX_CFG.url}/rest/v1/rpc/${name}`,{method:'POST',headers:indexHeaders(),body:JSON.stringify(args)});
+  if(!r.ok)throw new Error(`Index API ${name}: HTTP ${r.status}`);
+  return r.json()
+}
+async function indexFunction(name,body={}){
+  const r=await fetch(`${INDEX_CFG.url}/functions/v1/${name}`,{method:'POST',headers:indexHeaders(),body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j?.ok===false)throw new Error(j?.error||`Indexer ${name}: HTTP ${r.status}`);
+  return j
+}
+
+async function hydrateServerClaimStats(){
+  try{
+    const snap=await indexRpc('zecblocks_claim_stats',{});
+    const n=Number(snap?.claims_seen||0);
+    if(Number.isFinite(n)&&n>=0)S.serverClaimCount=Math.max(S.serverClaimCount||0,n);
+    const local=S.claims?.size||0;
+    if($('claimCount'))$('claimCount').textContent=Math.max(local,S.serverClaimCount||0).toLocaleString();
+    return S.serverClaimCount||0
+  }catch(e){console.warn('server claim stats',e);return S.serverClaimCount||0}
+}
+async function kickServerRelayIndexer(){
+  if(S.serverRelayIndexing)return;S.serverRelayIndexing=true;
+  try{
+    await indexFunction('zecblocks-ingest-relay',{}).catch(e=>console.warn('relay ingest',e));
+    await indexFunction('zecblocks-verify-events',{}).catch(e=>console.warn('event verifier',e));
+    indexFunction('zecblocks-index-zec-sales',{}).catch(e=>console.warn('zec settlement indexer',e));
+    await hydrateServerClaimStats();
+    if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment)
+  }catch(e){console.warn('server production index pipeline',e)}finally{S.serverRelayIndexing=false}
+}
+function dbCommitment(v){const x=String(v||'').replace(/^0x/,'').toLowerCase();return /^[0-9a-f]{64}$/.test(x)?x:''}
+function dbBytes32(v){const x=dbCommitment(v);return x?'0x'+x:'0x'+'0'.repeat(64)}
+function dbStatus(v){return v==='active'?1:v==='sold'?2:v==='cancelled'?3:v==='expired'?3:Number(v)||0}
+async function hydrateServerUsdc(){
+  try{
+    const snap=await indexRpc('zecblocks_market_snapshot',{});
+    const rows=Array.isArray(snap?.usdc_listings)?snap.usdc_listings:(Array.isArray(snap?.listings)?snap.listings:[]);
+    const health=snap?.indexer_health||{};
+    S.serverIndexerHealth=health;
+    const baseCaughtUp=health?.base_usdc?.status==='ok'&&health?.base_usdc?.details?.caught_up===true;
+    const merged=new Map(S.usdcOnchain),serverIds=new Set();
+    S.serverOwners.clear();
+    for(const x of rows){
+      const id=String(x.listing_id||'').toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(id))continue;
+      serverIds.add(id);
+      const owner=dbCommitment(x.indexed_owner_commitment);
+      if(owner)S.serverOwners.set(Number(x.token_id),{owner,level:String(x.indexed_owner_verified_level||'provisional'),source:String(x.indexed_owner_source||'server')});
+      const old=merged.get(id)||{};
+      merged.set(id,{...old,
+        listingId:id,tokenId:Number(x.token_id),seller:String(x.seller_evm||'').toLowerCase(),
+        sellerCommitment:dbBytes32(x.seller_commitment),priceUSDC:String(x.price_usdc||0),
+        expiresAt:Number(x.expires_at||0),listingNonce:String(x.listing_nonce||old.listingNonce||''),
+        zb1ListingHash:String(x.zb1_listing_hash||old.zb1ListingHash||''),status:dbStatus(x.status),
+        buyer:String(x.buyer_evm||old.buyer||'0x0000000000000000000000000000000000000000'),
+        buyerCommitment:dbBytes32(x.buyer_commitment),settledAt:Number(x.settled_at||0),
+        relay:old.relay||null,verifiedIntent:!!old.verifiedIntent,serverIntentVerified:!!x.intent_verified,
+        serverOwnerCommitment:owner,serverOwnerVerifiedLevel:String(x.indexed_owner_verified_level||'provisional'),serverIndexed:true
+      })
+    }
+    if(baseCaughtUp){
+      for(const [id,x] of merged){
+        if(x?.serverIndexed&&Number(x.status)===1&&!serverIds.has(id))merged.delete(id)
+      }
+    }
+    if(rows.length||baseCaughtUp)S.usdcOnchain=merged;
+    S.serverUsdcMetrics=snap?.usdc_metrics||snap?.metrics||null;
+    const claims=Number(snap?.claims_seen||0);if(Number.isFinite(claims))S.serverClaimCount=Math.max(S.serverClaimCount||0,claims);
+
+    // Mirror persistent ZEC listing states into runtime events so sparse relay history
+    // cannot resurrect cancelled/sold/expired listings after refresh.
+    const zstates=Array.isArray(snap?.zec_listing_states)?snap.zec_listing_states:[];
+    S.serverMarketEvents.clear();
+    for(const x of zstates){
+      const listingId=String(x.listing_id||'');if(!listingId)continue;
+      const base={protocol:'ZB1',v:1,listingId,tokenId:Number(x.token_id),sellerCommitment:dbCommitment(x.seller_commitment),timestamp:Number(x.event_timestamp)||Math.floor(new Date(x.updated_at||Date.now()).getTime()/1000),source:'supabase-index-market'};
+      if(x.status==='active'){
+        const e=normalizeEvent({...base,type:'SALE',eventId:String(x.event_key||listingId),price:String(x.price_zec),expires:Number(x.expires_at),pubkey:String(x.pubkey||''),signature:String(x.signature||''),serverSignatureVerified:!!x.signature_verified});
+        S.serverMarketEvents.set('sale:'+listingId,e)
+      }else{
+        const e=normalizeEvent({...base,type:'SALE_CANCEL',eventId:'server-state:'+x.status+':'+listingId,serverState:x.status});
+        S.serverMarketEvents.set('cancel:'+listingId,e)
+      }
+    }
+    S.events=S.events.filter(e=>e.source!=='supabase-index-market');
+    for(const e of S.serverMarketEvents.values())S.events.push(e);
+    saveUsdcCache();rebuildState();renderUsdcMarket();updateUsdcMarketMetrics();
+    return rows.length
+  }catch(e){console.warn('server market snapshot',e);return 0}
+}
+async function kickServerUsdcIndexer(){
+  if(S.serverIndexing)return;S.serverIndexing=true;
+  try{
+    await indexFunction('zecblocks-index-usdc',{});
+    await hydrateServerUsdc()
+  }catch(e){console.warn('server Base indexer',e)}finally{S.serverIndexing=false}
+}
+async function hydrateServerPortfolio(owner=S.ownerCommitment){
+  owner=dbCommitment(owner);if(!owner)return 0;
+  try{
+    const snap=await indexRpc('zecblocks_portfolio_snapshot',{p_owner_commitment:owner});
+    const rows=Array.isArray(snap?.tokens)?snap.tokens:[],ids=new Set(rows.map(x=>Number(x.token_id)));
+    for(const [id,e] of [...S.walletRecoveredClaims.entries()]){
+      if(e?.source==='supabase-index'&&!ids.has(Number(id))){S.walletRecoveredClaims.delete(id);if(e.eventId)S.walletRecovered.delete(e.eventId)}
+    }
+    for(const x of rows){
+      const id=Number(x.token_id);if(!Number.isInteger(id)||id<1||id>CFG.supply)continue;
+      const e=normalizeEvent({protocol:'ZB1',v:1,type:'CLAIM',eventId:x.owner_event_id||x.last_event_id||x.claim_txid||`server:${id}:${owner}`,txid:x.claim_txid||'',tokenId:id,
+        ownerCommitment:owner,sourceHeight:Number(x.source_height)||null,sourceHash:String(x.source_hash||''),
+        blockHeight:Number(x.owner_block_height||x.last_zcash_height)||null,txIndex:Number(x.owner_tx_index)||null,
+        timestamp:Number(x.owner_event_timestamp)||Math.floor(new Date(x.updated_at||Date.now()).getTime()/1000),source:'supabase-index',
+        serverLastEventType:String(x.owner_source||x.last_event_type||'claim'),serverVerifiedLevel:String(x.owner_verified_level||'provisional')});
+      const k=eventKey(e)||e.eventId;S.walletRecovered.set(k,e);S.walletRecoveredClaims.set(id,e)
+    }
+    S.serverPortfolioLoaded.add(owner);rebuildState();renderPortfolio();updateWalletUI();
+    return rows.length
+  }catch(e){console.warn('server portfolio snapshot',e);return 0}
+}
+async function pushClaimsToServerIndex(){
+  const claims=[...S.walletRecoveredClaims.values()].filter(e=>e?.type==='CLAIM'&&e.tokenId&&e.nonce&&e.pubkey&&e.signature&&e.txid);
+  if(!claims.length)return;
+  const minimal=claims.map(e=>({tokenId:Number(e.tokenId),nonce:String(e.nonce),pubkey:String(e.pubkey),signature:String(e.signature),txid:String(e.txid)}));
+  for(let i=0;i<minimal.length;i+=20){try{await indexFunction('zecblocks-cache-claims',{claims:minimal.slice(i,i+20)})}catch(e){console.warn('claim server cache',e);break}}
+}
 function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
 function discoveryCache(){
   try{
-    const a=JSON.parse(sessionStorage.getItem('zb1_public_discovery_v1')||'[]');
+    const raw=localStorage.getItem('zb1_public_discovery_v2')||sessionStorage.getItem('zb1_public_discovery_v1')||'[]';
+    const a=JSON.parse(raw);
     return Array.isArray(a)?a:[]
   }catch{return[]}
 }
@@ -197,9 +328,30 @@ function saveDiscoveryCache(events){
   try{
     const a=[...events]
       .sort((x,y)=>(Number(x.timestamp)||0)-(Number(y.timestamp)||0))
-      .slice(-8000);
-    sessionStorage.setItem('zb1_public_discovery_v1',JSON.stringify(a))
+      .slice(-12000);
+    localStorage.setItem('zb1_public_discovery_v2',JSON.stringify(a));
+    try{sessionStorage.setItem('zb1_public_discovery_v1',JSON.stringify(a.slice(-8000)))}catch{}
   }catch(e){console.warn('discovery cache full/unavailable',e)}
+}
+function walletCacheKey(){return S.ownerCommitment?'zb1_wallet_cache_v2_'+S.ownerCommitment:null}
+function hydrateWalletCache(){
+  S.walletRecovered.clear();S.walletRecoveredClaims.clear();
+  const key=walletCacheKey();if(!key)return 0;
+  try{
+    const a=JSON.parse(localStorage.getItem(key)||'[]');
+    if(!Array.isArray(a))return 0;
+    for(const e0 of a){
+      const e=normalizeEvent(e0),k=eventKey(e);
+      if(k)S.walletRecovered.set(k,e);
+      if(e.type==='CLAIM'&&Number.isInteger(Number(e.tokenId)))S.walletRecoveredClaims.set(Number(e.tokenId),e);
+      rememberRuntimeEvent(e)
+    }
+    return S.walletRecoveredClaims.size
+  }catch(e){console.warn('wallet cache hydrate',e);return 0}
+}
+function saveWalletCache(){
+  const key=walletCacheKey();if(!key)return;
+  try{localStorage.setItem(key,JSON.stringify([...S.walletRecovered.values()].slice(-5000)))}catch(e){console.warn('wallet cache save',e)}
 }
 function eventKey(e){return e?.txid||e?.eventId||e?.listingId||null}
 function mergeEvent(old,e){
@@ -236,8 +388,15 @@ async function connectWallet(silent=false){
     S.provider=p;S.connection=c;
     const k=await rpc('zcash_getPublicKey',[{signingMode:'derived'}]); if(!k?.pubkey)throw new Error('Noir Wallet did not return a derived public key.');
     S.pubkey=k.pubkey;S.ownerCommitment=await sha256HexBytes(hexToBytes(k.pubkey));
+    const cachedClaims=hydrateWalletCache();
+    await hydrateServerPortfolio(S.ownerCommitment);
     try{S.balance=await rpc('zcash_getBalance')}catch{}
-    updateWalletUI(); await loadWalletHistory(); await refreshAll();
+    rebuildState();updateWalletUI();renderPortfolio();
+    if(silent){
+      loadWalletHistory().then(async()=>{try{await fetchRelay();rebuildState();renderPortfolio();updateWalletUI()}catch(e){console.warn('wallet background recovery',e)}}).catch(()=>{});
+    }else{
+      await loadWalletHistory(); await refreshAll();
+    }
     p.on?.('accountsChanged',()=>connectWallet(true).catch(()=>{}));
   }catch(e){if(!silent)toast(e.message||String(e),7000)}
 }
@@ -254,10 +413,10 @@ function updateWalletUI(){
 $('walletBtn').onclick=()=>connectWallet(false);
 async function loadWalletHistory(){
   if(!S.connection)return {recovered:0,seen:0,claims:[]};
+  if(S.walletHistoryBusy)return {recovered:0,seen:0,claims:[...S.walletRecoveredClaims.keys()]};
+  S.walletHistoryBusy=true;
   let recovered=0,seen=0;
-  const recoveredClaimIds=[];
-  S.walletRecovered.clear();
-  S.walletRecoveredClaims.clear();
+  const recoveredClaimIds=[...S.walletRecoveredClaims.keys()];
   const statusEl=$('portfolioRecoveryStatus');
   if(statusEl)statusEl.textContent='Reading Noir Wallet transaction history and rebuilding ZB-1 claims…';
   try{
@@ -286,10 +445,15 @@ async function loadWalletHistory(){
         try{
           const gh=await resolveGenesis();
           e.sourceHeight=gh-tokenId;
-          const block=await explorerFetch('block',e.sourceHeight);
-          const sourceHash=String(deepFind(block,['hash','block_hash','blockHash'])||'').toLowerCase();
+          const oldClaim=S.walletRecoveredClaims.get(tokenId)||localEvents().find(x=>x.type==='CLAIM'&&Number(x.tokenId)===tokenId&&String(x.txid||'').toLowerCase()===String(e.txid||'').toLowerCase());
+          let sourceHash=String(oldClaim?.sourceHash||S.portfolioSourceCache.get(tokenId)?.sourceHash||'').toLowerCase();
+          if(!/^[0-9a-f]{64}$/.test(sourceHash)){
+            const block=await explorerFetch('block',e.sourceHeight);
+            sourceHash=String(deepFind(block,['hash','block_hash','blockHash'])||'').toLowerCase();
+          }
           if(!/^[0-9a-f]{64}$/.test(sourceHash))continue;
           e.sourceHash=sourceHash;
+          S.portfolioSourceCache.set(tokenId,{sourceHeight:e.sourceHeight,sourceHash});
 
           const pre=concat(
             enc.encode('ZB1:MINE:v1'),
@@ -324,6 +488,7 @@ async function loadWalletHistory(){
           S.walletRecovered.set(eventKey(normalized),normalized);
           S.walletRecoveredClaims.set(tokenId,normalized);
           recoveredClaimIds.push(tokenId);
+          if(recoveredClaimIds.length%4===0){saveWalletCache();rebuildState();renderPortfolio();updateWalletUI()}
         }catch(err){
           console.warn('claim reconstruction',tokenId,err);
         }
@@ -362,12 +527,14 @@ async function loadWalletHistory(){
         statusEl.textContent='No ZB-1 memo transactions were found in the connected Noir Wallet history.';
       }
     }
+    saveWalletCache();rebuildState();renderPortfolio();updateWalletUI();
+    pushClaimsToServerIndex().catch(e=>console.warn('server claim sync',e));
     return {recovered,seen,claims:ids};
   }catch(e){
     console.warn('history',e);
     if(statusEl)statusEl.textContent='Noir Wallet history recovery failed: '+(e.message||String(e));
-    return {recovered,seen,error:e,claims:[]};
-  }
+    return {recovered,seen,error:e,claims:[...S.walletRecoveredClaims.keys()]};
+  }finally{S.walletHistoryBusy=false}
 }
 function parseMemo(m){const p=m.split('|');if(p[0]!=='ZB1'||p.length<3)return null;const type={C:'CLAIM',T:'TRANSFER',L:'ATOMIC_LOCK'}[p[1]]||p[1];const e={protocol:'ZB1',type,v:Number(p[2])||1,memo:m};for(const x of p.slice(3)){const i=x.indexOf('=');if(i>0)e[x.slice(0,i)]=x.slice(i+1)}if(type==='CLAIM'){e.tokenId=Number(e.T);e.nonce=e.N;e.pubkey=e.K;e.signature=e.S}else if(type==='TRANSFER'){e.tokenId=Number(e.I);e.toCommitment=e.O;e.pubkey=e.K;e.signature=e.S}else if(type==='ATOMIC_LOCK'){e.tokenId=Number(e.I);e.lockId=e.L;e.offerId=e.O||null;e.buyerCommitment=e.B;e.price=e.P;e.sellerPayout=e.A;e.expires=Number(e.E);e.pubkey=e.K;e.signature=e.S}return e}
 function normalizeEvent(e){return {...e,eventId:e.eventId||e.txid||crypto.randomUUID(),timestamp:Number(e.timestamp)||Math.floor(Date.now()/1000)}}
@@ -697,7 +864,7 @@ function rebuildState(){
   }
   for(const id of canceled)listings.delete(id);
   S.listings=listings;S.offers=offers;S.atomicLocks=locks;S.atomicSettlements=settled;
-  $('claimCount').textContent=claims.size.toLocaleString();
+  $('claimCount').textContent=Math.max(claims.size,Number(S.serverClaimCount||0)).toLocaleString();
   renderMarket();renderUsdcMarket();renderActivity();renderPortfolio();renderAtomicDesk();updateWalletUI();
 }
 function eventUnix(e){return Number(e?.blockTime||e?.block_time||e?.timestamp)||0}
@@ -705,7 +872,8 @@ function tokenState(id){
   id=Number(id);
 
   const canonical=S.claims.get(id),walletClaim=S.walletRecoveredClaims.get(id);
-  const c=canonical||walletClaim||null;
+  const serverOwnerCheckpoint=walletClaim?.source==='supabase-index'&&String(walletClaim?.serverLastEventType||'CLAIM')!=='CLAIM';
+  const c=serverOwnerCheckpoint?walletClaim:(canonical||walletClaim||null);
   const settlements=[...S.verifiedAtomic.values(),...S.usdcVerifiedSettlements.values()]
     .filter(x=>Number(x.tokenId)===id)
     .sort(eventOrder);
@@ -764,6 +932,12 @@ function tokenState(id){
   return {owner,lock,settlement}
 }
 function currentOwner(id){return tokenState(id).owner}
+function indexedOwner(id){const x=S.serverOwners.get(Number(id));return x?.owner||null}
+function effectiveOwner(id){
+  const x=S.serverOwners.get(Number(id));
+  if(x?.owner&&['signature','chain','full'].includes(String(x.level||'')))return x.owner;
+  return currentOwner(id)||x?.owner||null
+}
 function activeAtomicLockForToken(id){return tokenState(id).lock}
 function tokenIsAtomicLocked(id){return !!activeAtomicLockForToken(id)}
 
@@ -866,16 +1040,19 @@ function updateMarketMetrics(){
 function updateUsdcMarketMetrics(){
   const now=Math.floor(Date.now()/1000);
   const active=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===1&&Number(x.expiresAt)>now);
-  const sales=[...S.usdcVerifiedSettlements.values()];
-  const floor=active.length?active.reduce((min,x)=>{
-    const p=Number(x.priceUSDC||0)/1e6;
-    return !min||p<min?p:min;
-  },0):0;
-  const volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0);
+  const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
+  let floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
+  let volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0),salesN=sales.length,listedN=active.length;
+  if(S.serverUsdcMetrics){
+    const sf=Number(S.serverUsdcMetrics.floor_base_units||0)/1e6,sv=Number(S.serverUsdcMetrics.volume_base_units||0)/1e6;
+    const authoritative=S.serverIndexerHealth?.base_usdc?.status==='ok'&&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
+    if(authoritative){floor=sf;volume=Number.isFinite(sv)?sv:0;salesN=Number(S.serverUsdcMetrics.sales)||0;listedN=Number(S.serverUsdcMetrics.listed)||0}
+    else{if(sf>0)floor=sf;if(Number.isFinite(sv))volume=Math.max(volume,sv);salesN=Math.max(salesN,Number(S.serverUsdcMetrics.sales)||0);listedN=Math.max(listedN,Number(S.serverUsdcMetrics.listed)||0)}
+  }
   $('usdcFloorPrice').textContent=floor?`${floor.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`:'—';
   $('usdcTotalVolume').textContent=`${volume.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`;
-  $('usdcSalesCount').textContent=sales.length.toLocaleString();
-  $('usdcListedCount').textContent=active.length.toLocaleString();
+  $('usdcSalesCount').textContent=salesN.toLocaleString();
+  $('usdcListedCount').textContent=listedN.toLocaleString();
 }
 function activityKind(e){
   if(e.type==='ATOMIC_SETTLED'||e.type==='NOIR_SETTLED')return 'sale';
@@ -1074,62 +1251,88 @@ async function verifyUsdcRelayListing(e,onchain){
     return true
   }catch{return false}
 }
+function usdcCacheRead(){
+  try{const x=JSON.parse(localStorage.getItem('zb1_usdc_market_v3')||'{}');return x&&typeof x==='object'?x:{}}catch{return{}}
+}
+function hydrateUsdcCache(){
+  const c=usdcCacheRead(),rows=Array.isArray(c.rows)?c.rows:[];
+  if(rows.length)S.usdcOnchain=new Map(rows.map(x=>[String(x.listingId).toLowerCase(),x]));
+  S.usdcScanBlock=Number(c.lastBlock)||0;
+  return rows.length
+}
+function saveUsdcCache(lastBlock=S.usdcScanBlock){
+  try{
+    const rows=[...S.usdcOnchain.values()].slice(-2000).map(x=>({...x,priceUSDC:String(x.priceUSDC),relay:x.relay||null}));
+    localStorage.setItem('zb1_usdc_market_v3',JSON.stringify({v:3,lastBlock:Number(lastBlock)||0,at:Date.now(),rows}))
+  }catch(e){console.warn('USDC cache save',e)}
+}
+async function discoverUsdcListingIds(contract,rp){
+  const ids=new Set([...S.usdcOnchain.keys()]);
+  for(const e of usdcRelayListings())if(e.listingId)ids.add(String(e.listingId).toLowerCase());
+  let latest=0;try{latest=await rp.getBlockNumber()}catch{return {ids,lastBlock:S.usdcScanBlock}}
+  // Listings can live up to 30 days. On a cold browser scan enough Base history to recover all still-live listings,
+  // then persist the cursor so refreshes only scan new blocks.
+  let from=S.usdcScanBlock>0?S.usdcScanBlock+1:Math.max(0,latest-1400000);
+  if(from>latest)return {ids,lastBlock:latest};
+  const step=25000;
+  for(let a=from;a<=latest;a+=step){
+    const b=Math.min(latest,a+step-1);
+    try{
+      const logs=await contract.queryFilter(contract.filters.ListingCreated(),a,b);
+      for(const ev of logs){const id=String(ev.args?.listingId||'').toLowerCase();if(/^0x[0-9a-f]{64}$/.test(id))ids.add(id)}
+      S.usdcScanBlock=b;
+    }catch(e){console.warn('Base listing log scan',a,b,e);break}
+  }
+  return {ids,lastBlock:S.usdcScanBlock||latest}
+}
+async function mapLimit(items,limit,fn){
+  const out=new Array(items.length);let n=0;
+  async function worker(){while(true){const i=n++;if(i>=items.length)return;try{out[i]=await fn(items[i],i)}catch(e){out[i]=null}}}
+  await Promise.all(Array.from({length:Math.min(limit,items.length||1)},worker));return out
+}
 async function reconcileUsdcMarket(){
   if(S.usdcReconciling||!usdcConfigured())return;
   S.usdcReconciling=true;
   try{
+    // Production rule: once the server Base index is caught up, it is the authoritative
+    // browsing snapshot. Critical Buy Now still re-reads the contract immediately before payment.
+    renderUsdcMarket();
+    const serverAuthoritative=S.serverIndexerHealth?.base_usdc?.status==='ok'&&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
+    if(serverAuthoritative&&S.serverUsdcMetrics){updateEvmUI();return}
     const rp=await baseReadProvider();
     const c=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,rp);
-    const rel=usdcRelayListings().slice(-500);
-    const valid=[];
-    for(const e of rel){
-      try{
-        const oc=await c.listings(e.listingId);
-        const row={
-          listingId:e.listingId,
-          seller:oc.seller,
-          sellerCommitment:oc.sellerCommitment,
-          tokenId:Number(oc.tokenId),
-          expiresAt:Number(oc.expiresAt),
-          priceUSDC:oc.priceUSDC,
-          listingNonce:oc.listingNonce,
-          zb1ListingHash:oc.zb1ListingHash,
-          status:Number(oc.status),
-          buyer:oc.buyer,
-          buyerCommitment:oc.buyerCommitment,
-          settledAt:Number(oc.settledAt),
-          relay:e
-        };
-        if(await verifyUsdcRelayListing(e,row))valid.push(row)
-      }catch(err){console.warn('USDC listing verify',e.listingId,err)}
-    }
-    S.usdcOnchain=new Map(valid.map(x=>[String(x.listingId).toLowerCase(),x]));
+    const discovered=await discoverUsdcListingIds(c,rp);
+    const relayMap=new Map(usdcRelayListings().map(e=>[String(e.listingId).toLowerCase(),e]));
+    const ids=[...discovered.ids].slice(-2000);
+    const rows=(await mapLimit(ids,6,async id=>{
+      const oc=await c.listings(id);
+      const seller=String(oc.seller||'');
+      if(!seller||/^0x0{40}$/i.test(seller))return null;
+      const prev=S.usdcOnchain.get(String(id).toLowerCase())||{};
+      const relay=relayMap.get(String(id).toLowerCase())||prev.relay||null;
+      const row={...prev,listingId:id,seller:oc.seller,sellerCommitment:oc.sellerCommitment,tokenId:Number(oc.tokenId),expiresAt:Number(oc.expiresAt),priceUSDC:String(oc.priceUSDC),listingNonce:oc.listingNonce,zb1ListingHash:oc.zb1ListingHash,status:Number(oc.status),buyer:oc.buyer,buyerCommitment:oc.buyerCommitment,settledAt:Number(oc.settledAt),relay,verifiedIntent:!!prev.verifiedIntent,serverIntentVerified:!!prev.serverIntentVerified,serverOwnerCommitment:prev.serverOwnerCommitment||'',serverOwnerVerifiedLevel:prev.serverOwnerVerifiedLevel||'',serverIndexed:!!prev.serverIndexed};
+      if(relay)row.verifiedIntent=await verifyUsdcRelayListing(relay,row);
+      return row
+    })).filter(Boolean);
+    if(rows.length){const merged=new Map(S.usdcOnchain);for(const x of rows)merged.set(String(x.listingId).toLowerCase(),x);S.usdcOnchain=merged}
+    saveUsdcCache(discovered.lastBlock);
 
-    // Rebuild Base ownership transitions from scratch in settlement order.
+    // Rebuild ZB-1 ownership transitions only when the seller's Zcash ownership is known.
     S.usdcVerifiedSettlements.clear();
-    const sold=valid.filter(x=>x.status===2&&x.settledAt>0)
-      .sort((a,b)=>a.settledAt-b.settledAt);
+    const sold=[...S.usdcOnchain.values()].filter(x=>x.status===2&&x.settledAt>0).sort((a,b)=>a.settledAt-b.settledAt);
     for(const x of sold){
       const expectedSeller=String(x.sellerCommitment).slice(2).toLowerCase();
-      // currentOwner now includes previously accepted Base settlements as this
-      // map is rebuilt in chronological order.
       const before=currentOwner(x.tokenId);
-      if(before&&before!==expectedSeller)continue;
+      if(!before||before!==expectedSeller)continue;
       const buyerCommit=String(x.buyerCommitment).slice(2).toLowerCase();
       if(!/^[0-9a-f]{64}$/.test(buyerCommit)||/^0+$/.test(buyerCommit))continue;
-      S.usdcVerifiedSettlements.set(String(x.listingId).toLowerCase(),{
-        protocol:'ZB1',v:1,type:'USDC_SETTLED',
-        listingId:x.listingId,tokenId:x.tokenId,
-        sellerCommitment:expectedSeller,buyerCommitment:buyerCommit,
-        sellerEvm:x.seller,buyerEvm:x.buyer,
-        price:usdcFmt(x.priceUSDC),priceUSDC:String(x.priceUSDC),
-        timestamp:x.settledAt,settledAt:x.settledAt,
-        paymentChain:'Base',paymentToken:'USDC',
-        source:'base-contract'
-      })
+      S.usdcVerifiedSettlements.set(String(x.listingId).toLowerCase(),{protocol:'ZB1',v:1,type:'USDC_SETTLED',listingId:x.listingId,tokenId:x.tokenId,sellerCommitment:expectedSeller,buyerCommitment:buyerCommit,sellerEvm:x.seller,buyerEvm:x.buyer,price:usdcFmt(x.priceUSDC),priceUSDC:String(x.priceUSDC),timestamp:x.settledAt,settledAt:x.settledAt,paymentChain:'Base',paymentToken:'USDC',source:'base-contract'})
     }
+    renderUsdcMarket();updateEvmUI()
+  }catch(e){
+    console.warn('USDC reconcile',e);
     renderUsdcMarket();
-    updateEvmUI()
+    throw e
   }finally{S.usdcReconciling=false}
 }
 function renderUsdcMarket(){
@@ -1143,10 +1346,9 @@ function renderUsdcMarket(){
   const now=Math.floor(Date.now()/1000);
   const rows=[...S.usdcOnchain.values()]
     .filter(x=>x.status===1&&x.expiresAt>now)
-    .filter(x=>currentOwner(x.tokenId)===String(x.sellerCommitment).slice(2).toLowerCase())
-    .sort((a,b)=>Number(b.relay?.timestamp||0)-Number(a.relay?.timestamp||0));
+    .sort((a,b)=>{const ap=BigInt(a.priceUSDC||0),bp=BigInt(b.priceUSDC||0);if(ap<bp)return -1;if(ap>bp)return 1;return Number(b.relay?.timestamp||0)-Number(a.relay?.timestamp||0)});
   if(!rows.length){
-    g.innerHTML='<div class="empty" style="grid-column:1/-1">No active verified Base USDC listings yet.</div>';
+    g.innerHTML='<div class="empty" style="grid-column:1/-1">No active Base USDC listings in the production index yet.</div>';
     return
   }
   for(const l of rows){
@@ -1164,8 +1366,12 @@ function renderUsdcMarket(){
     if(S.evmAddress&&String(S.evmAddress).toLowerCase()===String(l.seller).toLowerCase()){
       b.textContent='Cancel USDC Listing';b.className='btn red usdcAction';b.onclick=()=>cancelUsdcListing(l)
     }else{
-      b.textContent=S.evmAddress?'Buy Now · USDC':'Connect Base Wallet to Buy · USDC';
-      b.onclick=()=>buyUsdcListing(l)
+      const owner=effectiveOwner(l.tokenId),sellerCommit=String(l.sellerCommitment).slice(2).toLowerCase();
+      const signedOk=!!l.verifiedIntent||!!l.serverIntentVerified;
+      if(!owner){b.textContent='Ownership syncing…';b.disabled=true}
+      else if(owner!==sellerCommit){b.textContent='Listing no longer valid';b.disabled=true}
+      else if(!signedOk){b.textContent='Signature syncing…';b.disabled=true}
+      else{b.textContent=S.evmAddress?'Buy Now · USDC':'Connect Base Wallet to Buy · USDC';b.onclick=()=>buyUsdcListing(l)}
     }
     g.appendChild(card)
   }
@@ -1181,7 +1387,7 @@ function openUsdcListing(){
 }
 $('createUsdcListingBtn').onclick=openUsdcListing;
 $('createUsdcListingTopBtn').onclick=openUsdcListing;
-$('refreshUsdcBtn').onclick=()=>reconcileUsdcMarket().catch(e=>toast(e.message||String(e),8000));
+$('refreshUsdcBtn').onclick=async()=>{try{await fetchRelay();rebuildState();await reconcileUsdcMarket();rebuildState()}catch(e){toast(e.message||String(e),8000)}};
 async function publishUsdcListing(){
   try{
     if(!usdcConfigured())throw new Error('Production USDC settlement contract is not configured.');
@@ -1233,6 +1439,7 @@ async function publishUsdcListing(){
     await publishRelay(relayEvent,{quiet:true});
     modal('usdcListingModal',false);
     toast(`USDC listing live · ${usdcFmt(priceUSDC)} USDC`,8000);
+    kickServerUsdcIndexer().catch(()=>{});
     await reconcileUsdcMarket()
   }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
 }
@@ -1246,6 +1453,7 @@ async function cancelUsdcListing(l){
     toast('Cancel submitted on Base…',6000);
     await tx.wait();
     toast('USDC listing cancelled.',7000);
+    kickServerUsdcIndexer().catch(()=>{});
     await reconcileUsdcMarket()
   }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
 }
@@ -1261,7 +1469,7 @@ async function buyUsdcListing(l){
     const fresh=S.usdcOnchain.get(String(l.listingId).toLowerCase());
     if(!fresh||fresh.status!==1||fresh.expiresAt<=Math.floor(Date.now()/1000))throw new Error('This USDC listing is no longer active.');
     const sellerCommit=String(fresh.sellerCommitment).slice(2).toLowerCase();
-    if(currentOwner(fresh.tokenId)!==sellerCommit)throw new Error('Seller is no longer the verified ZB-1 owner. Purchase blocked.');
+    if(effectiveOwner(fresh.tokenId)!==sellerCommit)throw new Error('Seller is no longer the indexed ZB-1 owner. Purchase blocked.');
     if(activeListingForToken(fresh.tokenId)||tokenIsAtomicLocked(fresh.tokenId))throw new Error('A ZEC listing/checkout is active for this NFT. Purchase blocked to prevent cross-rail double sale.');
 
     const market=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,S.evmSigner);
@@ -1314,6 +1522,7 @@ async function buyUsdcListing(l){
     });
     rememberRuntimeEvent(settledEvent);
     await publishRelay(settledEvent,{quiet:true});
+    kickServerUsdcIndexer().catch(()=>{});
     await reconcileUsdcMarket();
     rebuildState();renderPortfolio();renderUsdcMarket();
     toast(`Purchase complete · ZEC BLOCK #${fresh.tokenId} · ${usdcFmt(amount)} USDC`,9000)
@@ -2227,11 +2436,15 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
 $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT has a chain-verified atomic lock. Direct transfer is invalid under ZB-1 v2 until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
-async function refreshAll(){await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
+async function refreshAll(){await hydrateServerUsdc();if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);await hydrateServerClaimStats();kickServerRelayIndexer();kickServerUsdcIndexer();await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
-(async()=>{await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}try{await connectEvmWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();try{await reconcileUsdcMarket()}catch(e){console.warn('USDC market init',e)}rebuildState();updateWalletUI();renderUsdcMarket();renderAtomicDesk();updateMarketMetrics();
+hydrateUsdcCache();rebuildState();renderUsdcMarket();
+hydrateServerUsdc().then(()=>kickServerUsdcIndexer()).catch(()=>{});
+(async()=>{await hydrateServerClaimStats();kickServerRelayIndexer();await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}try{await connectEvmWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();try{await reconcileUsdcMarket()}catch(e){console.warn('USDC market init',e)}rebuildState();updateWalletUI();renderUsdcMarket();renderAtomicDesk();updateMarketMetrics();
   if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{
+    await hydrateServerUsdc();
+    if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);
     await fetchRelay();
     await reconcileAtomicState();
     rebuildState();
