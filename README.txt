@@ -1,60 +1,61 @@
-ZEC BLOCKS — MAIN MARKETPLACE
+ZEC BLOCKS MAIN V7 — ATOMIC SETTLEMENT EXTENSION
 
-Deploy this folder to the main ZEC BLOCKS Vercel project.
-Recommended domains:
-- https://www.zecblocks.xyz
-- https://zecblocks.xyz -> redirect to www
+PURPOSE
+V7 removes the unsafe buyer-pays-then-seller-transfers flow.
 
-Mining is intentionally separated and linked to:
-https://mine.zecblocks.xyz
+ATOMIC FLOW
+1. Seller lists a ZEC BLOCK.
+2. Buyer publishes an offer.
+3. Seller clicks "Accept & Atomic Lock".
+4. Noir Wallet broadcasts an on-chain ZB-1 ATOMIC_LOCK memo to the protocol mailbox.
+5. Buyer checkout remains disabled until the lock transaction is confirmed.
+6. The confirmed lock binds:
+   - Token ID
+   - seller owner commitment
+   - designated buyer owner commitment
+   - exact price
+   - seller transparent payout address
+   - expiry
+7. Buyer executes ONE multi-recipient Zcash transaction:
+   - 97% output -> seller transparent payout address
+   - 3% output -> ZEC BLOCKS treasury
+8. Buyer pastes the ONE transaction TXID.
+9. The website verifies both exact outputs are present in that same confirmed transaction.
+10. If valid and within the lock window, ZB-1 Atomic Marketplace Extension resolves ownership to the designated buyer.
+11. No final seller approval exists after payment.
 
-Keep api/zcash.js and vercel.json. The marketplace/portfolio still use the same public Zcash data proxy.
+WHY NOIR CANNOT EXECUTE THE PAYMENT YET
+The currently published Noir Wallet browser adapter exposes zcash_sendTransaction with a single
+`to` destination. It also explicitly does not expose PCZT signing. Therefore V7 does NOT fake
+atomicity by firing two Noir transactions. Buyer checkout generates a ZIP-321 multi-payment request
+instead. It must be executed by a wallet capable of creating both outputs in ONE Zcash transaction.
 
+SECURITY RULE
+DO NOT manually send 97% and 3% as two separate transactions.
+Those transactions will NOT pass V7 atomic verification.
 
-ZEC BLOCKS MAIN MARKETPLACE V2 — PERSISTENT DISCOVERY
-- Multi-relay marketplace mirroring (4 relays)
-- Per-relay read recovery; one unavailable relay does not blank the marketplace
-- Automatic reconstruction after website redeploy
-- Local signed-event cache survives ordinary site updates on the same origin
-- Automatic repair of locally-created events missing from relays (rate-limited)
-- Cancel Listing creates a signed SALE_CANCEL event instead of deleting database state
-- Only newest valid active listing per token is shown
-- Ownership still comes from ZB-1 CLAIM/TRANSFER state, not relay availability
+FEE
+- 300 bps / 3%
+- Seller output: 97% of accepted price (integer zatoshi rounding)
+- Treasury output: 3% of accepted price
+- Treasury: t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz
 
-Deploy the whole folder to the www.zecblocks.xyz Vercel project.ZEC BLOCKS MAIN MARKETPLACE V3 — ACTIVITY
-- Marketplace stats: floor, total completed-sale volume, sales count, listed count
-- Activity feed: SALE, LIST, OFFER, CANCEL, TRANSFER
-- Activity filter for sales/listings/offers/transfers
-- Volume is intentionally calculated ONLY from SALE_SETTLED events
-- Listings/offers are never counted as volume
-- Existing multi-relay persistence/recovery remains enabled
-- Ready for future settlement flow without faking historical volume
+LOCK
+- Default lock window: 24 hours
+- Atomic payment button is disabled during the final 60 minutes to reduce expiry-edge risk.
+- A confirmed lock prevents normal listing cancellation / manual Transfer through this V7 client.
+- Expired unpaid locks resolve back to the seller in the client state machine.
 
-IMPORTANT:
-The current P2P marketplace does not have an atomic ZEC-for-NFT settlement primitive.
-Until the protocol emits explicit SALE_SETTLED events, Sales and Total Volume correctly remain 0.V4 PORTFOLIO RECOVERY FIX
-- Fixes previously mined ZEC BLOCKS not appearing on www.zecblocks.xyz.
-- Root cause: mine.zecblocks.xyz and www.zecblocks.xyz have separate localStorage,
-  and old CLAIM memos did not store ownerCommitment directly.
-- Main site now reads Noir Wallet transaction history and reconstructs:
-  * CLAIM token ID
-  * ownerCommitment = SHA256(claim public key)
-  * deterministic source height/hash
-  * 26-bit SHA-256 proof validation
-  * outgoing TRANSFER sender commitment
-- "Sync Portfolio" renamed to "Recover & Sync Portfolio".
-- Existing marketplace/activity/multi-relay behavior remains.
-- Genesis and protocol rules are unchanged.
+IMPORTANT
+This is a ZB-1 marketplace protocol extension. Every independent validator/indexer that wants to
+reconstruct Atomic Marketplace ownership must implement the same ATOMIC_LOCK / ATOMIC_SETTLED
+state rules. Relay events are discovery/cache; lock and payment confirmations are checked against
+Zcash chain data.
 
-Deploy this package to the MAIN www.zecblocks.xyz Vercel project.
-The mining subdomain does not need to change for this portfolio fix.
+Deploy the entire ZIP to the MAIN www.zecblocks.xyz Vercel project.
 
-V5 PORTFOLIO FIX
-- Fixes the case where Noir Wallet reports ZB-1 events but Owned remains 0.
-- localStorage events are now UPSERTED/ENRICHED instead of ignoring duplicate TXIDs.
-- Wallet-recovered claim data cannot be overwritten by sparse relay copies.
-- Recovered CLAIMs are independently rebuilt and 26-bit PoW checked.
-- Zcash block height / tx index are fetched when available for canonical ordering.
-- Wallet-recovered claims remain visible while relay recovery catches up.
-- Recovery status explicitly prints recovered Token IDs (#1, #2, ...).
-- Genesis and ZB-1 protocol rules are unchanged.
+DEPLOYMENT NOTE
+- Noir Wallet remains the identity/signature wallet and can create the on-chain ATOMIC_LOCK.
+- The buyer settlement itself requires a wallet capable of ONE multi-recipient Zcash transaction.
+- The generated request follows ZIP-321 multi-payment syntax.
+- V7 deliberately refuses to simulate atomic settlement with two separate Noir sends.

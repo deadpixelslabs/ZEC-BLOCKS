@@ -8,7 +8,16 @@
 <title>ZEC BLOCKS — Marketplace</title>
 <style>
 :root{--bg:#070707;--panel:#0d0d0d;--panel2:#111;--line:#232323;--line2:#313131;--text:#f4f4f4;--muted:#8b8b8b;--gold:#d3a84f;--gold2:#f1cc76;--green:#78d594;--red:#ff8989;--blue:#86b7ff;--r:14px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input,select{font:inherit}button{cursor:pointer}.top{height:68px;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;padding:0 24px;background:rgba(7,7,7,.92);border-bottom:1px solid #1d1d1d;backdrop-filter:blur(16px)}.brand{display:flex;align-items:center;gap:10px;min-width:max-content}.brandmark{width:34px;height:34px;border:1px solid #3c3322;border-radius:8px;display:grid;place-items:center;background:#0d0b08;color:var(--gold2);font-family:ui-monospace,monospace;font-weight:900}.brand b{font-size:13px;letter-spacing:.12em}.nav{display:flex;gap:4px}.nav a{padding:9px 11px;border-radius:9px;color:#8d8d8d;font-size:13px;font-weight:700}.nav a:hover{background:#131313;color:#fff}.topright{margin-left:auto;display:flex;align-items:center;gap:8px}.pill{border:1px solid #292929;background:#0d0d0d;padding:8px 10px;border-radius:999px;font-size:11px;color:#aaa}.liveDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px rgba(120,213,148,.7);margin-right:7px}.btn{min-height:39px;padding:0 14px;border:1px solid #2b2b2b;background:#111;color:#ddd;border-radius:10px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn:hover{border-color:#494949;color:#fff}.btn.gold{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#17120a;border-color:transparent}.btn.green{border-color:rgba(120,213,148,.3);color:#b8f0c6;background:rgba(120,213,148,.08)}.btn.red{border-color:rgba(255,137,137,.3);color:#ffb2b2;background:rgba(255,137,137,.06)}.btn:disabled{opacity:.45;cursor:not-allowed}.walletbtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}main{max-width:1420px;margin:0 auto;padding:28px 24px 70px}.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.7fr);gap:18px}.card,.heroMain{border:1px solid #202020;background:linear-gradient(180deg,#0e0e0e,#0a0a0a);border-radius:var(--r)}.heroMain{padding:38px;min-height:420px;position:relative;overflow:hidden}.heroMain:after{content:"";position:absolute;width:500px;height:500px;right:-180px;top:-160px;border-radius:50%;background:radial-gradient(circle,rgba(211,168,79,.14),transparent 68%);pointer-events:none}.kicker{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold2);font-weight:900;margin-bottom:17px}.hero h1{font-size:clamp(50px,7vw,88px);line-height:.92;letter-spacing:-.055em;margin:0;max-width:900px}.hero p{max-width:720px;color:#969696;font-size:15px;line-height:1.72;margin:24px 0 28px}.actions{display:flex;gap:9px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#222;border:1px solid #222;border-radius:11px;overflow:hidden;margin-top:34px;max-width:760px}.stat{background:#0a0a0a;padding:14px 15px}.stat small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}.stat b{font-size:14px}.heroSide{padding:22px;display:flex;flex-direction:column}.heroSideTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.heroSideTop h2{font-size:16px;margin:0}.badge{font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-radius:999px;border:1px solid #333;color:#aaa}.badge.live{color:#aee9bd;border-color:rgba(120,213,148,.25);background:rgba(120,213,148,.05)}.art{aspect-ratio:1;border:1px solid #222;border-radius:11px;background:#070707;overflow:hidden}.blockArt{display:block;width:100%;height:100%;shape-rendering:crispEdges;image-rendering:pixelated}.heroSide .kvgrid{margin-top:14px}.kvgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#222;border:1px solid #222;border-radius:10px;overflow:hidden}.kv{background:#0a0a0a;padding:12px}.kv small{display:block;color:#636363;font-size:9px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px}.kv b{font-size:12px;word-break:break-all}.sectionHead{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:36px 0 14px}.sectionHead h2{margin:0;font-size:21px}.sectionHead p{margin:0;color:#6e6e6e;font-size:11px}.tabs{display:flex;gap:8px;flex-wrap:wrap}.panel{padding:22px}.miningGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.terminal{border:1px solid #252525;background:#090909;border-radius:12px;overflow:hidden}.terminalHead{padding:12px 14px;border-bottom:1px solid #1e1e1e;background:#101010;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;display:flex;align-items:center;gap:9px}.termDot{width:9px;height:9px;border-radius:50%;background:var(--gold2);box-shadow:0 0 14px rgba(240,202,114,.55)}.termBody{padding:14px}.row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #171717;font-size:12px}.row:last-child{border-bottom:0}.key{font-size:9px;color:#696969;text-transform:uppercase;letter-spacing:.09em;font-weight:900;min-width:120px}.val{text-align:right;color:#d8d8d8;word-break:break-all}.inputrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:14px}.input,.select{width:100%;height:42px;border:1px solid #2a2a2a;border-radius:9px;background:#080808;color:#eee;padding:0 12px;outline:none}.input:focus,.select:focus{border-color:#5a492d}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.progress{height:10px;border:1px solid #222;background:#121212;border-radius:999px;overflow:hidden;margin-top:14px}.progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .2s}.hashlog{height:150px;overflow:auto;margin-top:12px;border:1px solid #1d1d1d;border-radius:9px;background:#070707;padding:10px;color:#83c99a;font:10px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.sideStack{display:grid;gap:12px}.mini{border:1px solid #242424;border-radius:11px;background:#0a0a0a;padding:16px}.mini h3{margin:0 0 7px;font-size:15px}.mini p{margin:0;color:#7d7d7d;font-size:11px;line-height:1.65}.notice{border:1px solid rgba(240,202,114,.22);background:rgba(240,202,114,.05);color:#cdbb91;padding:11px 12px;border-radius:9px;font-size:11px;line-height:1.55;margin-top:12px}.notice.good{border-color:rgba(120,213,148,.22);background:rgba(120,213,148,.05);color:#aee7bc}.notice.bad{border-color:rgba(255,137,137,.22);background:rgba(255,137,137,.05);color:#ffb0b0}.marketToolbar{display:flex;gap:9px;align-items:center;padding:13px;border-bottom:1px solid #1e1e1e}.marketToolbar .input{max-width:440px}.marketBody{padding:15px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.nft{border:1px solid #202020;border-radius:11px;background:#0c0c0c;overflow:hidden;transition:.16s}.nft:hover{transform:translateY(-2px);border-color:#3a342b}.nftart{aspect-ratio:1;border-bottom:1px solid #1d1d1d}.nftinfo{padding:11px}.nftline{display:flex;justify-content:space-between;align-items:center;gap:8px}.nfttitle{font-size:12px;font-weight:900}.meta{font-size:9px;color:#646464;margin-top:6px;display:flex;justify-content:space-between;gap:8px}.price{font-size:12px;color:#d8bd78;font-weight:900}.empty{padding:42px 20px;text-align:center;color:#666;font-size:12px;border:1px dashed #292929;border-radius:11px}.portfolioTop{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.metric{border:1px solid #222;background:#0a0a0a;border-radius:10px;padding:14px}.metric small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.08em}.metric b{display:block;font-size:17px;margin-top:6px}.walletbox{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.copyline{border:1px solid #242424;border-radius:10px;background:#0a0a0a;padding:12px}.copyline small{display:block;color:#666;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.copyline code{font-size:10px;color:#bbb;word-break:break-all}.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}.modal.show{display:flex}.modalCard{width:min(560px,100%);max-height:88vh;overflow:auto;border:1px solid #303030;border-radius:14px;background:#0c0c0c;padding:20px;box-shadow:0 30px 100px rgba(0,0,0,.6)}.modalHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modalHead h3{margin:0;font-size:17px}.xbtn{border:0;background:transparent;color:#888;font-size:20px}.field{margin-bottom:12px}.field label{display:block;font-size:9px;color:#717171;text-transform:uppercase;letter-spacing:.09em;font-weight:900;margin-bottom:6px}.field textarea{width:100%;min-height:100px;border:1px solid #292929;background:#080808;color:#ddd;border-radius:9px;padding:10px;resize:vertical}.protocolGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.protocolGrid .mini{min-height:160px}.footer{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #191919;margin-top:34px;padding-top:24px;color:#595959;font-size:10px}.footerlinks{display:flex;gap:16px;flex-wrap:wrap}.toast{position:fixed;right:18px;bottom:18px;z-index:200;max-width:380px;border:1px solid #333;background:#101010;color:#ddd;border-radius:10px;padding:12px 14px;font-size:11px;box-shadow:0 18px 60px rgba(0,0,0,.5);display:none}.toast.show{display:block}.muted{color:#777}.gold{color:var(--gold2)}.green{color:var(--green)}.red{color:var(--red)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input,select{font:inherit}button{cursor:pointer}.top{height:68px;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;padding:0 24px;background:rgba(7,7,7,.92);border-bottom:1px solid #1d1d1d;backdrop-filter:blur(16px)}.brand{display:flex;align-items:center;gap:10px;min-width:max-content}.brandmark{width:34px;height:34px;border:1px solid #3c3322;border-radius:8px;display:grid;place-items:center;background:#0d0b08;color:var(--gold2);font-family:ui-monospace,monospace;font-weight:900}.brand b{font-size:13px;letter-spacing:.12em}.nav{display:flex;gap:4px}.nav a{padding:9px 11px;border-radius:9px;color:#8d8d8d;font-size:13px;font-weight:700}.nav a:hover{background:#131313;color:#fff}.topright{margin-left:auto;display:flex;align-items:center;gap:8px}.pill{border:1px solid #292929;background:#0d0d0d;padding:8px 10px;border-radius:999px;font-size:11px;color:#aaa}.liveDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px rgba(120,213,148,.7);margin-right:7px}.btn{min-height:39px;padding:0 14px;border:1px solid #2b2b2b;background:#111;color:#ddd;border-radius:10px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn:hover{border-color:#494949;color:#fff}.btn.gold{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#17120a;border-color:transparent}.btn.green{border-color:rgba(120,213,148,.3);color:#b8f0c6;background:rgba(120,213,148,.08)}.btn.red{border-color:rgba(255,137,137,.3);color:#ffb2b2;background:rgba(255,137,137,.06)}.btn:disabled{opacity:.45;cursor:not-allowed}.walletbtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}main{max-width:1420px;margin:0 auto;padding:28px 24px 70px}.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.7fr);gap:18px}.card,.heroMain{border:1px solid #202020;background:linear-gradient(180deg,#0e0e0e,#0a0a0a);border-radius:var(--r)}.heroMain{padding:38px;min-height:420px;position:relative;overflow:hidden}.heroMain:after{content:"";position:absolute;width:500px;height:500px;right:-180px;top:-160px;border-radius:50%;background:radial-gradient(circle,rgba(211,168,79,.14),transparent 68%);pointer-events:none}.kicker{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold2);font-weight:900;margin-bottom:17px}.hero h1{font-size:clamp(50px,7vw,88px);line-height:.92;letter-spacing:-.055em;margin:0;max-width:900px}.hero p{max-width:720px;color:#969696;font-size:15px;line-height:1.72;margin:24px 0 28px}.actions{display:flex;gap:9px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#222;border:1px solid #222;border-radius:11px;overflow:hidden;margin-top:34px;max-width:760px}.stat{background:#0a0a0a;padding:14px 15px}.stat small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}.stat b{font-size:14px}.heroSide{padding:22px;display:flex;flex-direction:column}.heroSideTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.heroSideTop h2{font-size:16px;margin:0}.badge{font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-radius:999px;border:1px solid #333;color:#aaa}.badge.live{color:#aee9bd;border-color:rgba(120,213,148,.25);background:rgba(120,213,148,.05)}.art{aspect-ratio:1;border:1px solid #222;border-radius:11px;background:#070707;overflow:hidden}.blockArt{display:block;width:100%;height:100%;shape-rendering:crispEdges;image-rendering:pixelated}.heroSide .kvgrid{margin-top:14px}.kvgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#222;border:1px solid #222;border-radius:10px;overflow:hidden}.kv{background:#0a0a0a;padding:12px}.kv small{display:block;color:#636363;font-size:9px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px}.kv b{font-size:12px;word-break:break-all}.sectionHead{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:36px 0 14px}.sectionHead h2{margin:0;font-size:21px}.sectionHead p{margin:0;color:#6e6e6e;font-size:11px}.tabs{display:flex;gap:8px;flex-wrap:wrap}.panel{padding:22px}.miningGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.terminal{border:1px solid #252525;background:#090909;border-radius:12px;overflow:hidden}.terminalHead{padding:12px 14px;border-bottom:1px solid #1e1e1e;background:#101010;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;display:flex;align-items:center;gap:9px}.termDot{width:9px;height:9px;border-radius:50%;background:var(--gold2);box-shadow:0 0 14px rgba(240,202,114,.55)}.termBody{padding:14px}.row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #171717;font-size:12px}.row:last-child{border-bottom:0}.key{font-size:9px;color:#696969;text-transform:uppercase;letter-spacing:.09em;font-weight:900;min-width:120px}.val{text-align:right;color:#d8d8d8;word-break:break-all}.inputrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:14px}.input,.select{width:100%;height:42px;border:1px solid #2a2a2a;border-radius:9px;background:#080808;color:#eee;padding:0 12px;outline:none}.input:focus,.select:focus{border-color:#5a492d}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.progress{height:10px;border:1px solid #222;background:#121212;border-radius:999px;overflow:hidden;margin-top:14px}.progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .2s}.hashlog{height:150px;overflow:auto;margin-top:12px;border:1px solid #1d1d1d;border-radius:9px;background:#070707;padding:10px;color:#83c99a;font:10px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.sideStack{display:grid;gap:12px}.mini{border:1px solid #242424;border-radius:11px;background:#0a0a0a;padding:16px}.mini h3{margin:0 0 7px;font-size:15px}.mini p{margin:0;color:#7d7d7d;font-size:11px;line-height:1.65}.notice{border:1px solid rgba(240,202,114,.22);background:rgba(240,202,114,.05);color:#cdbb91;padding:11px 12px;border-radius:9px;font-size:11px;line-height:1.55;margin-top:12px}.notice.good{border-color:rgba(120,213,148,.22);background:rgba(120,213,148,.05);color:#aee7bc}.notice.bad{border-color:rgba(255,137,137,.22);background:rgba(255,137,137,.05);color:#ffb0b0}.marketToolbar{display:flex;gap:9px;align-items:center;padding:13px;border-bottom:1px solid #1e1e1e}.marketToolbar .input{max-width:440px}.marketBody{padding:15px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.nft{border:1px solid #202020;border-radius:11px;background:#0c0c0c;overflow:hidden;transition:.16s}.nft:hover{transform:translateY(-2px);border-color:#3a342b}.nftart{aspect-ratio:1;border-bottom:1px solid #1d1d1d}.nftinfo{padding:11px}.nftline{display:flex;justify-content:space-between;align-items:center;gap:8px}.nfttitle{font-size:12px;font-weight:900}.meta{font-size:9px;color:#646464;margin-top:6px;display:flex;justify-content:space-between;gap:8px}.price{font-size:12px;color:#d8bd78;font-weight:900}.empty{padding:42px 20px;text-align:center;color:#666;font-size:12px;border:1px dashed #292929;border-radius:11px}.portfolioTop{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.metric{border:1px solid #222;background:#0a0a0a;border-radius:10px;padding:14px}.metric small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.08em}.metric b{display:block;font-size:17px;margin-top:6px}.walletbox{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.atomicDesk{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.atomicCol{border:1px solid #242424;background:#090909;border-radius:11px;padding:14px}
+.atomicCol h3{margin:0 0 6px;font-size:14px}.atomicCol>p{margin:0 0 11px;color:#696969;font-size:10px;line-height:1.55}
+.atomicList{display:grid;gap:8px}.atomicItem{border:1px solid #242424;background:#0d0d0d;border-radius:9px;padding:11px}
+.atomicTop{display:flex;justify-content:space-between;gap:10px;align-items:center}.atomicTop b{font-size:12px}.atomicState{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#d3a84f}
+.atomicInfo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:8px;font-size:9px;color:#6c6c6c}
+.atomicUri{width:100%;min-height:74px;margin-top:8px;border:1px solid #242424;background:#070707;color:#9b9b9b;border-radius:8px;padding:8px;font:9px/1.45 ui-monospace,monospace;resize:vertical}
+.btn.small{min-height:31px;padding:0 10px;font-size:10px}.atomicLocked{color:#f1cc76}.atomicReady{color:#aee7bc}.atomicDone{color:#78d594}
+.copyline{border:1px solid #242424;border-radius:10px;background:#0a0a0a;padding:12px}.copyline small{display:block;color:#666;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.copyline code{font-size:10px;color:#bbb;word-break:break-all}.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}.modal.show{display:flex}.modalCard{width:min(560px,100%);max-height:88vh;overflow:auto;border:1px solid #303030;border-radius:14px;background:#0c0c0c;padding:20px;box-shadow:0 30px 100px rgba(0,0,0,.6)}.modalHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modalHead h3{margin:0;font-size:17px}.xbtn{border:0;background:transparent;color:#888;font-size:20px}.field{margin-bottom:12px}.field label{display:block;font-size:9px;color:#717171;text-transform:uppercase;letter-spacing:.09em;font-weight:900;margin-bottom:6px}.field textarea{width:100%;min-height:100px;border:1px solid #292929;background:#080808;color:#ddd;border-radius:9px;padding:10px;resize:vertical}.protocolGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.protocolGrid .mini{min-height:160px}.footer{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #191919;margin-top:34px;padding-top:24px;color:#595959;font-size:10px}.footerlinks{display:flex;gap:16px;flex-wrap:wrap}.toast{position:fixed;right:18px;bottom:18px;z-index:200;max-width:380px;border:1px solid #333;background:#101010;color:#ddd;border-radius:10px;padding:12px 14px;font-size:11px;box-shadow:0 18px 60px rgba(0,0,0,.5);display:none}.toast.show{display:block}.muted{color:#777}.gold{color:var(--gold2)}.green{color:var(--green)}.red{color:var(--red)}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hero{grid-template-columns:1fr 360px}}
 @media(max-width:900px){.nav,.pill.network{display:none}.hero{grid-template-columns:1fr}.miningGrid,.protocolGrid{grid-template-columns:1fr}.portfolioTop{grid-template-columns:1fr 1fr}.walletbox{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.top{padding:0 12px}.topright .btn.secondary{display:none}main{padding:18px 12px 56px}.heroMain{padding:28px 20px}.hero h1{font-size:50px}.stats{grid-template-columns:1fr 1fr}.panel{padding:14px}.grid{grid-template-columns:1fr 1fr;gap:8px}.marketToolbar{flex-wrap:wrap}.marketToolbar .input{max-width:none}.portfolioTop{grid-template-columns:1fr 1fr}.footer{flex-direction:column}}
@@ -89,7 +98,7 @@
 </div>
 </section>
 
-<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Signed P2P listings and offers. Multi-relay mirrored. No custody.</p></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List an NFT</button></div></div>
+<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Atomic ZEC settlement extension: seller lock first, then one verified multi-output payment transaction.</p></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List an NFT</button></div></div>
 <section class="card">
   <div class="marketToolbar"><input id="marketSearch" class="input" placeholder="Search token ID or seller commitment"><select id="marketSort" class="select"><option value="new">Newest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option></select><span class="pill" id="relayStatus">Relays: connecting…</span></div>
   <div class="marketBody">
@@ -111,14 +120,28 @@
       <tbody id="activityBody"></tbody>
     </table>
   </div>
-  <div class="notice" style="margin-top:12px">Volume counts only explicit completed <b>ZB-1 sale settlement</b> events. Listings and offers are never counted as volume, so redeploys or spam cannot inflate the number.</div>
+  <div class="notice" style="margin-top:12px">Volume counts only atomic settlements whose single Zcash transaction is verified to contain both the seller payout and the 3% treasury fee.</div>
 </section>
 
 <div class="sectionHead" id="portfolio"><div><h2>Portfolio</h2><p>Recovered from Noir Wallet history, validated proof data, and public ZB-1 discovery.</p></div><button id="syncPortfolioBtn" class="btn" disabled>Recover & Sync Portfolio</button></div>
 <section class="card panel">
   <div class="portfolioTop"><div class="metric"><small>Owned</small><b id="ownedCount">0</b></div><div class="metric"><small>Active Listings</small><b id="listingCount">0</b></div><div class="metric"><small>Offers Received</small><b id="offerCount">0</b></div><div class="metric"><small>ZEC Available</small><b id="zecBalance">—</b></div></div>
   <div class="walletbox"><div class="copyline"><small>Derived owner identity</small><code id="portfolioCommit">Connect wallet to reveal your commitment.</code></div><div class="copyline"><small>Shielded account</small><code id="portfolioShielded">Private until you connect.</code></div></div>
-  <div id="portfolioGrid" class="grid"></div>
+  <div class="atomicDesk">
+    <div class="atomicCol">
+      <h3>Seller · Atomic Offers</h3>
+      <p>Accepting an offer creates an on-chain ZB-1 atomic lock. Once the lock confirms, the seller cannot cancel or manually transfer the NFT through this client until settlement or expiry.</p>
+      <div id="atomicSellerList" class="atomicList"><div class="empty">Connect Noir Wallet to load offers.</div></div>
+    </div>
+    <div class="atomicCol">
+      <h3>Buyer · Atomic Checkout</h3>
+      <p>Payment opens only after the seller lock is confirmed. The settlement is valid only when one Zcash transaction contains the exact 97% seller output + 3% treasury output.</p>
+      <div id="atomicBuyerList" class="atomicList"><div class="empty">Your locked atomic purchases will appear here.</div></div>
+    </div>
+  </div>
+  <div class="notice good"><b>Atomic rule:</b> seller authorization is locked first. A valid payment transaction deterministically moves the ZEC BLOCK to the designated buyer — no final seller approval is required.</div>
+  <div class="notice bad"><b>Wallet requirement:</b> Noir Wallet's current browser API cannot create a multi-recipient transaction. Do not send two separate payments. Atomic checkout must be executed by a wallet that creates the generated ZIP-321 multi-payment request as <b>one Zcash transaction</b>, then paste that TXID here for verification.</div>
+  <div id="portfolioGrid" class="grid" style="margin-top:14px"></div>
 </section>
 
 <div class="sectionHead" id="protocol"><div><h2>Open Protocol</h2><p>ZB-1 is documented in public.</p></div><a class="btn" href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Open GitBook</a></div>
@@ -127,11 +150,11 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Portfolio Recovery V5</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Atomic Settlement V7</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
-<div id="offerModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Make Offer</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input id="offerToken" class="input" disabled></div><div class="field"><label>Offer (ZEC)</label><input id="offerPrice" class="input" inputmode="decimal"></div><div class="notice">Offers are signed intents only. No ZEC is moved by this action. Settlement remains P2P; transfer should only be submitted after both parties agree.</div><div class="controls"><button id="publishOfferBtn" class="btn gold">Sign & Publish Offer</button></div></div></div>
+<div id="offerModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Make Offer</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input id="offerToken" class="input" disabled></div><div class="field"><label>Offer (ZEC)</label><input id="offerPrice" class="input" inputmode="decimal"></div><div class="notice">Offers are signed intents only. If the seller accepts, the NFT is locked on Zcash before any payment request becomes active.</div><div class="controls"><button id="publishOfferBtn" class="btn gold">Sign & Publish Offer</button></div></div></div>
 <div id="transferModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Transfer ZEC BLOCK</h3><button class="xbtn" data-close="transferModal">×</button></div><div class="field"><label>Token</label><input id="transferToken" class="input" disabled></div><div class="field"><label>Recipient owner commitment (64 hex)</label><input id="recipientCommit" class="input" placeholder="SHA-256 owner commitment"></div><div class="notice bad">Transfers are irreversible protocol events. Verify the recipient commitment carefully before approving the Zcash transaction.</div><div class="controls"><button id="submitTransferBtn" class="btn red">Sign & Submit Transfer</button></div></div></div>
 <div id="toast" class="toast"></div>
 <script>
@@ -143,9 +166,9 @@ const CFG={
   supply:5000,powBits:26,freeClaims:500,paidClaimFeeZat:130000,marketFeeBps:300,
   explorer:'/api/zcash',
   relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band'],
-  nostrKind:30078,relayTag:'zb1-mainnet-v1'
+  nostrKind:30078,relayTag:'zb1-mainnet-v1',atomicLockSeconds:86400,atomicPayCutoffSeconds:3600
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map()};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -160,6 +183,25 @@ function concat(...arr){const n=arr.reduce((s,a)=>s+a.length,0),o=new Uint8Array
 function leadingZeroBits(bytes){let n=0;for(const b of bytes){if(b===0){n+=8;continue}for(let m=0x80;(b&m)===0;m>>=1)n++;break}return n}
 function formatRate(hps){if(hps>=1e6)return (hps/1e6).toFixed(2)+' MH/s';if(hps>=1e3)return (hps/1e3).toFixed(1)+' kH/s';return Math.round(hps)+' H/s'}
 function decimalValid(v){return /^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(String(v))&&Number(v)>0}
+function zecToZat(v){
+  const s=String(v??'').trim();
+  if(!/^\d+(?:\.\d{1,8})?$/.test(s))return null;
+  const [w,f='']=s.split('.');
+  return BigInt(w)*100000000n+BigInt((f+'00000000').slice(0,8))
+}
+function zatToZec(z){
+  z=BigInt(z);const w=z/100000000n,f=(z%100000000n).toString().padStart(8,'0').replace(/0+$/,'');
+  return f?`${w}.${f}`:String(w)
+}
+function atomicSplit(price){
+  const total=zecToZat(price);if(total==null||total<=0n)throw new Error('Invalid atomic price.');
+  const fee=(total*BigInt(CFG.marketFeeBps)+5000n)/10000n;
+  if(fee<=0n||fee>=total)throw new Error('Atomic price is too small for the 3% fee split.');
+  return {total,fee,seller:total-fee,feeZec:zatToZec(fee),sellerZec:zatToZec(total-fee),totalZec:zatToZec(total)}
+}
+function sigPub(s){return s?.pubkey||s?.publicKey||''}
+function sigVal(s){return s?.signature||s?.sig||''}
+
 function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
 function eventKey(e){return e?.txid||e?.eventId||e?.listingId||null}
 function mergeEvent(old,e){
@@ -294,6 +336,12 @@ async function loadWalletHistory(){
         const normalized=normalizeEvent(e);
         saveLocalEvent(normalized);
         S.walletRecovered.set(eventKey(normalized),normalized);
+      }else if(e.type==='ATOMIC_LOCK'){
+        if(/^[0-9a-fA-F]+$/.test(String(e.pubkey||''))&&String(e.pubkey).length%2===0)e.sellerCommitment=await sha256HexBytes(hexToBytes(e.pubkey));
+        e.txid=e.txid||String(h.txid||'').toLowerCase();
+        const normalized=normalizeEvent(e);
+        saveLocalEvent(normalized);
+        S.walletRecovered.set(eventKey(normalized),normalized);
       }
     }
 
@@ -314,7 +362,7 @@ async function loadWalletHistory(){
     return {recovered,seen,error:e,claims:[]};
   }
 }
-function parseMemo(m){const p=m.split('|');if(p[0]!=='ZB1'||p.length<3)return null;const type={C:'CLAIM',T:'TRANSFER'}[p[1]]||p[1];const e={protocol:'ZB1',type,v:Number(p[2])||1,memo:m};for(const x of p.slice(3)){const i=x.indexOf('=');if(i>0)e[x.slice(0,i)]=x.slice(i+1)}if(type==='CLAIM'){e.tokenId=Number(e.T);e.nonce=e.N;e.pubkey=e.K;e.signature=e.S}else if(type==='TRANSFER'){e.tokenId=Number(e.I);e.toCommitment=e.O;e.pubkey=e.K;e.signature=e.S}return e}
+function parseMemo(m){const p=m.split('|');if(p[0]!=='ZB1'||p.length<3)return null;const type={C:'CLAIM',T:'TRANSFER',L:'ATOMIC_LOCK'}[p[1]]||p[1];const e={protocol:'ZB1',type,v:Number(p[2])||1,memo:m};for(const x of p.slice(3)){const i=x.indexOf('=');if(i>0)e[x.slice(0,i)]=x.slice(i+1)}if(type==='CLAIM'){e.tokenId=Number(e.T);e.nonce=e.N;e.pubkey=e.K;e.signature=e.S}else if(type==='TRANSFER'){e.tokenId=Number(e.I);e.toCommitment=e.O;e.pubkey=e.K;e.signature=e.S}else if(type==='ATOMIC_LOCK'){e.tokenId=Number(e.I);e.lockId=e.L;e.offerId=e.O||null;e.buyerCommitment=e.B;e.price=e.P;e.sellerPayout=e.A;e.expires=Number(e.E);e.pubkey=e.K;e.signature=e.S}return e}
 function normalizeEvent(e){return {...e,eventId:e.eventId||e.txid||crypto.randomUUID(),timestamp:Number(e.timestamp)||Math.floor(Date.now()/1000)}}
 async function explorerFetch(kind,id){
   const url=CFG.explorer+'?kind='+encodeURIComponent(kind)+(id!=null?'&id='+encodeURIComponent(String(id)):'');
@@ -381,7 +429,7 @@ async function submitClaim(){
     if(S.claims.size>=CFG.freeClaims)throw new Error('The free-claim window appears full in the discovery feed. Paid-claim flow is intentionally not enabled in this build until the two-transaction fee path is finalized.');
     const msg=`ZB1:CLAIM:v1|G=${CFG.genesisTxid}|T=${S.target.token}|N=${S.proof.nonce}|K=${S.pubkey}`;
     const sig=await rpc('zcash_signMessage',[msg,{signingMode:'derived'}]);
-    const memo=`ZB1|C|1|T=${S.target.token}|N=${S.proof.nonce}|K=${sig.pubkey}|S=${sig.signature}`;
+    const memo=`ZB1|C|1|T=${S.target.token}|N=${S.proof.nonce}|K=${sigPub(sig)}|S=${sigVal(sig)}`;
     if(enc.encode(memo).length>512)throw new Error('Claim memo exceeds 512 bytes.');
     $('submitClaimBtn').disabled=true;$('mineStatus').textContent='Waiting for wallet approval…';
     const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);
@@ -469,7 +517,7 @@ async function repairLocalDiscovery(seenByRelay){
   const last=Number(localStorage.getItem('zb1_relay_repair_at')||0);
   if(Date.now()-last<10*60*1000){S.didRepair=true;return 0}
   S.didRepair=true;
-  const local=localEvents().filter(e=>['SALE','SALE_CANCEL','OFFER','CLAIM','TRANSFER'].includes(e.type));
+  const local=localEvents().filter(e=>['SALE','SALE_CANCEL','OFFER','ATOMIC_LOCK','ATOMIC_SETTLED','CLAIM','TRANSFER'].includes(e.type));
   let repaired=0;
   for(const e of local){
     const key=innerEventKey(e); if(!key)continue;
@@ -539,22 +587,61 @@ function rebuildState(){
       else if(eventKey(old)===eventKey(e))claims.set(id,mergeEvent(old,e));
     }else if(e.type==='TRANSFER')trans.push(e)
   }
-  for(const e of trans){const id=Number(e.tokenId),c=claims.get(id);if(c)e._applied=true}
   S.claims=claims;S.transfers=trans;
-  const listings=new Map(),offers=[],canceled=new Set();
+
+  const listings=new Map(),offers=[],canceled=new Set(),locks=new Map(),settled=new Map();
   for(const e of sorted){
     if(e.type==='SALE'){
-      const k=e.listingId||e.eventId;
-      if(k&&!canceled.has(k))listings.set(k,e);
+      const k=e.listingId||e.eventId;if(k&&!canceled.has(k))listings.set(k,e)
     }else if(e.type==='SALE_CANCEL'){
       if(e.listingId){canceled.add(e.listingId);listings.delete(e.listingId)}
-    }else if(e.type==='OFFER')offers.push(e)
+    }else if(e.type==='OFFER')offers.push(e);
+    else if(e.type==='ATOMIC_LOCK'&&e.lockId)locks.set(e.lockId,e);
+    else if(e.type==='ATOMIC_SETTLED'&&e.lockId)settled.set(e.lockId,e)
   }
   for(const id of canceled)listings.delete(id);
-  S.listings=listings;S.offers=offers;
-  $('claimCount').textContent=claims.size.toLocaleString();renderMarket();renderActivity();renderPortfolio();updateWalletUI();
+  S.listings=listings;S.offers=offers;S.atomicLocks=locks;S.atomicSettlements=settled;
+  $('claimCount').textContent=claims.size.toLocaleString();
+  renderMarket();renderActivity();renderPortfolio();renderAtomicDesk();updateWalletUI();
 }
-function currentOwner(id){const c=S.claims.get(Number(id));if(!c)return null;let owner=String(c.ownerCommitment||'').toLowerCase()||null;for(const t of S.transfers.filter(x=>Number(x.tokenId)===Number(id)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))){if(t.fromCommitment&&owner&&String(t.fromCommitment).toLowerCase()!==owner)continue;owner=String(t.toCommitment||owner).toLowerCase()}return owner}
+function eventUnix(e){return Number(e?.blockTime||e?.block_time||e?.timestamp)||0}
+function tokenState(id){
+  id=Number(id);const c=S.claims.get(id);if(!c)return {owner:null,lock:null,settlement:null};
+  let owner=String(c.ownerCommitment||'').toLowerCase()||null,lock=null,settlement=null;
+  const now=Math.floor(Date.now()/1000);
+  const events=[];
+
+  for(const t of S.transfers.filter(x=>Number(x.tokenId)===id))events.push({...t,_atomicKind:'transfer'});
+  for(const l of S.confirmedLocks.values())if(Number(l.tokenId)===id)events.push({...l,_atomicKind:'lock'});
+  for(const s of S.verifiedAtomic.values())if(Number(s.tokenId)===id)events.push({...s,_atomicKind:'settle'});
+  events.sort(eventOrder);
+
+  for(const e of events){
+    const when=eventUnix(e)||now;
+    if(lock&&when>Number(lock.expires||0))lock=null;
+
+    if(e._atomicKind==='transfer'){
+      if(lock&&when<=Number(lock.expires||0))continue;
+      if(e.fromCommitment&&owner&&String(e.fromCommitment).toLowerCase()!==owner)continue;
+      owner=String(e.toCommitment||owner).toLowerCase()
+    }else if(e._atomicKind==='lock'){
+      if(lock)continue;
+      if(String(e.sellerCommitment||'').toLowerCase()!==owner)continue;
+      if(Number(e.expires||0)<=when)continue;
+      lock=e
+    }else if(e._atomicKind==='settle'){
+      if(!lock||e.lockId!==lock.lockId)continue;
+      if(String(e.buyerCommitment||'').toLowerCase()!==String(lock.buyerCommitment||'').toLowerCase())continue;
+      owner=String(lock.buyerCommitment||'').toLowerCase();settlement=e;lock=null
+    }
+  }
+  if(lock&&now>Number(lock.expires||0))lock=null;
+  return {owner,lock,settlement}
+}
+function currentOwner(id){return tokenState(id).owner}
+function activeAtomicLockForToken(id){return tokenState(id).lock}
+function tokenIsAtomicLocked(id){return !!activeAtomicLockForToken(id)}
+
 function ownedTokens(){
   if(!S.ownerCommitment)return[];
   const mine=String(S.ownerCommitment).toLowerCase();
@@ -576,7 +663,7 @@ function ownedTokens(){
 function activeListings(){
   const now=Math.floor(Date.now()/1000),byToken=new Map();
   for(const x of S.listings.values()){
-    if((x.expires||0)<=now||currentOwner(x.tokenId)!==x.sellerCommitment)continue;
+    if((x.expires||0)<=now||currentOwner(x.tokenId)!==x.sellerCommitment||tokenIsAtomicLocked(x.tokenId))continue;
     const old=byToken.get(Number(x.tokenId));
     if(!old||(x.timestamp||0)>(old.timestamp||0))byToken.set(Number(x.tokenId),x);
   }
@@ -585,16 +672,9 @@ function activeListings(){
 function activeListingForToken(id){return activeListings().find(x=>Number(x.tokenId)===Number(id))||null}
 function validPrice(v){const n=Number(v);return Number.isFinite(n)&&n>0?n:0}
 function settledSales(){
-  const seen=new Map();
-  for(const e of S.events){
-    if(e.type!=='SALE_SETTLED')continue;
-    const tokenId=Number(e.tokenId),price=validPrice(e.price);
-    if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.maxSupply||!price)continue;
-    const key=e.saleId||e.eventId||e.txid||`${tokenId}:${e.timestamp||0}:${price}`;
-    const old=seen.get(key);
-    if(!old||(e.timestamp||0)>(old.timestamp||0))seen.set(key,e);
-  }
-  return [...seen.values()].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+  return [...S.verifiedAtomic.values()]
+    .filter(e=>e.type==='ATOMIC_SETTLED'&&Number.isInteger(Number(e.tokenId))&&Number(e.tokenId)>=1&&Number(e.tokenId)<=CFG.supply&&validPrice(e.price))
+    .sort((a,b)=>(b.blockTime||b.timestamp||0)-(a.blockTime||a.timestamp||0))
 }
 function updateMarketMetrics(){
   const active=activeListings(),sales=settledSales();
@@ -606,7 +686,7 @@ function updateMarketMetrics(){
   $('listedCount').textContent=active.length.toLocaleString();
 }
 function activityKind(e){
-  if(e.type==='SALE_SETTLED')return 'sale';
+  if(e.type==='ATOMIC_SETTLED')return 'sale';
   if(e.type==='SALE')return 'list';
   if(e.type==='OFFER')return 'offer';
   if(e.type==='SALE_CANCEL')return 'cancel';
@@ -673,29 +753,29 @@ function renderMarket(){
   if(sort==='priceLow')a.sort((x,y)=>Number(x.price)-Number(y.price));else if(sort==='priceHigh')a.sort((x,y)=>Number(y.price)-Number(x.price));else a.sort((x,y)=>(y.timestamp||0)-(x.timestamp||0));
   const g=$('marketGrid');g.innerHTML='';if(!a.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No active listings found yet. Connect a wallet and list an owned ZEC BLOCK to open the order board.</div>';return}
   for(const l of a){const c=S.claims.get(Number(l.tokenId));const artHash=c?.sourceHash||CFG.genesisTxid;const card=document.createElement('article');card.className='nft';card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #${esc(l.tokenId)}</span><span class="price">${esc(l.price)} ZEC</span></div><div class="meta"><span>Seller ${esc(short(l.sellerCommitment,6))}</span><span>${new Date((l.expires||0)*1000).toLocaleDateString()}</span></div><div class="controls"><button class="btn offerBtn" style="min-height:32px">Make Offer</button></div></div>`;artSvg(card.querySelector('svg'),artHash+':'+(c?.sourceHeight||l.tokenId),'ZB #'+l.tokenId);const action=card.querySelector('.offerBtn');
-    if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
+    if(tokenIsAtomicLocked(l.tokenId)){action.textContent='ATOMIC LOCKED';action.disabled=true}else if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
       action.textContent='Cancel Listing';action.onclick=()=>cancelListing(l);
     }else{action.textContent='Make Offer';action.onclick=()=>openOffer(l)}
     g.appendChild(card)}
 }
-$('marketSearch').oninput=renderMarket;$('marketSort').onchange=renderMarket;$('refreshMarketBtn').onclick=()=>fetchRelay().catch(e=>toast(e.message));
-$('activityFilter').onchange=renderActivity;$('refreshActivityBtn').onclick=()=>fetchRelay().catch(e=>toast(e.message));
+$('marketSearch').oninput=renderMarket;$('marketSort').onchange=renderMarket;$('refreshMarketBtn').onclick=()=>refreshAll().catch(e=>toast(e.message));
+$('activityFilter').onchange=renderActivity;$('refreshActivityBtn').onclick=()=>refreshAll().catch(e=>toast(e.message));
 function modal(id,on=true){$(id).classList.toggle('show',on)}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>modal(b.dataset.close,false));
 function openListing(){const own=ownedTokens();if(!own.length)return toast('No owned ZEC BLOCKS found in the current discovery state.');const s=$('listingToken');s.innerHTML=own.map(x=>`<option value="${x.tokenId}">ZEC BLOCK #${x.tokenId}</option>`).join('');modal('listingModal',true)}
 $('createListingBtn').onclick=openListing;
-async function signDerived(msg){const r=await rpc('zcash_signMessage',[msg,{signingMode:'derived'}]);return r}
-$('publishListingBtn').onclick=async()=>{try{const tokenId=Number($('listingToken').value),price=$('listingPrice').value.trim(),days=Number($('listingDays').value);if(!ownedTokens().some(x=>x.tokenId===tokenId))throw new Error('Token is not owned by this commitment.');if(!decimalValid(price))throw new Error('Enter a valid ZEC price.');if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');const nonce=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+days*86400,msg=`ZB1:SALE:v1|G=${CFG.genesisTxid}|T=${tokenId}|P=${price}|E=${expires}|X=${nonce}|O=${S.ownerCommitment}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'SALE',eventId:'sale:'+nonce,listingId:'sale:'+nonce,tokenId,price,expires,nonce,sellerCommitment:S.ownerCommitment,pubkey:sig.pubkey,signature:sig.signature,timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('listingModal',false);toast(pr.ok?`Listing published · ${pr.ok}/${pr.total} relays accepted`:'Listing saved locally. Refresh will retry relay publication.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
+async function signDerived(msg){const r=await rpc('zcash_signMessage',[msg,{signingMode:'derived'}]);if(!sigPub(r)||!sigVal(r))throw new Error('Noir Wallet did not return a usable derived signature.');return r}
+$('publishListingBtn').onclick=async()=>{try{const tokenId=Number($('listingToken').value),price=$('listingPrice').value.trim(),days=Number($('listingDays').value);if(!ownedTokens().some(x=>x.tokenId===tokenId))throw new Error('Token is not owned by this commitment.');if(tokenIsAtomicLocked(tokenId))throw new Error('This token is currently atomic-locked.');if(!decimalValid(price))throw new Error('Enter a valid ZEC price.');if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');const nonce=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+days*86400,msg=`ZB1:SALE:v1|G=${CFG.genesisTxid}|T=${tokenId}|P=${price}|E=${expires}|X=${nonce}|O=${S.ownerCommitment}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'SALE',eventId:'sale:'+nonce,listingId:'sale:'+nonce,tokenId,price,expires,nonce,sellerCommitment:S.ownerCommitment,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('listingModal',false);toast(pr.ok?`Listing published · ${pr.ok}/${pr.total} relays accepted`:'Listing saved locally. Refresh will retry relay publication.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
 async function cancelListing(l){
   try{
     if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
-    if(l.sellerCommitment!==S.ownerCommitment)throw new Error('Only the listing owner can cancel it.');
+    if(l.sellerCommitment!==S.ownerCommitment)throw new Error('Only the listing owner can cancel it.');if(tokenIsAtomicLocked(l.tokenId))throw new Error('This listing is atomic-locked and cannot be cancelled until settlement or expiry.');
     const nonce=crypto.randomUUID();
     const msg=`ZB1:SALE_CANCEL:v1|G=${CFG.genesisTxid}|L=${l.listingId}|T=${l.tokenId}|O=${S.ownerCommitment}|X=${nonce}`;
     const sig=await signDerived(msg);
     const e=normalizeEvent({
       protocol:'ZB1',v:1,type:'SALE_CANCEL',
       eventId:'cancel:'+nonce,listingId:l.listingId,tokenId:Number(l.tokenId),
-      sellerCommitment:S.ownerCommitment,nonce,pubkey:sig.pubkey,signature:sig.signature,
+      sellerCommitment:S.ownerCommitment,nonce,pubkey:sigPub(sig),signature:sigVal(sig),
       timestamp:Math.floor(Date.now()/1000)
     });
     const r=await publishRelay(e);
@@ -704,26 +784,213 @@ async function cancelListing(l){
   }catch(e){toast(e.message||String(e),7000)}
 }
 function openOffer(l){if(!S.ownerCommitment)return toast('Connect Noir Wallet first.');S.currentOfferListing=l;$('offerToken').value='ZEC BLOCK #'+l.tokenId;$('offerPrice').value=l.price;modal('offerModal',true)}
-$('publishOfferBtn').onclick=async()=>{try{const l=S.currentOfferListing;if(!l)throw new Error('No listing selected.');const price=$('offerPrice').value.trim();if(!decimalValid(price))throw new Error('Enter a valid ZEC offer.');const nonce=crypto.randomUUID(),msg=`ZB1:OFFER:v1|L=${l.listingId}|T=${l.tokenId}|P=${price}|B=${S.ownerCommitment}|X=${nonce}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'OFFER',eventId:'offer:'+nonce,listingId:l.listingId,tokenId:l.tokenId,price,buyerCommitment:S.ownerCommitment,sellerCommitment:l.sellerCommitment,pubkey:sig.pubkey,signature:sig.signature,timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('offerModal',false);toast(pr.ok?`Offer published · ${pr.ok}/${pr.total} relays accepted`:'Offer saved locally. Refresh will retry.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
+$('publishOfferBtn').onclick=async()=>{try{const l=S.currentOfferListing;if(!l)throw new Error('No listing selected.');if(tokenIsAtomicLocked(l.tokenId))throw new Error('This NFT is already atomic-locked.');const price=$('offerPrice').value.trim();if(!decimalValid(price))throw new Error('Enter a valid ZEC offer.');const nonce=crypto.randomUUID(),msg=`ZB1:OFFER:v1|L=${l.listingId}|T=${l.tokenId}|P=${price}|B=${S.ownerCommitment}|X=${nonce}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'OFFER',eventId:'offer:'+nonce,listingId:l.listingId,tokenId:l.tokenId,price,buyerCommitment:S.ownerCommitment,sellerCommitment:l.sellerCommitment,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('offerModal',false);toast(pr.ok?`Offer published · ${pr.ok}/${pr.total} relays accepted`:'Offer saved locally. Refresh will retry.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
+
+function atomicLockId(o){const x=String(o.eventId||o.offerId||'').replace(/[^a-zA-Z0-9]/g,'');return 'L'+x.slice(-24)}
+function lockForOffer(o){
+  const id=atomicLockId(o);return S.confirmedLocks.get(id)||S.atomicLocks.get(id)||null
+}
+function sellerOffers(){
+  if(!S.ownerCommitment)return[];
+  return S.offers.filter(o=>{
+    const l=S.listings.get(o.listingId);
+    return l&&o.sellerCommitment===S.ownerCommitment&&currentOwner(o.tokenId)===S.ownerCommitment&&!S.atomicSettlements.has(atomicLockId(o))
+  }).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+}
+function buyerLocks(){
+  if(!S.ownerCommitment)return[];
+  return [...S.confirmedLocks.values()].filter(l=>String(l.buyerCommitment||'').toLowerCase()===String(S.ownerCommitment).toLowerCase()&&!S.verifiedAtomic.has(l.lockId))
+    .sort((a,b)=>(b.blockTime||b.timestamp||0)-(a.blockTime||a.timestamp||0))
+}
+function buildZip321(lock){
+  const sp=atomicSplit(lock.price);
+  const p=new URLSearchParams();
+  p.set('address',lock.sellerPayout);p.set('amount',sp.sellerZec);
+  p.set('address.1',CFG.treasury);p.set('amount.1',sp.feeZec);
+  p.set('message',`ZEC BLOCKS atomic settlement ${lock.lockId} / token #${lock.tokenId}`);
+  return 'zcash:?'+p.toString()
+}
+function txOutputZat(o){
+  const v=o?.value??o?.valueZat??o?.value_zat??o?.amount??o?.satoshis;
+  if(v==null)return null;
+  if(typeof v==='string'&&/^\d+$/.test(v))return BigInt(v);
+  if(typeof v==='number'&&Number.isInteger(v))return BigInt(v);
+  if(typeof v==='number'&&Number.isFinite(v))return BigInt(Math.round(v*1e8));
+  if(typeof v==='string'&&/^\d+\.\d+$/.test(v))return zecToZat(v);
+  return null
+}
+function outputAddress(o){return String(o?.address||o?.addr||o?.scriptPubKey?.addresses?.[0]||o?.scriptPubKey?.address||'')}
+async function confirmLockEvent(lock){
+  if(!lock?.txid||!/^[0-9a-f]{64}$/i.test(lock.txid))return null;
+  try{
+    const tx=await explorerFetch('tx',lock.txid);
+    const bh=Number(deepFind(tx,['blockHeight','block_height','blockheight','height']));
+    if(!Number.isInteger(bh)||bh<=0)return null;
+    const bt=Number(deepFind(tx,['blockTime','block_time','time','timestamp']))||lock.timestamp||0;
+    return {...lock,blockHeight:bh,blockTime:bt,confirmed:true}
+  }catch{return null}
+}
+async function verifyAtomicPaymentTx(lock,txid){
+  if(!lock)throw new Error('Atomic lock not found.');
+  if(!/^[0-9a-f]{64}$/i.test(String(txid||'')))throw new Error('Enter a valid 64-character Zcash TXID.');
+  const tx=await explorerFetch('tx',txid);
+  const bh=Number(deepFind(tx,['blockHeight','block_height','blockheight','height']));
+  if(!Number.isInteger(bh)||bh<=0)throw new Error('Atomic payment is not confirmed on Zcash yet.');
+  const bt=Number(deepFind(tx,['blockTime','block_time','time','timestamp']))||0;
+  if(lock.blockHeight&&bh<=Number(lock.blockHeight))throw new Error('Payment transaction must confirm after the atomic lock.');
+  if(bt&&Number(lock.expires||0)&&bt>Number(lock.expires))throw new Error('Payment confirmed after the atomic lock expired.');
+
+  const sp=atomicSplit(lock.price),outs=Array.isArray(tx?.outputs)?tx.outputs:(deepFind(tx,['outputs','vout'])||[]);
+  if(!Array.isArray(outs))throw new Error('Explorer did not return transparent outputs for this transaction.');
+
+  let sellerPaid=0n,feePaid=0n;
+  for(const o of outs){
+    const a=outputAddress(o),v=txOutputZat(o);if(v==null)continue;
+    if(a===lock.sellerPayout)sellerPaid+=v;
+    if(a===CFG.treasury)feePaid+=v
+  }
+  if(sellerPaid<sp.seller)throw new Error(`Seller output mismatch. Required ${sp.sellerZec} ZEC in this same transaction.`);
+  if(feePaid<sp.fee)throw new Error(`Treasury output mismatch. Required ${sp.feeZec} ZEC (3%) in this same transaction.`);
+
+  return {txid:String(txid).toLowerCase(),blockHeight:bh,blockTime:bt,sellerPaid:sellerPaid.toString(),feePaid:feePaid.toString()}
+}
+async function reconcileAtomicState(){
+  const locks=[...S.atomicLocks.values()].slice(-100);
+  for(const l of locks){
+    if(S.confirmedLocks.has(l.lockId))continue;
+    const c=await confirmLockEvent(l);if(c)S.confirmedLocks.set(l.lockId,c)
+  }
+  const settlements=[...S.atomicSettlements.values()].slice(-100);
+  for(const s of settlements){
+    if(S.verifiedAtomic.has(s.lockId))continue;
+    const lock=S.confirmedLocks.get(s.lockId);if(!lock)continue;
+    try{
+      const v=await verifyAtomicPaymentTx(lock,s.paymentTxid||s.txid);
+      S.verifiedAtomic.set(s.lockId,{...s,...v,type:'ATOMIC_SETTLED',tokenId:Number(lock.tokenId),price:lock.price,buyerCommitment:lock.buyerCommitment,sellerCommitment:lock.sellerCommitment})
+    }catch(e){console.warn('atomic settlement verify',s.lockId,e)}
+  }
+}
+async function atomicAcceptAndLock(o){
+  try{
+    if(!S.ownerCommitment)throw new Error('Connect seller Noir Wallet first.');
+    if(String(o.sellerCommitment).toLowerCase()!==String(S.ownerCommitment).toLowerCase())throw new Error('Only the seller can accept this offer.');
+    if(currentOwner(o.tokenId)!==S.ownerCommitment)throw new Error('Seller is no longer the current owner.');
+    if(tokenIsAtomicLocked(o.tokenId))throw new Error('This token is already atomic-locked.');
+    const l=S.listings.get(o.listingId);if(!l||!activeListings().some(x=>x.listingId===o.listingId))throw new Error('Listing is no longer active.');
+    const payout=String(S.connection?.transparent||'');
+    if(!/^t[13][A-Za-z0-9]{20,}$/.test(payout))throw new Error('Noir Wallet did not expose a mainnet transparent payout address.');
+    atomicSplit(o.price);
+
+    const lockId=atomicLockId(o),expires=Math.floor(Date.now()/1000)+CFG.atomicLockSeconds;
+    const msg=`ZB1:ATOMIC_LOCK:v1|G=${CFG.genesisTxid}|L=${lockId}|I=${o.tokenId}|B=${o.buyerCommitment}|P=${o.price}|A=${payout}|E=${expires}|S=${S.ownerCommitment}`;
+    const sig=await signDerived(msg);
+    const memo=`ZB1|L|1|L=${lockId}|I=${o.tokenId}|B=${o.buyerCommitment}|P=${o.price}|A=${payout}|E=${expires}|K=${sigPub(sig)}|S=${sigVal(sig)}`;
+    if(enc.encode(memo).length>512)throw new Error(`Atomic lock memo is ${enc.encode(memo).length} bytes; maximum is 512.`);
+
+    toast('Approve the on-chain atomic NFT lock in Noir Wallet. No buyer payment is enabled until this confirms.',9000);
+    const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);
+    const ev=normalizeEvent({
+      protocol:'ZB1',v:1,type:'ATOMIC_LOCK',eventId:'atomic-lock:'+lockId,lockId,txid,memo,
+      listingId:o.listingId,offerId:o.eventId,tokenId:Number(o.tokenId),price:String(o.price),
+      sellerCommitment:S.ownerCommitment,buyerCommitment:o.buyerCommitment,sellerPayout:payout,expires,
+      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'
+    });
+    await publishRelay(ev);toast(`Atomic lock broadcast: ${short(txid,8)}. Buyer payment stays disabled until confirmation.`,10000);
+    await fetchRelay();await reconcileAtomicState();renderAtomicDesk();renderPortfolio();renderMarket()
+  }catch(e){toast(e.message||String(e),10000)}
+}
+async function copyAtomicRequest(lock){
+  try{const uri=buildZip321(lock);await navigator.clipboard.writeText(uri);toast('ZIP-321 atomic payment request copied. It must be executed as ONE transaction.',7000)}
+  catch(e){toast(e.message||String(e),7000)}
+}
+function openAtomicRequest(lock){
+  if(Math.floor(Date.now()/1000)>Number(lock.expires)-CFG.atomicPayCutoffSeconds)return toast('Payment window is too close to expiry. Do not pay this lock.',9000);
+  const uri=buildZip321(lock);
+  window.location.href=uri
+}
+async function submitAtomicTx(lock,input){
+  try{
+    const txid=String(input.value||'').trim().toLowerCase();
+    const v=await verifyAtomicPaymentTx(lock,txid);
+    const nonce=crypto.randomUUID();
+    const msg=`ZB1:ATOMIC_SETTLED:v1|L=${lock.lockId}|I=${lock.tokenId}|P=${lock.price}|B=${lock.buyerCommitment}|X=${txid}`;
+    const sig=await signDerived(msg);
+    const e=normalizeEvent({
+      protocol:'ZB1',v:1,type:'ATOMIC_SETTLED',eventId:'atomic-settled:'+lock.lockId,lockId:lock.lockId,
+      tokenId:Number(lock.tokenId),price:lock.price,sellerCommitment:lock.sellerCommitment,buyerCommitment:lock.buyerCommitment,
+      paymentTxid:txid,txid,listingId:lock.listingId,offerId:lock.offerId,pubkey:sigPub(sig),signature:sigVal(sig),
+      timestamp:Math.floor(Date.now()/1000),...v
+    });
+    S.verifiedAtomic.set(lock.lockId,e);await publishRelay(e);
+    toast(`Atomic settlement verified. ZEC BLOCK #${lock.tokenId} now resolves to the buyer commitment.`,10000);
+    await fetchRelay();await reconcileAtomicState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity()
+  }catch(e){toast(e.message||String(e),10000)}
+}
+function renderAtomicDesk(){
+  const sl=$('atomicSellerList'),bl=$('atomicBuyerList');if(!sl||!bl)return;
+  sl.innerHTML='';bl.innerHTML='';
+  if(!S.ownerCommitment){
+    sl.innerHTML='<div class="empty">Connect Noir Wallet to load offers.</div>';
+    bl.innerHTML='<div class="empty">Connect Noir Wallet to load atomic purchases.</div>';return
+  }
+
+  const offers=sellerOffers();
+  if(!offers.length)sl.innerHTML='<div class="empty">No actionable offers.</div>';
+  for(const o of offers){
+    const raw=lockForOffer(o),confirmed=raw&&S.confirmedLocks.has(raw.lockId),locked=confirmed?S.confirmedLocks.get(raw.lockId):raw;
+    const item=document.createElement('div');item.className='atomicItem';
+    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(o.tokenId)} · ${esc(o.price)} ZEC</b><span class="atomicState ${confirmed?'atomicLocked':''}">${confirmed?'LOCKED':raw?'LOCK PENDING':'NEW OFFER'}</span></div>
+      <div class="atomicInfo"><span>Buyer ${esc(short(o.buyerCommitment,7))}</span><span>3% fee · 97% seller</span></div><div class="controls"></div>`;
+    const ctl=item.querySelector('.controls');
+    const b=document.createElement('button');b.className='btn '+(raw?'':'green')+' small';
+    b.textContent=confirmed?'Waiting for Buyer':raw?'Lock Confirmation Pending':'Accept & Atomic Lock';
+    b.disabled=!!raw;b.onclick=()=>atomicAcceptAndLock(o);ctl.appendChild(b);sl.appendChild(item)
+  }
+
+  const locks=buyerLocks();
+  if(!locks.length)bl.innerHTML='<div class="empty">No confirmed atomic locks for this buyer identity.</div>';
+  for(const lock of locks){
+    const left=Number(lock.expires)-Math.floor(Date.now()/1000),safe=left>CFG.atomicPayCutoffSeconds,sp=atomicSplit(lock.price),uri=buildZip321(lock);
+    const item=document.createElement('div');item.className='atomicItem';
+    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(lock.tokenId)} · ${esc(lock.price)} ZEC</b><span class="atomicState ${safe?'atomicReady':''}">${safe?'PAYMENT READY':'EXPIRING · DO NOT PAY'}</span></div>
+      <div class="atomicInfo"><span>Seller ${esc(sp.sellerZec)} ZEC</span><span>Treasury ${esc(sp.feeZec)} ZEC</span><span>One transaction only</span><span>${Math.max(0,Math.floor(left/60))} min left</span></div>
+      <textarea class="atomicUri" readonly>${esc(uri)}</textarea>
+      <div class="controls atomicControls"></div>
+      <div class="inputrow"><input class="input atomicTxid" placeholder="Paste the ONE atomic payment TXID"><button class="btn green verifyAtomicBtn">Verify & Settle</button></div>`;
+    const ctl=item.querySelector('.atomicControls');
+    const cp=document.createElement('button');cp.className='btn small';cp.textContent='Copy ZIP-321 Request';cp.onclick=()=>copyAtomicRequest(lock);
+    const op=document.createElement('button');op.className='btn gold small';op.textContent='Open Atomic Payment';op.disabled=!safe;op.onclick=()=>openAtomicRequest(lock);
+    ctl.append(cp,op);
+    item.querySelector('.verifyAtomicBtn').onclick=()=>submitAtomicTx(lock,item.querySelector('.atomicTxid'));
+    bl.appendChild(item)
+  }
+}
+
 function renderPortfolio(){
   const own=ownedTokens();$('ownedCount').textContent=own.length;$('listingCount').textContent=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;$('offerCount').textContent=S.ownerCommitment?S.offers.filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;
-  const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS were recovered for this owner commitment. Click Recover & Sync Portfolio; claims made from this Noir Wallet are rebuilt from its ZB-1 transaction memos.</div>';return}
+  const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';renderAtomicDesk();return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS were recovered for this owner commitment. Click Recover & Sync Portfolio; claims made from this Noir Wallet are rebuilt from its ZB-1 transaction memos.</div>';renderAtomicDesk();return}
   for(const c of own){const card=document.createElement('article');card.className='nft';card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #${c.tokenId}</span><span class="badge live">OWNED</span></div><div class="meta"><span>Source ${esc(c.sourceHeight||'—')}</span><span>${esc(short(c.txid||'',6))}</span></div><div class="controls"><button class="btn listOne">List</button><button class="btn transferOne">Transfer</button></div></div>`;artSvg(card.querySelector('svg'),(c.sourceHash||CFG.genesisTxid)+':'+(c.sourceHeight||c.tokenId),'ZB #'+c.tokenId);const listBtn=card.querySelector('.listOne'),liveListing=activeListingForToken(c.tokenId);
-    if(liveListing){listBtn.textContent='Cancel Listing';listBtn.onclick=()=>cancelListing(liveListing)}
-    else{listBtn.textContent='List';listBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)}}
-    card.querySelector('.transferOne').onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)};g.appendChild(card)}
+    const atomicLock=activeAtomicLockForToken(c.tokenId),transferBtn=card.querySelector('.transferOne');
+    if(atomicLock){listBtn.textContent='ATOMIC LOCKED';listBtn.disabled=true;transferBtn.textContent='LOCKED';transferBtn.disabled=true}
+    else{
+      if(liveListing){listBtn.textContent='Cancel Listing';listBtn.onclick=()=>cancelListing(liveListing)}
+      else{listBtn.textContent='List';listBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)}}
+      transferBtn.onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)}
+    }
+    g.appendChild(card)}
+  renderAtomicDesk();
 }
 $('syncPortfolioBtn').onclick=async()=>{try{
   S.balance=await rpc('zcash_getBalance');
   const r=await loadWalletHistory();
   await fetchRelay();
-  rebuildState();updateWalletUI();renderPortfolio();
+  await reconcileAtomicState();rebuildState();updateWalletUI();renderPortfolio();renderAtomicDesk();
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
-$('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sig.pubkey}|S=${sig.signature}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sig.pubkey,signature:sig.signature,timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
-async function refreshAll(){await fetchRelay();renderMarket();renderPortfolio()}
+$('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT is atomic-locked. Direct transfer is invalid until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
+async function refreshAll(){await fetchRelay();await reconcileAtomicState();renderMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
-(async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();updateWalletUI()})();
+(async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();updateWalletUI();renderAtomicDesk();updateMarketMetrics()})();
 </script>
 </body></html>
