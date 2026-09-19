@@ -1,61 +1,72 @@
-ZEC BLOCKS MAIN V9 — NOIR-ONLY LOCKED SETTLEMENT
+ZEC BLOCKS MAIN V9.1 — NOIR 2-STEP PROTOCOL FEE + ACTIVITY FIX
 
-GOAL
-Remove Zkool and make marketplace checkout work with Noir Wallet only.
+WHAT CHANGED
+V9's seller-lock / buyer-payment flow was working, but marketplace protocol fee
+was 0% and completed sales could fail to appear immediately in Activity.
 
-FLOW
-1. Buyer A/B/C can make offers. Offers move no ZEC.
-2. Seller chooses ONE buyer.
-3. Seller clicks Accept & Lock to Buyer.
-4. Seller signs a ZB-1 NOIR_LOCK v3 and broadcasts a public lock anchor.
-5. Lock becomes active only after chain confirmation.
-6. While active:
-   - seller cannot cancel that listing through V9;
-   - seller cannot direct-transfer that NFT through V9;
-   - other buyers do not receive a payment action.
-7. Only the designated buyer sees Pay with Noir.
-8. Buyer approves ONE Noir zcash_sendTransaction directly to the seller.
-9. The amount is:
-   listing price + a tiny lock-specific settlement tag (1–9,999 zatoshi).
-   This produces a unique exact payment amount for the lock while still using
-   only ONE recipient, which Noir supports today.
-10. V9 records the returned TXID when available AND independently scans the
-    seller transparent address for the exact lock-specific amount.
-11. After the payment reaches 6 confirmations, ZB-1 ownership deterministically
-    resolves to the designated buyer.
-12. Seller has NO second approval step after payment.
+V9.1 keeps the working lock model and adds the locked 3% marketplace fee.
 
-WHY THE TINY SETTLEMENT TAG
-Noir's current browser API supports a single destination per send and does not
-expose PCZT signing. A lock-specific exact amount lets V9 identify the correct
-payment without needing a second output, a memo to a transparent address, Zkool,
-or manual TXID paste.
+NEW BUYER FLOW
+1. Buyer makes an offer. No ZEC moves.
+2. Seller accepts ONE buyer and chain-locks the NFT.
+3. After the seller lock confirms, only the selected buyer can pay.
+4. STEP 1 — buyer pays exactly 3% of the accepted price to:
+   t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz
+5. V9.1 verifies the protocol-fee transaction on Zcash.
+6. After Step 1 gets 1 confirmation, STEP 2 unlocks.
+7. STEP 2 — buyer pays the remaining 97% directly to the seller.
+8. V9.1 verifies the seller-payment transaction.
+9. When BOTH transactions reach 6 confirmations, ownership resolves
+   automatically to the selected buyer. Seller has no second approval step.
+10. The completed sale is inserted into Activity immediately and mirrored to
+    the public discovery relays.
 
-EXAMPLE
-Listing price: 0.003 ZEC
-Lock tag:      0.00001234 ZEC (example only)
-Buyer sends:   0.00301234 ZEC to seller
-The exact tag is different per lock and is shown before payment.
+PRICE MATH
+The 3% fee is calculated in integer zatoshi and rounded to the nearest zatoshi.
+Seller receives the exact remainder, so:
+  protocol fee + seller payout = accepted NFT price
+The buyer also pays the normal Zcash network fee for each of the two transactions.
 
-MARKETPLACE PROTOCOL FEE
-V9 Noir-only mode sets marketplace protocol fee to 0%.
-The previous 3% split cannot be enforced in the same one-recipient Noir payment
-without multi-recipient / PCZT support. Do not fake the 3% with sequential sends.
-Re-enable it only when the wallet layer can safely construct the required payment.
+EXAMPLE — 0.003 ZEC NFT
+  Step 1 protocol fee: 0.00009 ZEC
+  Step 2 seller payout: 0.00291 ZEC
+  Total NFT payment:    0.00300 ZEC
+  Plus two normal Zcash network fees.
 
-COUNTERPARTY SAFETY
-- Buyer pays only AFTER seller lock is confirmed.
-- Seller cannot choose a different buyer after the lock without waiting for expiry.
-- A valid payment needs no seller approval to finalize ownership.
-- Other bidders never send funds, so there are no loser refunds.
-- Unpaid seller lock expires after 60 minutes.
-- Payment is disabled during the final 5 minutes of the lock.
-- Payment finality threshold: 6 confirmations.
+RECOVERY / DOUBLE-PAY PROTECTION
+Each payment produces a signed ZB-1 payment notice bound to:
+- lock ID
+- token ID
+- transaction ID
+- exact amount
+- selected buyer commitment
+
+Once a Step 1 or Step 2 notice exists, the corresponding Pay button is disabled
+so refreshes do not ask the buyer to pay the same step again.
+
+FUNDED-LOCK GRACE
+A buyer cannot start Step 1 in the final 15 minutes of the original lock.
+Once the protocol-fee transaction confirms, the completion window extends by
+1 hour so the buyer has time to finish Step 2. Once seller payment confirms,
+the lock remains protected long enough to reach finality.
+
+ACTIVITY FIX
+Root cause in V9: chain-derived NOIR_SETTLED was saved to local storage but
+renderActivity() only read the in-memory S.events list until a later relay refresh.
+V9.1:
+- injects newly derived settlements into runtime state immediately;
+- merges S.verifiedAtomic into Activity rendering;
+- shows the seller-payment TX as the sale TX;
+- mirrors NOIR_SETTLED to relays.
+
+BACKWARD COMPATIBILITY
+Existing V9 lock v3 sales remain supported and can finish using the old
+single-payment flow. New locks created by V9.1 are NOIR_LOCK v4 and require the
+3% + 97% two-step settlement.
 
 IMPORTANT
-ZB-1 ownership is application-layer state on Zcash, not a native Zcash smart
-contract NFT. Every compatible ZB-1 validator/indexer should implement the same
-NOIR_LOCK v3 and NOIR_SETTLED rules.
+ZB-1 is application-layer state on Zcash, not a native Zcash smart contract.
+Compatible ZB-1 clients/indexers need the same v4 lock and two-step settlement rules.
 
 DEPLOY
-Upload the entire ZIP to the www.zecblocks.xyz Vercel project.
+Upload every file in this ZIP to the www.zecblocks.xyz Vercel project.
