@@ -43,3 +43,19 @@ Do not keep an old Vercel header rule that forces /api/* to Cache-Control:no-sto
 V9.13 USDC UI patch
 --------------------
 This build keeps the existing ZEC/Noir marketplace intact and makes the Base USDC rail explicit in the seller portfolio and marketplace header. Sellers can choose List ZEC or List USDC. USDC buyers use Buy Now · USDC.
+
+V9.19 SOLID PERSISTENT INDEX
+---------------------------
+- Public ZB-1 discovery cache is persistent across page refreshes (localStorage), not session-only.
+- Noir wallet claim recovery is cached per owner commitment and restored instantly on reconnect.
+- Wallet history recovery reuses already verified source block hashes instead of refetching every block on every refresh.
+- Portfolio renders progressively while any missing claims are being reconstructed.
+- Base USDC marketplace has a persistent contract-state cache.
+- USDC listing discovery no longer depends only on relays: the client also scans ListingCreated events from the production Base contract.
+- Cached active USDC listings remain visible while Zcash ownership/indexer state is still rebuilding.
+- Buy Now is disabled until current ZB-1 ownership and the signed listing intent are verified, so the faster cache does not weaken settlement checks.
+- USDC volume and sales are recovered from Base contract state and no longer depend on the Zcash ownership index finishing first.
+- USDC cards remain sorted lowest price first; no dropdown/filter is used.
+
+Production contract remains:
+0x7674a240004fa434bb1082de28e591abb1dc645d
