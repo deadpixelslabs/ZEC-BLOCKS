@@ -1,72 +1,52 @@
-ZEC BLOCKS MAIN V9.1 — NOIR 2-STEP PROTOCOL FEE + ACTIVITY FIX
+ZEC BLOCKS MAIN V9.2 — PORTFOLIO OWNERSHIP RECOVERY FIX
 
-WHAT CHANGED
-V9's seller-lock / buyer-payment flow was working, but marketplace protocol fee
-was 0% and completed sales could fail to appear immediately in Activity.
+BUG FIXED
+A ZEC BLOCK purchased through the working V9 marketplace could show SALE FINAL in
+Buyer Atomic Checkout, yet disappear from the buyer Portfolio after an update /
+refresh. The old seller could also see the original claimed NFT again.
 
-V9.1 keeps the working lock model and adds the locked 3% marketplace fee.
+ROOT CAUSE
+The old portfolio renderer was claim-centric:
+- it only iterated CLAIM records when deciding what NFTs to display;
+- the buyer does not have the seller's old shielded CLAIM memo in Noir history;
+- if public relay discovery did not return that historical CLAIM on a refresh,
+  the buyer had a verified settlement but no CLAIM row to render;
+- the seller's wallet-history fallback could still render its old CLAIM without
+  considering that a later verified marketplace settlement changed ownership.
 
-NEW BUYER FLOW
-1. Buyer makes an offer. No ZEC moves.
-2. Seller accepts ONE buyer and chain-locks the NFT.
-3. After the seller lock confirms, only the selected buyer can pay.
-4. STEP 1 — buyer pays exactly 3% of the accepted price to:
-   t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz
-5. V9.1 verifies the protocol-fee transaction on Zcash.
-6. After Step 1 gets 1 confirmation, STEP 2 unlocks.
-7. STEP 2 — buyer pays the remaining 97% directly to the seller.
-8. V9.1 verifies the seller-payment transaction.
-9. When BOTH transactions reach 6 confirmations, ownership resolves
-   automatically to the selected buyer. Seller has no second approval step.
-10. The completed sale is inserted into Activity immediately and mirrored to
-    the public discovery relays.
-
-PRICE MATH
-The 3% fee is calculated in integer zatoshi and rounded to the nearest zatoshi.
-Seller receives the exact remainder, so:
-  protocol fee + seller payout = accepted NFT price
-The buyer also pays the normal Zcash network fee for each of the two transactions.
-
-EXAMPLE — 0.003 ZEC NFT
-  Step 1 protocol fee: 0.00009 ZEC
-  Step 2 seller payout: 0.00291 ZEC
-  Total NFT payment:    0.00300 ZEC
-  Plus two normal Zcash network fees.
-
-RECOVERY / DOUBLE-PAY PROTECTION
-Each payment produces a signed ZB-1 payment notice bound to:
-- lock ID
-- token ID
-- transaction ID
-- exact amount
-- selected buyer commitment
-
-Once a Step 1 or Step 2 notice exists, the corresponding Pay button is disabled
-so refreshes do not ask the buyer to pay the same step again.
-
-FUNDED-LOCK GRACE
-A buyer cannot start Step 1 in the final 15 minutes of the original lock.
-Once the protocol-fee transaction confirms, the completion window extends by
-1 hour so the buyer has time to finish Step 2. Once seller payment confirms,
-the lock remains protected long enough to reach finality.
-
-ACTIVITY FIX
-Root cause in V9: chain-derived NOIR_SETTLED was saved to local storage but
-renderActivity() only read the in-memory S.events list until a later relay refresh.
-V9.1:
-- injects newly derived settlements into runtime state immediately;
-- merges S.verifiedAtomic into Activity rendering;
-- shows the seller-payment TX as the sale TX;
-- mirrors NOIR_SETTLED to relays.
-
-BACKWARD COMPATIBILITY
-Existing V9 lock v3 sales remain supported and can finish using the old
-single-payment flow. New locks created by V9.1 are NOIR_LOCK v4 and require the
-3% + 97% two-step settlement.
+V9.2 FIX
+1. Ownership reconstruction now uses:
+   - discovered CLAIM,
+   - validated connected-wallet CLAIM history,
+   - chain-verified marketplace settlements as ownership checkpoints.
+2. Portfolio token IDs are the union of claims, wallet-history claims, and
+   verified settlements.
+3. The old seller is shown the NFT only when currentOwner(tokenId) still resolves
+   to that seller. An old claim alone is no longer enough.
+4. A buyer with a verified settlement can display/list/transfer the purchased NFT
+   even if the original seller's historical CLAIM is temporarily missing from
+   relay discovery.
+5. If source artwork metadata is missing on the buyer side, V9.2 reconstructs the
+   source height from Genesis - Token ID and fetches the exact source block hash.
+6. New V9.2 seller locks carry sourceHeight/sourceHash/claimTxid provenance hints,
+   and finalized settlement events carry them forward for future recovery.
+7. V9.1 two-step payment remains unchanged:
+   - 3% treasury
+   - 97% seller
+   - both final before ownership moves
+8. V9.1 Activity fix remains included.
 
 IMPORTANT
-ZB-1 is application-layer state on Zcash, not a native Zcash smart contract.
-Compatible ZB-1 clients/indexers need the same v4 lock and two-step settlement rules.
+The ownership checkpoint used here is S.verifiedAtomic: it is created only after
+the official client verifies the chain-anchored seller lock and the required
+payment transaction(s). Raw relay NOIR_SETTLED events are not blindly inserted
+into S.verifiedAtomic.
+
+LEGACY V9 SALE RECOVERY
+Completed V9 single-payment sales remain supported. This specifically covers
+already-completed purchases such as a token that showed SALE FINAL but vanished
+from the buyer's Portfolio after upgrading to V9.1.
 
 DEPLOY
 Upload every file in this ZIP to the www.zecblocks.xyz Vercel project.
+Then reconnect the buyer Noir Wallet and click Recover & Sync Portfolio once.
