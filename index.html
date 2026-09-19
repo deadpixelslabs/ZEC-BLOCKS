@@ -112,7 +112,7 @@
   </div>
 </section>
 
-<div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Listings, offers, transfers and completed ZB-1 sale settlements.</p></div><div class="tabs"><select id="activityFilter" class="select" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button id="refreshActivityBtn" class="btn">Refresh</button></div></div>
+<div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Latest 30 marketplace events. Live discovery keeps claims, listings and sales updated.</p></div><div class="tabs"><select id="activityFilter" class="select" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button id="refreshActivityBtn" class="btn">Refresh</button></div></div>
 <section class="card panel">
   <div class="activityWrap">
     <table class="activityTable">
@@ -150,7 +150,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.3</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.4</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -168,7 +168,7 @@ const CFG={
   relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band','wss://relay.snort.social','wss://nostr.mom'],
   nostrKind:30078,relayTag:'zb1-mainnet-v1',atomicLockSeconds:3600,atomicPayCutoffSeconds:900,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFeeStepConfirmations:1,atomicFinalConfirmations:6,atomicFundedGraceSeconds:3600,atomicFinalityGraceSeconds:7200
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -582,6 +582,7 @@ async function initNostr(){
     else{S.nostrSk=S.nostr.generateSecretKey();setNostrSecretHex(bytesToHex(S.nostrSk))}
     S.nostrPk=S.nostr.getPublicKey(S.nostrSk);
     $('relayStatus').textContent='Relays: initializing…';
+    setTimeout(startLiveDiscovery,0);
   }catch(e){
     console.warn(e);
     $('relayStatus').textContent='Relays: local cache only';
@@ -631,9 +632,45 @@ async function publishRelay(obj,{quiet=false,onlyRelays=null}={}){
   }
   return {ok,total:targets.length};
 }
-async function queryOneRelay(url){
+function ingestLiveRelayEvent(n){
+  try{
+    if(!n?.content)return;
+    const o=normalizeEvent(JSON.parse(n.content));
+    o._nostrId=n.id;
+    const k=innerEventKey(o)||eventKey(o)||n.id;
+    S.liveDiscoveryEvents.set(k,mergeEvent(S.liveDiscoveryEvents.get(k),o));
+
+    // Merge directly into current runtime state so a later full fetch cannot
+    // temporarily hide a newly arrived claim/listing.
+    const i=S.events.findIndex(x=>(innerEventKey(x)||eventKey(x))===k);
+    if(i>=0)S.events[i]=mergeEvent(S.events[i],o);else S.events.push(o);
+
+    clearTimeout(S.liveRenderTimer);
+    S.liveRenderTimer=setTimeout(async()=>{
+      try{
+        rebuildState();
+        await reconcileAtomicState();
+        rebuildState();
+        renderMarket();renderActivity();renderPortfolio();renderAtomicDesk();updateMarketMetrics()
+      }catch(e){console.warn('live relay render',e)}
+    },250)
+  }catch(e){console.warn('live relay event',e)}
+}
+function startLiveDiscovery(){
+  if(!S.relay||S.liveDiscoverySub)return;
+  try{
+    S.liveDiscoverySub=S.relay.subscribeMany(
+      CFG.relays,
+      {kinds:[CFG.nostrKind,1],'#t':[CFG.relayTag],since:Math.floor(Date.now()/1000)-120},
+      {onevent:ingestLiveRelayEvent}
+    );
+  }catch(e){console.warn('live subscription unavailable',e)}
+}
+async function queryOneRelay(url,since=0){
+  const filter={kinds:[CFG.nostrKind,1],'#t':[CFG.relayTag],limit:since?2500:12000};
+  if(since>0)filter.since=since;
   const evs=await withTimeout(
-    S.relay.querySync([url],{kinds:[CFG.nostrKind,1],'#t':[CFG.relayTag],limit:12000}),
+    S.relay.querySync([url],filter),
     7500,
     'query timeout'
   );
@@ -669,12 +706,13 @@ async function fetchRelay(){
   S.relayFetchBusy=true;
   try{
 
-  let arr=localEvents();
+  let arr=[...localEvents(),...S.liveDiscoveryEvents.values()];
   const seenByRelay=new Map();
   let relayOk=0,relayEvents=0;
   if(S.nostr&&S.relay){
+    const since=S.lastRelayFetch?Math.max(0,Math.floor(S.lastRelayFetch/1000)-45):0;
     const results=await Promise.allSettled(CFG.relays.map(async url=>{
-      const evs=await queryOneRelay(url);
+      const evs=await queryOneRelay(url,since);
       return {url,evs};
     }));
     for(let i=0;i<results.length;i++){
@@ -752,22 +790,25 @@ function eventUnix(e){return Number(e?.blockTime||e?.block_time||e?.timestamp)||
 function tokenState(id){
   id=Number(id);
 
-  // Prefer a canonical/discovered claim; the connected claimant's validated wallet
-  // history is also a valid local base. A chain-verified settlement can act as an
-  // ownership checkpoint when the original claim is temporarily unavailable to
-  // this buyer (common because the buyer's Noir history does not contain the
-  // seller's old shielded claim memo).
   const canonical=S.claims.get(id),walletClaim=S.walletRecoveredClaims.get(id);
   const c=canonical||walletClaim||null;
-  const settlements=[...S.verifiedAtomic.values()].filter(x=>Number(x.tokenId)===id).sort(eventOrder);
+  const settlements=[...S.verifiedAtomic.values()]
+    .filter(x=>Number(x.tokenId)===id)
+    .sort(eventOrder);
 
-  let owner=null,lock=null,settlement=null,checkpoint=null;
-  if(c){
-    owner=String(c.ownerCommitment||'').toLowerCase()||null;
-  }else if(settlements.length){
-    checkpoint=settlements[0];
+  // FINAL OWNERSHIP CHECKPOINT:
+  // A verified marketplace settlement is a later ownership transition than the
+  // original CLAIM. Always start from the latest verified settlement when one
+  // exists — even if a delayed relay later rediscovers the old seller CLAIM.
+  // This fixes "NFT appears for a few seconds, then goes back to seller".
+  const checkpoint=settlements.length?settlements[settlements.length-1]:null;
+
+  let owner=null,lock=null,settlement=null;
+  if(checkpoint){
     owner=String(checkpoint.buyerCommitment||'').toLowerCase()||null;
     settlement=checkpoint;
+  }else if(c){
+    owner=String(c.ownerCommitment||'').toLowerCase()||null;
   }else{
     return {owner:null,lock:null,settlement:null}
   }
@@ -779,8 +820,8 @@ function tokenState(id){
   events.sort(eventOrder);
 
   for(const e of events){
-    // If we started from a settlement checkpoint, ignore events at/before that
-    // checkpoint and continue ownership reconstruction forward from it.
+    // The latest verified settlement checkpoint already includes all ownership
+    // history up through itself. Only events strictly after it may change owner.
     if(checkpoint&&eventOrder(e,checkpoint)<=0)continue;
 
     const when=eventUnix(e)||now;
@@ -796,16 +837,11 @@ function tokenState(id){
       if(Number(e.expires||0)<=when)continue;
       lock=e
     }else if(e._atomicKind==='settle'){
-      // Every entry in `settlements` comes from S.verifiedAtomic, meaning the
-      // client already verified the seller lock + required Zcash payment(s).
-      // Therefore the verified settlement is the ownership transition itself.
-      // Do NOT require confirmedLocks to still contain the old lock: the watcher
-      // may prune/expire that lock after settlement and ownership must stay final.
+      // All entries here are from S.verifiedAtomic, not raw relay settlement claims.
       const seller=String(e.sellerCommitment||'').toLowerCase();
       const buyer=String(e.buyerCommitment||'').toLowerCase();
       if(!buyer)continue;
       if(owner!==seller&&owner!==buyer)continue;
-      if(lock&&e.lockId!==lock.lockId&&owner===seller)continue;
       owner=buyer;settlement=e;
       if(lock?.lockId===e.lockId)lock=null
     }
@@ -869,6 +905,18 @@ function activeListings(){
   return [...byToken.values()];
 }
 function activeListingForToken(id){return activeListings().find(x=>Number(x.tokenId)===Number(id))||null}
+function visibleMarketListings(){
+  const now=Math.floor(Date.now()/1000),byToken=new Map();
+  for(const x of S.listings.values()){
+    if((x.expires||0)<=now||tokenIsAtomicLocked(x.tokenId))continue;
+    const owner=currentOwner(x.tokenId);
+    // Known contradictory owner => stale listing, hide it.
+    if(owner&&owner!==x.sellerCommitment)continue;
+    const old=byToken.get(Number(x.tokenId));
+    if(!old||(x.timestamp||0)>(old.timestamp||0))byToken.set(Number(x.tokenId),x)
+  }
+  return [...byToken.values()]
+}
 function validPrice(v){const n=Number(v);return Number.isFinite(n)&&n>0?n:0}
 function settledSales(){
   return [...S.verifiedAtomic.values()]
@@ -931,7 +979,7 @@ function renderActivity(){
     .map(e=>({e,kind:activityKind(e)}))
     .filter(x=>x.kind&&(filter==='all'||x.kind===filter))
     .sort((a,b)=>(b.e.timestamp||0)-(a.e.timestamp||0))
-    .slice(0,150);
+    .slice(0,30);
   const body=$('activityBody'); if(!body)return;
   body.innerHTML='';
   if(!events.length){
@@ -953,11 +1001,16 @@ function renderActivity(){
   }
 }
 function renderMarket(){
-  const q=$('marketSearch').value.trim().toLowerCase(),sort=$('marketSort').value;let a=activeListings().filter(x=>!q||String(x.tokenId).includes(q)||String(x.sellerCommitment).toLowerCase().includes(q));
+  const q=$('marketSearch').value.trim().toLowerCase(),sort=$('marketSort').value;let a=visibleMarketListings().filter(x=>!q||String(x.tokenId).includes(q)||String(x.sellerCommitment).toLowerCase().includes(q));
   if(sort==='priceLow')a.sort((x,y)=>Number(x.price)-Number(y.price));else if(sort==='priceHigh')a.sort((x,y)=>Number(y.price)-Number(x.price));else a.sort((x,y)=>(y.timestamp||0)-(x.timestamp||0));
   const g=$('marketGrid');g.innerHTML='';if(!a.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No active listings found yet. Connect a wallet and list an owned ZEC BLOCK to open the order board.</div>';return}
   for(const l of a){const c=S.claims.get(Number(l.tokenId));const artHash=c?.sourceHash||CFG.genesisTxid;const card=document.createElement('article');card.className='nft';card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #${esc(l.tokenId)}</span><span class="price">${esc(l.price)} ZEC</span></div><div class="meta"><span>Seller ${esc(short(l.sellerCommitment,6))}</span><span>${new Date((l.expires||0)*1000).toLocaleDateString()}</span></div><div class="controls"><button class="btn offerBtn" style="min-height:32px">Make Offer</button></div></div>`;artSvg(card.querySelector('svg'),artHash+':'+(c?.sourceHeight||l.tokenId),'ZB #'+l.tokenId);const action=card.querySelector('.offerBtn');
-    if(tokenIsAtomicLocked(l.tokenId)){action.textContent='ATOMIC LOCKED';action.disabled=true}else if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
+    const resolvedOwner=currentOwner(l.tokenId);
+    if(tokenIsAtomicLocked(l.tokenId)){action.textContent='ATOMIC LOCKED';action.disabled=true}
+    else if(!resolvedOwner){
+      action.textContent='OWNER SYNCING';action.disabled=true;
+      action.title='Listing discovered live. Waiting for the ZB-1 ownership record before offers are enabled.'
+    }else if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
       action.textContent='Cancel Listing';action.onclick=()=>cancelListing(l);
     }else{action.textContent='Make Offer';action.onclick=()=>openOffer(l)}
     g.appendChild(card)}
@@ -1513,12 +1566,12 @@ $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToke
 async function refreshAll(){await fetchRelay();await reconcileAtomicState();rebuildState();renderMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
-(async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();updateWalletUI();renderAtomicDesk();updateMarketMetrics();
+(async()=>{await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();updateWalletUI();renderAtomicDesk();updateMarketMetrics();
   if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{
     await fetchRelay();
     await reconcileAtomicState();
     rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity();updateMarketMetrics()
-  }catch(e){console.warn('live discovery watcher',e)}},10000)
+  }catch(e){console.warn('live discovery backfill',e)}},20000)
 })();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAll().catch(e=>console.warn('visibility refresh',e))});
 </script>
