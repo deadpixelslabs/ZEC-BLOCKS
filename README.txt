@@ -1,21 +1,15 @@
-ZEC BLOCKS — Website Package
+ZEC BLOCKS — Real Zcash Block Website
 
-Files:
-- index.html
-- logo.png
-- favicon.png
+This build replaces the previous dummy block seeds with 12 consecutive real Zcash mainnet blocks.
 
-Official domain:
-https://www.zecblocks.xyz
+Newest verified source block in this build: 3484871
+Oldest verified source block in this build: 3484860
 
-Included:
-- UniSat-inspired dark marketplace UI (original ZEC BLOCKS design)
-- Deterministic sample ZEC BLOCK art
-- Marketplace/search/rarity filters
-- Mint section with COMING SOON only
-- Privacy-first protocol section
-- Functional Supabase Google whitelist flow
-- u1... / zs1... application validation
-- X link: https://x.com/ZEC_BLOCKS
+Artwork seed:
+block_hash + ":" + block_height
 
-Upload all 3 files to the root of your GitHub/Vercel project.
+The site also displays the retrieved real transaction count and block size.
+Mint remains COMING SOON.
+These blocks are shown as source blocks for the generative art system, not as already-minted NFTs.
+
+Source: ZATx Zcash mainnet block feed.

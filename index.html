@@ -254,7 +254,7 @@
         <div class="mint-info">
           <div><small>Supply</small><strong>5,000</strong></div>
           <div><small>Minted</small><strong>—</strong></div>
-          <div><small>Artwork</small><strong>Block Generated</strong></div>
+          <div><small>Source Block</small><strong>3,484,871</strong></div>
           <div><small>Owner</small><strong>Private</strong></div>
         </div>
         <button class="btn gold disabled" type="button" disabled>COMING SOON</button>
@@ -263,7 +263,7 @@
 
     <div class="section-title" id="market">
       <div><h2>ZEC BLOCKS Marketplace</h2><p>Public catalog. Private collectors.</p></div>
-      <p>Trading opens after mint</p>
+      <p>Real Zcash mainnet block sources · trading opens after mint</p>
     </div>
 
     <section class="market-shell">
@@ -293,7 +293,7 @@
             <div class="filter-title">Status</div>
             <div class="check"><span><span class="fake-check"></span>All</span><span>12</span></div>
             <div class="check"><span><span class="fake-check"></span>Listed</span><span>0</span></div>
-            <div class="check"><span><span class="fake-check"></span>Unminted</span><span>12</span></div>
+            <div class="check"><span><span class="fake-check"></span>Real source blocks</span><span>12</span></div>
           </div>
           <div class="filter-group">
             <div class="filter-title">Rarity</div>
@@ -310,7 +310,7 @@
         </aside>
 
         <div class="cards-wrap">
-          <div class="market-summary"><span id="resultCount">12 items</span><span>Artwork generated from deterministic block seeds</span></div>
+          <div class="market-summary"><span id="resultCount">12 items</span><span>Artwork generated from verified Zcash block height + block hash</span></div>
           <div class="grid" id="marketGrid"></div>
         </div>
       </div>
@@ -439,46 +439,49 @@
       <text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${seed.slice(0,34).toUpperCase()}</text>`;
   }
 
-  const items = [
-    ["0001","3582911","0b7f91ae21dca4bd","Standard"],
-    ["0017","3582958","5e1f0c77a419e203","Committed"],
-    ["0048","3583014","8a04f127912ab6cd","Shielded"],
-    ["0089","3583083","9fcab10214d7e00a","Standard"],
-    ["0142","3583151","1d3ac9409eab219b","Proven"],
-    ["0218","3583248","4a77b901e381f8e1","Committed"],
-    ["0384","3583399","7bf291ac55e0e1cb","Zero-Knowledge"],
-    ["0519","3583477","2e40cbadad01b9e2","Shielded"],
-    ["0777","3583622","a9f34b623c8145dd","Proven"],
-    ["1024","3583781","c1042f0d7aa2b55d","Standard"],
-    ["2048","3584213","d7eac6018b9e5e10","Committed"],
-    ["4096","3584988","f4cc1a98b27d7712","Standard"]
-  ];
+  const items = [{"height":3484871,"hash":"000000000093c1d1ce338765540265c8c4f14536ef05bb00c1e0579ae6a6ac79","txs":1,"size":1630,"privacy":"T"},{"height":3484870,"hash":"00000000005367c3abecaed924065fb63a4ffe55a5dd62dca8beff0119891ce9","txs":10,"size":52498,"privacy":"ST1 shielded"},{"height":3484869,"hash":"00000000001b874149ffa60be115fa96c737d09c703ca81493c9c19cf9929e69","txs":1,"size":1630,"privacy":"T"},{"height":3484868,"hash":"00000000008bc3ae121520601ee71424865a5c859b5f5fe34b02ffda83347a05","txs":1,"size":1652,"privacy":"T"},{"height":3484867,"hash":"0000000000556d53e82e33d8f5c68554391347611f31930f1b3248d5f2057972","txs":6,"size":26959,"privacy":"T"},{"height":3484866,"hash":"000000000000db0ea2cc89fedb49dcafc26add302d34c8eca9584c729e9cf865","txs":1,"size":1630,"privacy":"\u2014"},{"height":3484865,"hash":"0000000000082b4dc6d2de1216d4882d09ee3c6fa8f869f8a1f57d4a47634eb2","txs":6,"size":18551,"privacy":"\u2014"},{"height":3484864,"hash":"0000000000288e4cb6a6e2954bfac0c3ad896511e0597bb96a832890d06bdd8f","txs":6,"size":27334,"privacy":"\u2014"},{"height":3484863,"hash":"00000000007a3cb4b0317bf25817b3b879b09ac3225edc592d177c6f12e91d39","txs":1,"size":1630,"privacy":"\u2014"},{"height":3484862,"hash":"00000000009d6401efbc0baffb9571f073da2994597a4809467a637a5695652b","txs":1,"size":10761,"privacy":"\u2014"},{"height":3484861,"hash":"00000000008347e842dbcc62f37699dddfa7bb2595467a533b170d6353b3b2d0","txs":9,"size":54766,"privacy":"\u2014"},{"height":3484860,"hash":"000000000060737588191cfea0e2c22ed9b34580c7bb7eecf60e66e425c30850","txs":1,"size":1630,"privacy":"\u2014"}];
+
+  function rarityFromHash(hash){
+    const n=parseInt(hash.slice(-8),16)%10000;
+    if(n<100) return "Zero-Knowledge";
+    if(n<600) return "Proven";
+    if(n<1800) return "Shielded";
+    if(n<4300) return "Committed";
+    return "Standard";
+  }
+  function shortHash(hash){ return hash.slice(0,10)+"…"+hash.slice(-8); }
+  function formatBytes(n){ return n>=1000 ? (n/1000).toFixed(n>=10000?1:2)+" KB" : n+" B"; }
+
   const grid=document.getElementById("marketGrid");
   function renderCards(filter="",rarity="all"){
     grid.innerHTML="";
     const q=filter.toLowerCase().trim();
-    const shown=items.filter(x=>{
-      const okQ=!q || x.join(" ").toLowerCase().includes(q) || (`zec block #${x[0]}`).includes(q);
-      const okR=rarity==="all" || x[3]===rarity;
+    const shown=items.filter(it=>{
+      const rarityName=rarityFromHash(it.hash);
+      const hay=`${it.height} ${it.hash} ${it.txs} ${it.size} ${rarityName}`.toLowerCase();
+      const okQ=!q || hay.includes(q);
+      const okR=rarity==="all" || rarityName===rarity;
       return okQ&&okR;
     });
-    shown.forEach((it,idx)=>{
+    shown.forEach((it)=>{
+      const rarityName=rarityFromHash(it.hash);
       const card=document.createElement("article");
       card.className="nft";
       card.innerHTML=`
         <div class="nft-art"><svg class="block-art" viewBox="0 0 600 600"></svg></div>
         <div class="nft-info">
-          <div class="nft-line"><div class="nft-title">ZEC BLOCK #${it[0]}</div><div class="rank">${it[3]}</div></div>
-          <div class="meta"><span>Block ${it[1]}</span><span>Private Holder</span></div>
+          <div class="nft-line"><div class="nft-title">ZEC BLOCK ${it.height.toLocaleString()}</div><div class="rank">${rarityName}</div></div>
+          <div class="meta"><span>${it.txs} tx · ${formatBytes(it.size)}</span><span>Real Mainnet Block</span></div>
+          <div class="meta"><span>${shortHash(it.hash)}</span><span>${it.privacy==="—"?"Zcash":it.privacy}</span></div>
           <div class="sale"><span>Not minted</span><button class="mini-btn" disabled>Coming Soon</button></div>
         </div>`;
       grid.appendChild(card);
-      artSvg(card.querySelector("svg"),it[2]+it[1],"#"+it[0]);
+      artSvg(card.querySelector("svg"),it.hash+":"+it.height,"BLOCK "+it.height);
     });
-    document.getElementById("resultCount").textContent=`${shown.length} item${shown.length===1?"":"s"}`;
+    document.getElementById("resultCount").textContent=`${shown.length} real block${shown.length===1?"":"s"}`;
   }
   renderCards();
-  artSvg(document.getElementById("heroArt"),"zecblocks-genesis-3582911","#0001");
+  artSvg(document.getElementById("heroArt"),"000000000093c1d1ce338765540265c8c4f14536ef05bb00c1e0579ae6a6ac79:3484871","BLOCK 3484871");
   document.getElementById("searchInput").addEventListener("input",e=>renderCards(e.target.value,document.getElementById("raritySelect").value));
   document.getElementById("raritySelect").addEventListener("change",e=>renderCards(document.getElementById("searchInput").value,e.target.value));
 
