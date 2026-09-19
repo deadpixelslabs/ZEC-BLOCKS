@@ -336,7 +336,7 @@ main{max-width:1540px;padding-top:14px}
 <div class="mini"><div class="kicker">Discovery layer</div><h3>No private ownership database</h3><p>The website mirrors discovery events across multiple public relays and continuously refreshes claim/market discovery while the page is open. Relays are cache/discovery only; ZB-1 ownership remains defined by confirmed Zcash transactions and client validation.</p></div>
 </div>
 </div>
-</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Dual ZEC + Base USDC Marketplace · V11 UI · Production Logic Preserved</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Dual ZEC + Base USDC Marketplace · V12.1 · Canonical Listing Fix</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 <div class="modal" id="listingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select class="select" id="listingToken"></select></div><div class="field"><label>Asking price (ZEC)</label><input class="input" id="listingPrice" inputmode="decimal" value="0.05"/></div><div class="field"><label>Expires in days</label><input class="input" id="listingDays" max="30" min="1" type="number" value="7"/></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button class="btn gold" id="publishListingBtn">Sign &amp; Publish Listing</button></div></div></div>
 <div class="modal" id="usdcListingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK for USDC</h3><button class="xbtn" data-close="usdcListingModal">×</button></div>
@@ -373,7 +373,7 @@ const INDEX_CFG={
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
 console.info('ZEC BLOCKS MAIN V10.6 · LIVE CLAIMS');
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverIndexing:false,serverPortfolioLoaded:new Set(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverIndexing:false,serverPortfolioLoaded:new Set(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -566,12 +566,14 @@ async function hydrateServerUsdc(){
   try{
     const snap=await indexRpc('zecblocks_market_snapshot',{});
     const rows=Array.isArray(snap?.usdc_listings)?snap.usdc_listings:(Array.isArray(snap?.listings)?snap.listings:[]);
+    const duplicateRows=Array.isArray(snap?.usdc_duplicate_listings)?snap.usdc_duplicate_listings:[];
+    const hydrationRows=[...rows,...duplicateRows];
     const health=snap?.indexer_health||{};
     S.serverIndexerHealth=health;
     const baseCaughtUp=health?.base_usdc?.status==='ok'&&health?.base_usdc?.details?.caught_up===true;
     const merged=new Map(S.usdcOnchain),serverIds=new Set();
     S.serverOwners.clear();
-    for(const x of rows){
+    for(const x of hydrationRows){
       const id=String(x.listing_id||'').toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(id))continue;
       serverIds.add(id);
       const owner=dbCommitment(x.indexed_owner_commitment);
@@ -584,6 +586,7 @@ async function hydrateServerUsdc(){
         zb1ListingHash:String(x.zb1_listing_hash||old.zb1ListingHash||''),status:dbStatus(x.status),
         buyer:String(x.buyer_evm||old.buyer||'0x0000000000000000000000000000000000000000'),
         buyerCommitment:dbBytes32(x.buyer_commitment),settledAt:Number(x.settled_at||0),
+        createdBlock:Number(x.created_block||old.createdBlock||0),updatedBlock:Number(x.updated_block||old.updatedBlock||0),
         relay:old.relay||null,verifiedIntent:!!old.verifiedIntent,serverIntentVerified:!!x.intent_verified,
         serverOwnerCommitment:owner,serverOwnerVerifiedLevel:String(x.indexed_owner_verified_level||'provisional'),serverIndexed:true
       })
@@ -1428,7 +1431,7 @@ function updateMarketMetrics(){
 }
 function updateUsdcMarketMetrics(){
   const now=Math.floor(Date.now()/1000);
-  const active=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===1&&Number(x.expiresAt)>now&&usdcListingOwnershipState(x)!==false);
+  const active=canonicalActiveUsdcListings();
   const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
   let floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
   let volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0),salesN=sales.length,listedN=active.length;
@@ -1619,11 +1622,24 @@ function usdcListingOwnershipState(x){
   if(!owner||!/^[0-9a-f]{64}$/.test(seller))return null;
   return owner===seller
 }
-function activeUsdcListingForToken(id){
+function usdcListingFreshness(x){
+  return Number(x?.createdBlock||x?.updatedBlock||x?.relay?.timestamp||x?.expiresAt||0)
+}
+function activeUsdcListingsForToken(id){
   const now=Math.floor(Date.now()/1000);
-  return [...S.usdcOnchain.values()].find(x=>
-    Number(x.tokenId)===Number(id)&&Number(x.status)===1&&Number(x.expiresAt)>now&&usdcListingOwnershipState(x)!==false
-  )||null
+  return [...S.usdcOnchain.values()]
+    .filter(x=>Number(x.tokenId)===Number(id)&&Number(x.status)===1&&Number(x.expiresAt)>now&&usdcListingOwnershipState(x)!==false)
+    .sort((a,b)=>usdcListingFreshness(b)-usdcListingFreshness(a)||String(b.listingId||'').localeCompare(String(a.listingId||'')))
+}
+function activeUsdcListingForToken(id){return activeUsdcListingsForToken(id)[0]||null}
+function canonicalActiveUsdcListings(){
+  const now=Math.floor(Date.now()/1000),byToken=new Map();
+  for(const x of S.usdcOnchain.values()){
+    if(Number(x.status)!==1||Number(x.expiresAt)<=now||usdcListingOwnershipState(x)===false)continue;
+    const id=Number(x.tokenId),old=byToken.get(id);
+    if(!old||usdcListingFreshness(x)>usdcListingFreshness(old)||(usdcListingFreshness(x)===usdcListingFreshness(old)&&String(x.listingId||'')>String(old.listingId||'')))byToken.set(id,x)
+  }
+  return [...byToken.values()]
 }
 function usdcRelayListings(){
   const m=new Map();
@@ -1748,9 +1764,8 @@ function renderUsdcMarket(){
     return
   }
   const now=Math.floor(Date.now()/1000);
-  const rows=[...S.usdcOnchain.values()]
-    .filter(x=>x.status===1&&x.expiresAt>now&&usdcListingOwnershipState(x)!==false)
-    .sort((a,b)=>{const ap=BigInt(a.priceUSDC||0),bp=BigInt(b.priceUSDC||0);if(ap<bp)return -1;if(ap>bp)return 1;return Number(b.relay?.timestamp||0)-Number(a.relay?.timestamp||0)});
+  const rows=canonicalActiveUsdcListings()
+    .sort((a,b)=>{const ap=BigInt(a.priceUSDC||0),bp=BigInt(b.priceUSDC||0);if(ap<bp)return -1;if(ap>bp)return 1;return usdcListingFreshness(b)-usdcListingFreshness(a)});
   if(!rows.length){
     g.innerHTML='<div class="empty" style="grid-column:1/-1">No active Base USDC listings in the production index yet.</div>';
     return
@@ -1793,72 +1808,114 @@ $('createUsdcListingBtn').onclick=openUsdcListing;
 $('createUsdcListingTopBtn').onclick=openUsdcListing;
 $('refreshUsdcBtn').onclick=async()=>{try{await fetchRelay();rebuildState();await reconcileUsdcMarket();rebuildState()}catch(e){toast(e.message||String(e),8000)}};
 async function publishUsdcListing(){
-  try{
-    if(!usdcConfigured())throw new Error('Production USDC settlement contract is not configured.');
-    if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
-    if(!S.evmAddress)throw new Error('Connect Base wallet first.');
-    await ensureBaseNetwork();
+  const tokenId=Number($('usdcListingToken').value);
+  const btn=$('publishUsdcListingBtn');
+  if(S.usdcListingBusy.has(tokenId))return toast(`ZEC BLOCK #${tokenId} listing is already being submitted.`,7000);
 
-    const tokenId=Number($('usdcListingToken').value);
-    const days=Number($('usdcListingDays').value);
-    const priceUSDC=usdcUnits($('usdcListingPrice').value);
-    if(!ownedTokens().some(x=>Number(x.tokenId)===tokenId))throw new Error('This Noir identity is not the current owner.');
-    if(activeListingForToken(tokenId))throw new Error('This NFT already has an active ZEC listing. Cancel it first.');
-    if(activeUsdcListingForToken(tokenId))throw new Error('This NFT already has an active USDC listing.');
-    if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT is currently locked in a ZEC checkout.');
-    if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');
+  const execute=async()=>{
+    const oldText=btn?.textContent||'Sign with Noir & List on Base';
+    S.usdcListingBusy.add(tokenId);
+    if(btn){btn.disabled=true;btn.textContent='Submitting listing…'}
+    try{
+      if(!usdcConfigured())throw new Error('Production USDC settlement contract is not configured.');
+      if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
+      if(!S.evmAddress)throw new Error('Connect Base wallet first.');
+      await ensureBaseNetwork();
 
-    const expires=Math.floor(Date.now()/1000)+days*86400;
-    const listingNonce=ethers.hexlify(crypto.getRandomValues(new Uint8Array(32)));
-    const sellerCommitment='0x'+S.ownerCommitment;
-    const msg=`ZB1:SALE_BASE:v1|G=${CFG.genesisTxid}|T=${tokenId}|C=${CFG.baseChainId}|U=${CFG.baseUsdc}|M=${CFG.usdcMarketContract}|A=${S.evmAddress}|P=${priceUSDC}|E=${expires}|S=${S.ownerCommitment}|X=${listingNonce}`;
-    const sig=await signDerived(msg);
-    const listingHash=ethers.keccak256(ethers.toUtf8Bytes(msg));
+      // Refresh the canonical server snapshot immediately before creating a listing.
+      // This prevents a second listing when another tab/session has already listed the token.
+      await hydrateServerUsdc().catch(()=>{});
 
-    const contract=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,S.evmSigner);
-    const listingId=await contract.computeListingId(S.evmAddress,tokenId,sellerCommitment,priceUSDC,expires,listingNonce,listingHash);
+      const days=Number($('usdcListingDays').value);
+      const priceUSDC=usdcUnits($('usdcListingPrice').value);
+      if(!ownedTokens().some(x=>Number(x.tokenId)===tokenId))throw new Error('This Noir identity is not the current owner.');
+      if(activeListingForToken(tokenId))throw new Error('This NFT already has an active ZEC listing. Cancel it first.');
+      const existing=activeUsdcListingForToken(tokenId);
+      if(existing)throw new Error(`ZEC BLOCK #${tokenId} already has an active USDC listing. Cancel it first.`);
+      if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT is currently locked in a ZEC checkout.');
+      if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');
 
-    const relayEvent=normalizeEvent({
-      protocol:'ZB1',v:1,type:'SALE_USDC',
-      eventId:'usdc-sale:'+String(listingId).toLowerCase(),
-      listingId:String(listingId).toLowerCase(),
-      tokenId,sellerCommitment:S.ownerCommitment,sellerEvm:S.evmAddress,
-      price:usdcFmt(priceUSDC),priceUSDC:String(priceUSDC),expires,
-      listingNonce,zb1ListingHash:listingHash,message:msg,
-      pubkey:sigPub(sig),signature:sigVal(sig),
-      paymentChain:'Base',chainId:CFG.baseChainId,paymentToken:CFG.baseUsdc,
-      settlementContract:CFG.usdcMarketContract,
-      timestamp:Math.floor(Date.now()/1000),status:'pending_onchain'
-    });
-    // Discovery can be published before the EVM tx. Official clients still
-    // require the onchain listing to exist, so an abandoned relay intent is harmless.
-    await publishRelay(relayEvent,{quiet:true});
+      const expires=Math.floor(Date.now()/1000)+days*86400;
+      const listingNonce=ethers.hexlify(crypto.getRandomValues(new Uint8Array(32)));
+      const sellerCommitment='0x'+S.ownerCommitment;
+      const msg=`ZB1:SALE_BASE:v1|G=${CFG.genesisTxid}|T=${tokenId}|C=${CFG.baseChainId}|U=${CFG.baseUsdc}|M=${CFG.usdcMarketContract}|A=${S.evmAddress}|P=${priceUSDC}|E=${expires}|S=${S.ownerCommitment}|X=${listingNonce}`;
+      const sig=await signDerived(msg);
+      const listingHash=ethers.keccak256(ethers.toUtf8Bytes(msg));
 
-    const tx=await contract.createListing(tokenId,sellerCommitment,priceUSDC,expires,listingNonce,listingHash);
-    toast('Base listing submitted · waiting for confirmation…',7000);
-    const receipt=await tx.wait();
-    relayEvent.baseTxid=receipt.hash;relayEvent.status='active';
-    relayEvent.timestamp=Math.floor(Date.now()/1000);
-    rememberRuntimeEvent(relayEvent);
-    await publishRelay(relayEvent,{quiet:true});
-    modal('usdcListingModal',false);
-    toast(`USDC listing live · ${usdcFmt(priceUSDC)} USDC`,8000);
-    kickServerUsdcIndexer().catch(()=>{});
-    await reconcileUsdcMarket()
-  }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
+      const contract=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,S.evmSigner);
+      const listingId=await contract.computeListingId(S.evmAddress,tokenId,sellerCommitment,priceUSDC,expires,listingNonce,listingHash);
+
+      const relayEvent=normalizeEvent({
+        protocol:'ZB1',v:1,type:'SALE_USDC',
+        eventId:'usdc-sale:'+String(listingId).toLowerCase(),
+        listingId:String(listingId).toLowerCase(),
+        tokenId,sellerCommitment:S.ownerCommitment,sellerEvm:S.evmAddress,
+        price:usdcFmt(priceUSDC),priceUSDC:String(priceUSDC),expires,
+        listingNonce,zb1ListingHash:listingHash,message:msg,
+        pubkey:sigPub(sig),signature:sigVal(sig),
+        paymentChain:'Base',chainId:CFG.baseChainId,paymentToken:CFG.baseUsdc,
+        settlementContract:CFG.usdcMarketContract,
+        timestamp:Math.floor(Date.now()/1000),status:'pending_onchain'
+      });
+      await publishRelay(relayEvent,{quiet:true});
+
+      // The in-memory + Web Lock guards make this operation one-shot per token.
+      const tx=await contract.createListing(tokenId,sellerCommitment,priceUSDC,expires,listingNonce,listingHash);
+      toast('Base listing submitted · waiting for confirmation…',7000);
+      const receipt=await tx.wait();
+      relayEvent.baseTxid=receipt.hash;relayEvent.status='active';
+      relayEvent.timestamp=Math.floor(Date.now()/1000);
+      rememberRuntimeEvent(relayEvent);
+      await publishRelay(relayEvent,{quiet:true});
+      modal('usdcListingModal',false);
+      toast(`USDC listing live · ${usdcFmt(priceUSDC)} USDC`,8000);
+      kickServerUsdcIndexer().catch(()=>{});
+      await reconcileUsdcMarket();
+      await hydrateServerUsdc().catch(()=>{})
+    }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
+    finally{
+      S.usdcListingBusy.delete(tokenId);
+      if(btn){btn.disabled=false;btn.textContent=oldText}
+    }
+  };
+
+  if(navigator.locks?.request){
+    return navigator.locks.request(`zecblocks-usdc-list-${tokenId}`,{ifAvailable:true},async lock=>{
+      if(!lock)return toast(`ZEC BLOCK #${tokenId} is already being listed in another tab.`,8000);
+      return execute()
+    })
+  }
+  return execute()
 }
 $('publishUsdcListingBtn').onclick=publishUsdcListing;
 async function cancelUsdcListing(l){
   try{
     if(!S.evmAddress)await connectEvmWallet(false);
     if(String(S.evmAddress||'').toLowerCase()!==String(l.seller).toLowerCase())throw new Error('Only the Base seller wallet can cancel this listing.');
+
+    // Clean every active duplicate for this token owned by the same Base seller.
+    // Older duplicates stay in chain history but cannot reappear after cancelling the visible card.
+    await hydrateServerUsdc().catch(()=>{});
+    const seller=String(l.seller||'').toLowerCase();
+    const targets=activeUsdcListingsForToken(l.tokenId)
+      .filter(x=>String(x.seller||'').toLowerCase()===seller);
+    if(!targets.some(x=>String(x.listingId).toLowerCase()===String(l.listingId).toLowerCase()))targets.unshift(l);
+
+    const unique=[...new Map(targets.map(x=>[String(x.listingId).toLowerCase(),x])).values()];
     const c=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,S.evmSigner);
-    const tx=await c.cancelListing(l.listingId);
-    toast('Cancel submitted on Base…',6000);
-    await tx.wait();
-    toast('USDC listing cancelled.',7000);
+    let cancelled=0;
+    for(const x of unique){
+      const fresh=await c.listings(x.listingId);
+      if(Number(fresh.status)!==1)continue;
+      toast(unique.length>1?`Cleaning duplicate listing ${cancelled+1}/${unique.length}…`:'Cancel submitted on Base…',6000);
+      const tx=await c.cancelListing(x.listingId);
+      await tx.wait();
+      cancelled++
+    }
+    toast(cancelled>1?`${cancelled} duplicate USDC listings cancelled.`:'USDC listing cancelled.',7000);
     kickServerUsdcIndexer().catch(()=>{});
-    await reconcileUsdcMarket()
+    await reconcileUsdcMarket();
+    await hydrateServerUsdc().catch(()=>{})
   }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
 }
 async function buyUsdcListing(l){
