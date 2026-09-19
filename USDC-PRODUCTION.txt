@@ -1,0 +1,21 @@
+ZEC BLOCKS — BASE USDC MARKETPLACE PRODUCTION UPDATE
+
+Production settlement contract (Base Mainnet):
+0x7674a240004fa434bb1082de28e591abb1dc645d
+
+This package preserves the existing ZEC / Noir marketplace and adds the Base USDC Buy Now rail.
+
+USDC flow:
+- Seller connects Noir wallet + Base wallet.
+- Seller lists a ZEC BLOCK at a fixed USDC price.
+- Buyer connects Noir wallet + Base wallet.
+- Buyer pays USDC on Base.
+- Settlement contract splits payment: 97% seller / 3% protocol treasury.
+- The official client verifies seller ownership before enabling purchase.
+- Verified Base settlement updates ZB-1 ownership to the buyer Noir commitment.
+
+Base Mainnet chain ID: 8453
+Native Circle USDC: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+Protocol treasury: 0x2505036508a68bacd86a4f48642fb7e9432e583d
+
+The original ZEC listing, request-purchase, Noir lock, settlement, activity, portfolio, protocol, relay, and API code is retained.

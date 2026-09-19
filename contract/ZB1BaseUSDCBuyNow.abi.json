@@ -1,0 +1,439 @@
+[
+  {
+    "type": "function",
+    "name": "BASE_CHAIN_ID",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "USDC",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "TREASURY",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "FEE_BPS",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "MIN_PRICE",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "createListing",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint32"
+      },
+      {
+        "name": "sellerCommitment",
+        "type": "bytes32"
+      },
+      {
+        "name": "priceUSDC",
+        "type": "uint128"
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint64"
+      },
+      {
+        "name": "listingNonce",
+        "type": "bytes32"
+      },
+      {
+        "name": "zb1ListingHash",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "cancelListing",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "buyNow",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32"
+      },
+      {
+        "name": "buyerCommitment",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "protocolFeeUSDC",
+        "type": "uint256"
+      },
+      {
+        "name": "sellerAmountUSDC",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "buyNowWithPermit",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32"
+      },
+      {
+        "name": "buyerCommitment",
+        "type": "bytes32"
+      },
+      {
+        "name": "permitDeadline",
+        "type": "uint256"
+      },
+      {
+        "name": "v",
+        "type": "uint8"
+      },
+      {
+        "name": "r",
+        "type": "bytes32"
+      },
+      {
+        "name": "s",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "protocolFeeUSDC",
+        "type": "uint256"
+      },
+      {
+        "name": "sellerAmountUSDC",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "computeListingId",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint32"
+      },
+      {
+        "name": "sellerCommitment",
+        "type": "bytes32"
+      },
+      {
+        "name": "priceUSDC",
+        "type": "uint128"
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint64"
+      },
+      {
+        "name": "listingNonce",
+        "type": "bytes32"
+      },
+      {
+        "name": "zb1ListingHash",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "quoteSplit",
+    "stateMutability": "pure",
+    "inputs": [
+      {
+        "name": "grossAmountUSDC",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "protocolFeeUSDC",
+        "type": "uint256"
+      },
+      {
+        "name": "sellerAmountUSDC",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "isBuyable",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "listings",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "name": "sellerCommitment",
+        "type": "bytes32"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint32"
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint64"
+      },
+      {
+        "name": "priceUSDC",
+        "type": "uint128"
+      },
+      {
+        "name": "listingNonce",
+        "type": "bytes32"
+      },
+      {
+        "name": "zb1ListingHash",
+        "type": "bytes32"
+      },
+      {
+        "name": "status",
+        "type": "uint8"
+      },
+      {
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "name": "buyerCommitment",
+        "type": "bytes32"
+      },
+      {
+        "name": "settledAt",
+        "type": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ListingCreated",
+    "anonymous": false,
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32",
+        "indexed": true
+      },
+      {
+        "name": "tokenId",
+        "type": "uint32",
+        "indexed": true
+      },
+      {
+        "name": "sellerCommitment",
+        "type": "bytes32",
+        "indexed": true
+      },
+      {
+        "name": "seller",
+        "type": "address",
+        "indexed": false
+      },
+      {
+        "name": "priceUSDC",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "expiresAt",
+        "type": "uint64",
+        "indexed": false
+      },
+      {
+        "name": "listingNonce",
+        "type": "bytes32",
+        "indexed": false
+      },
+      {
+        "name": "zb1ListingHash",
+        "type": "bytes32",
+        "indexed": false
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ListingCancelled",
+    "anonymous": false,
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32",
+        "indexed": true
+      },
+      {
+        "name": "tokenId",
+        "type": "uint32",
+        "indexed": true
+      },
+      {
+        "name": "seller",
+        "type": "address",
+        "indexed": true
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ZB1SaleSettled",
+    "anonymous": false,
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32",
+        "indexed": true
+      },
+      {
+        "name": "tokenId",
+        "type": "uint32",
+        "indexed": true
+      },
+      {
+        "name": "buyerCommitment",
+        "type": "bytes32",
+        "indexed": true
+      },
+      {
+        "name": "sellerCommitment",
+        "type": "bytes32",
+        "indexed": false
+      },
+      {
+        "name": "zb1ListingHash",
+        "type": "bytes32",
+        "indexed": false
+      },
+      {
+        "name": "buyer",
+        "type": "address",
+        "indexed": false
+      },
+      {
+        "name": "seller",
+        "type": "address",
+        "indexed": false
+      },
+      {
+        "name": "grossAmountUSDC",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "protocolFeeUSDC",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "sellerAmountUSDC",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "settledAt",
+        "type": "uint64",
+        "indexed": false
+      }
+    ]
+  }
+]
