@@ -213,16 +213,17 @@
   <main>
     <section class="hero">
       <div class="hero-copy">
-        <div class="eyebrow">Whitelist is open</div>
+        <div class="eyebrow">Privacy-first whitelist</div>
         <h1>ZEC BLOCKS<br>Whitelist</h1>
         <p>
           Join the early access list for ZEC BLOCKS — a collectible protocol built around Zcash.
-          Apply with your Google account and a standard transparent Transparent Zcash address.
+          Apply with your Google account and a standard transparent Shielded / Unified Zcash address.
         </p>
         <div class="hero-meta">
-          <span class="pill">Transparent t1 address only</span>
+          <span class="pill">Shielded / Unified address</span>
+          <span class="pill">5,000 total supply</span>
           <span class="pill">One application per Google account</span>
-          <span class="pill">One application per ZEC address</span>
+          <span class="pill">First 500 = FREE MINT</span>
         </div>
       </div>
       <div class="visual">
@@ -235,7 +236,7 @@
     <section class="apply-wrap" id="apply">
       <aside class="info-card">
         <h3>How it works</h3>
-        <p>Simple application flow. No EVM wallet is used for this whitelist.</p>
+        <p>Your Zcash address is submitted privately. Never post it publicly on X.</p>
         <div class="steps">
           <div class="step">
             <div class="step-no">01</div>
@@ -243,11 +244,11 @@
           </div>
           <div class="step">
             <div class="step-no">02</div>
-            <div><b>Enter your transparent Transparent Zcash address</b><span>Use a standard Zcash mainnet transparent address beginning with t1.</span></div>
+            <div><b>Enter your transparent Shielded / Unified Zcash address</b><span>Use a Zcash Unified address (u1...) or Sapling shielded address (zs1...).</span></div>
           </div>
           <div class="step">
             <div class="step-no">03</div>
-            <div><b>Submit</b><span>Your application is stored separately from our legacy EVM whitelist.</span></div>
+            <div><b>Submit</b><span>The first 500 successfully submitted wallets receive a FREE MINT allocation.</span></div>
           </div>
         </div>
       </aside>
@@ -256,7 +257,7 @@
         <div class="section-head">
           <div>
             <h2>Whitelist Application</h2>
-            <p>Early access for ZEC BLOCKS.</p>
+            <p>Private early access for ZEC BLOCKS.</p>
           </div>
           <div class="status-badge" id="authBadge">Not signed in</div>
         </div>
@@ -264,6 +265,14 @@
         <div id="existingBox" class="existing">
           <b>Application already submitted</b>
           <div id="existingText"></div>
+        </div>
+
+        <div style="margin-bottom:18px;border:1px solid rgba(216,173,86,.24);background:rgba(216,173,86,.05);border-radius:16px;padding:16px 17px;">
+          <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-2);margin-bottom:6px;">Early Community</div>
+          <div style="font-size:14px;line-height:1.6;color:#b9b1a7;">
+            The first <b style="color:var(--text)">500 wallets</b> to successfully apply receive a <b style="color:var(--gold-2)">FREE MINT</b> allocation.
+            For X verification, comment <b style="color:var(--text)">“Applied”</b> — never post your wallet address publicly.
+          </div>
         </div>
 
         <div class="auth-card">
@@ -277,9 +286,9 @@
         <form id="wlForm">
           <div class="grid">
             <div class="field full">
-              <label for="zecAddress">Transparent Zcash address</label>
-              <input id="zecAddress" autocomplete="off" spellcheck="false" placeholder="t1..." required>
-              <div class="hint">Whitelist accepts standard mainnet t1 transparent addresses only.</div>
+              <label for="zecAddress">Shielded / Unified Zcash address</label>
+              <input id="zecAddress" autocomplete="off" spellcheck="false" placeholder="u1... or zs1..." required>
+              <div class="hint">Accepted: Unified u1... or Sapling shielded zs1.... Your address is not posted publicly.</div>
             </div>
 
             <div class="field">
@@ -295,7 +304,7 @@
 
           <div class="form-footer">
             <div class="terms">
-              By submitting, you confirm the Transparent Zcash address belongs to you and the information provided is accurate.
+              By submitting, you confirm the Shielded / Unified Zcash address belongs to you and the information provided is accurate.
             </div>
             <button class="btn btn-gold" id="submitBtn" type="submit" disabled>Submit Application</button>
           </div>
@@ -346,10 +355,7 @@
 
   function isLikelyZecAddress(v) {
     v = (v || "").trim();
-    if (!v || v.startsWith("0x")) return false;
-    if (v.length < 20 || v.length > 200) return false;
-    if (/\s/.test(v)) return false;
-    return /^(t1|t3|zs1|u1|tex1)/.test(v);
+    return /^(u1|zs1)[0-9a-z]{20,250}$/.test(v);
   }
 
   function rpcErrorText(err) {
@@ -358,9 +364,9 @@
       AUTH_REQUIRED: "Please sign in with Google first.",
       GOOGLE_AUTH_REQUIRED: "Please sign in with a Google account.",
       EMAIL_REQUIRED: "No email was found on your Google account.",
-      INVALID_T1_ADDRESS: "Enter a valid Transparent Zcash address. EVM 0x addresses are not accepted.",
+      INVALID_T1_ADDRESS: "Enter a valid Shielded / Unified Zcash address. EVM 0x addresses are not accepted.",
       GOOGLE_ACCOUNT_ALREADY_USED: "This Google account has already submitted an application.",
-      ZEC_ADDRESS_ALREADY_USED: "This Transparent Zcash address has already been used."
+      ZEC_ADDRESS_ALREADY_USED: "This Shielded / Unified Zcash address has already been used."
     };
     const key = Object.keys(map).find(k => raw.includes(k));
     return key ? map[key] : raw.replace(/^.*?message:\s*/i, "") || "Something went wrong.";
@@ -447,7 +453,7 @@
     const xPost = $("xPostUrl").value.trim();
 
     if (!isLikelyZecAddress(zec)) {
-      showMessage("Enter a valid Transparent Zcash address. EVM 0x addresses are not accepted.", "err");
+      showMessage("Enter a valid Shielded / Unified Zcash address. EVM 0x addresses are not accepted.", "err");
       return;
     }
 
