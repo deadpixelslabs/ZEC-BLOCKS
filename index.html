@@ -150,7 +150,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.8</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.9</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -949,6 +949,22 @@ function activeListings(){
   return [...byToken.values()];
 }
 function activeListingForToken(id){return activeListings().find(x=>Number(x.tokenId)===Number(id))||null}
+function latestPublishedListingForToken(id,sellerCommitment=null){
+  const now=Math.floor(Date.now()/1000);
+  const seller=sellerCommitment?String(sellerCommitment).toLowerCase():null;
+  return [...S.listings.values()]
+    .filter(x=>Number(x.tokenId)===Number(id)
+      && Number(x.expires||0)>now
+      && (!seller||String(x.sellerCommitment||'').toLowerCase()===seller))
+    .sort((a,b)=>(Number(b.timestamp)||0)-(Number(a.timestamp)||0))[0]||null
+}
+function currentListingForOffer(o){
+  if(!o)return null;
+  const current=activeListingForToken(o.tokenId);
+  if(!current)return null;
+  if(String(current.listingId||'')!==String(o.listingId||''))return null;
+  return current
+}
 function visibleMarketListings(){
   const now=Math.floor(Date.now()/1000),byToken=new Map();
   for(const x of S.listings.values()){
@@ -1065,10 +1081,49 @@ function renderMarket(){
 $('marketSearch').oninput=renderMarket;$('marketSort').onchange=renderMarket;$('refreshMarketBtn').onclick=()=>refreshAll().catch(e=>toast(e.message));
 $('activityFilter').onchange=renderActivity;$('refreshActivityBtn').onclick=()=>refreshAll().catch(e=>toast(e.message));
 function modal(id,on=true){$(id).classList.toggle('show',on)}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>modal(b.dataset.close,false));
-function openListing(){const own=ownedTokens();if(!own.length)return toast('No owned ZEC BLOCKS found in the current discovery state.');const s=$('listingToken');s.innerHTML=own.map(x=>`<option value="${x.tokenId}">ZEC BLOCK #${x.tokenId}</option>`).join('');modal('listingModal',true)}
+function openListing(){
+  const mine=String(S.ownerCommitment||'').toLowerCase();
+  const own=ownedTokens().filter(x=>!latestPublishedListingForToken(x.tokenId,mine));
+  if(!own.length)return toast('No unlisted ZEC BLOCKS available. Cancel an existing listing before changing its price.');
+  const s=$('listingToken');
+  s.innerHTML=own.map(x=>`<option value="${x.tokenId}">ZEC BLOCK #${x.tokenId}</option>`).join('');
+  modal('listingModal',true)
+}
 $('createListingBtn').onclick=openListing;
 async function signDerived(msg){const r=await rpc('zcash_signMessage',[msg,{signingMode:'derived'}]);if(!sigPub(r)||!sigVal(r))throw new Error('Noir Wallet did not return a usable derived signature.');return r}
-$('publishListingBtn').onclick=async()=>{try{const tokenId=Number($('listingToken').value),price=$('listingPrice').value.trim(),days=Number($('listingDays').value);if(!ownedTokens().some(x=>x.tokenId===tokenId))throw new Error('Token is not owned by this commitment.');if(tokenIsAtomicLocked(tokenId))throw new Error('This token is currently atomic-locked.');if(!decimalValid(price))throw new Error('Enter a valid ZEC price.');if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');const nonce=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+days*86400,msg=`ZB1:SALE:v1|G=${CFG.genesisTxid}|T=${tokenId}|P=${price}|E=${expires}|X=${nonce}|O=${S.ownerCommitment}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'SALE',eventId:'sale:'+nonce,listingId:'sale:'+nonce,tokenId,price,expires,nonce,sellerCommitment:S.ownerCommitment,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('listingModal',false);toast(pr.ok?`Listing published · ${pr.ok}/${pr.total} relays accepted`:'Listing saved locally. Refresh will retry relay publication.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
+$('publishListingBtn').onclick=async()=>{
+  try{
+    const tokenId=Number($('listingToken').value),price=$('listingPrice').value.trim(),days=Number($('listingDays').value);
+    if(!ownedTokens().some(x=>x.tokenId===tokenId))throw new Error('Token is not owned by this commitment.');
+    if(tokenIsAtomicLocked(tokenId))throw new Error('This token is currently atomic-locked.');
+
+    const existing=latestPublishedListingForToken(tokenId,S.ownerCommitment);
+    if(existing){
+      throw new Error(`ZEC BLOCK #${tokenId} is already listed at ${existing.price} ZEC. Cancel the current listing before creating a new one.`);
+    }
+
+    if(!decimalValid(price))throw new Error('Enter a valid ZEC price.');
+    if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');
+
+    const nonce=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+days*86400;
+    const msg=`ZB1:SALE:v1|G=${CFG.genesisTxid}|T=${tokenId}|P=${price}|E=${expires}|X=${nonce}|O=${S.ownerCommitment}`;
+    const sig=await signDerived(msg);
+    const e=normalizeEvent({
+      protocol:'ZB1',v:1,type:'SALE',eventId:'sale:'+nonce,listingId:'sale:'+nonce,
+      tokenId,price,expires,nonce,sellerCommitment:S.ownerCommitment,
+      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)
+    });
+
+    // publishRelay saves locally first, so this listing is immediately known
+    // to this seller and cannot be accidentally duplicated while relays catch up.
+    const pr=await publishRelay(e);
+    rememberRuntimeEvent(e);
+    rebuildState();
+    modal('listingModal',false);
+    toast(pr.ok?`Listing published · ${pr.ok}/${pr.total} relays accepted`:'Listing saved locally. Refresh will retry relay publication.',7000);
+    await fetchRelay()
+  }catch(e){toast(e.message||String(e),8000)}
+};
 async function cancelListing(l){
   try{
     if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
@@ -1102,7 +1157,9 @@ function offerMatchesListing(o,l){
 }
 function openOffer(l){
   if(!S.ownerCommitment)return toast('Connect Noir Wallet first.');
-  if(!l||!activeListings().some(x=>x.listingId===l.listingId))return toast('This listing is no longer active.');
+  const current=l?activeListingForToken(l.tokenId):null;
+  if(!current)return toast('This NFT no longer has an active listing.');
+  if(String(current.listingId||'')!==String(l.listingId||''))return toast('This listing was updated. Please use the newest marketplace card.');
   if(tokenIsAtomicLocked(l.tokenId))return toast('This NFT is already locked to a selected buyer.');
   const owner=currentOwner(l.tokenId);
   if(!owner||owner!==String(l.sellerCommitment||'').toLowerCase())return toast('Seller ownership is still syncing. Try again shortly.');
@@ -1115,8 +1172,11 @@ $('publishOfferBtn').onclick=async()=>{
   try{
     const l=S.currentOfferListing;
     if(!l)throw new Error('No listing selected.');
-    const live=activeListings().find(x=>x.listingId===l.listingId);
-    if(!live)throw new Error('This listing is no longer active.');
+    const live=activeListingForToken(l.tokenId);
+    if(!live)throw new Error('This NFT no longer has an active listing.');
+    if(String(live.listingId||'')!==String(l.listingId||'')){
+      throw new Error('The seller updated this listing. Close this window and click Request Purchase on the current listing.');
+    }
     if(tokenIsAtomicLocked(l.tokenId))throw new Error('This NFT is already locked to a selected buyer.');
     if(currentOwner(l.tokenId)!==String(l.sellerCommitment||'').toLowerCase())throw new Error('Seller is no longer the verified current owner.');
 
@@ -1162,19 +1222,19 @@ function lockForOffer(o){
 }
 function sellerOffers(){
   if(!S.ownerCommitment)return[];
-  const now=Math.floor(Date.now()/1000),latest=new Map();
+  const latest=new Map();
   for(const o of S.offers){
-    const l=S.listings.get(o.listingId);
-    if(!l)continue;
-    if(Number(l.expires||0)<=now)continue;
+    const l=currentListingForOffer(o);
+    if(!l)continue; // stale request from an older/cancelled/superseded listing
     if(String(l.sellerCommitment||'').toLowerCase()!==String(S.ownerCommitment).toLowerCase())continue;
     if(currentOwner(o.tokenId)!==String(S.ownerCommitment).toLowerCase())continue;
     if(tokenIsAtomicLocked(o.tokenId))continue;
     if(S.verifiedAtomic.has(atomicLockId(o)))continue;
 
-    // Invalid manipulated/legacy offers with a different amount are ignored.
+    // Fixed-price rule remains mandatory.
     if(!offerMatchesListing(o,l))continue;
 
+    // One actionable request per buyer per current listing.
     const k=`${o.listingId}:${String(o.buyerCommitment||'').toLowerCase()}`;
     const old=latest.get(k);
     if(!old||(Number(o.timestamp)||0)>(Number(old.timestamp)||0))latest.set(k,o)
@@ -1636,9 +1696,12 @@ async function atomicAcceptAndLock(o){
     if(String(o.sellerCommitment).toLowerCase()!==String(S.ownerCommitment).toLowerCase())throw new Error('Only the seller can accept this offer.');
     if(currentOwner(o.tokenId)!==S.ownerCommitment)throw new Error('Seller is no longer the current owner.');
     if(tokenIsAtomicLocked(o.tokenId))throw new Error('This token is already locked to another buyer.');
-    const l=S.listings.get(o.listingId);
-    if(!l||!activeListings().some(x=>x.listingId===o.listingId))throw new Error('Listing is no longer active.');
-    if(!offerMatchesListing(o,l))throw new Error('Rejected: buyer request does not exactly match the signed listing price.');
+    const l=activeListingForToken(o.tokenId);
+    if(!l)throw new Error('This NFT no longer has an active listing.');
+    if(String(l.listingId||'')!==String(o.listingId||'')){
+      throw new Error('This purchase request belongs to an older listing. The buyer must click Request Purchase again on the current listing.');
+    }
+    if(!offerMatchesListing(o,l))throw new Error('Rejected: buyer request does not exactly match the current signed listing price.');
     const payout=String(S.connection?.transparent||'');
     if(!/^t[13][A-Za-z0-9]{20,}$/.test(payout))throw new Error('Noir Wallet did not expose a transparent seller payout address.');
 

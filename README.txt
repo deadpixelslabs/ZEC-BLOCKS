@@ -1,65 +1,80 @@
-ZEC BLOCKS MAIN V9.8 — FIXED-PRICE PURCHASE REQUESTS
+ZEC BLOCKS MAIN V9.9 — STALE PURCHASE REQUEST FIX
 
-PROBLEM FIXED
-A buyer could manually enter an arbitrary offer price, including an absurdly high
-price. A seller might accept it expecting that amount, chain-lock the NFT, and
-then the buyer simply never pays. The NFT stays unavailable until lock expiry.
+SYMPTOM
+Many sellers saw a valid-looking purchase request and clicked:
+  Accept <price> ZEC & Lock
 
-V9.8 REMOVES BUYER-CONTROLLED OFFER PRICES.
+but received:
+  "Listing is no longer active."
 
-NEW RULE
-A purchase request MUST equal the seller's signed listing price exactly.
+ROOT CAUSE
+The marketplace correctly treats the NEWEST valid listing for a Token ID as the
+current listing.
 
-EXAMPLE
-Seller lists ZEC BLOCK #123 at 0.003 ZEC.
-Buyer can only request purchase at 0.003 ZEC.
-The buyer cannot submit 1 ZEC, 100 ZEC, 0.001 ZEC, etc.
+However, the Seller Offers panel in V9.8 still displayed purchase requests that
+were attached to OLDER listings for the same NFT.
 
-PROTECTION EXISTS AT MULTIPLE LEVELS
-1. Offer modal price field is disabled.
-2. Browser ignores the price field entirely and copies price from the SALE event.
-3. New purchase request is signed as ZB1:OFFER:v2.
-4. Seller dashboard filters out any request whose amount differs from listing.
-5. Existing manipulated / legacy wrong-price offers are not actionable.
-6. Accept & Lock performs the exact-price check again.
-7. Lock economics are derived from the SELLER'S SIGNED LISTING, never the buyer's
-   offer event.
+Example:
+1. Seller lists #123 -> Listing A.
+2. Buyer requests purchase on Listing A.
+3. Seller later creates/re-publishes #123 -> Listing B.
+4. Marketplace correctly makes Listing B the current listing.
+5. V9.8 Seller Offers still displayed the old request for Listing A.
+6. Seller clicks Accept.
+7. Lock validation sees Listing A is no longer current -> error.
 
-Therefore modifying HTML/devtools or publishing a custom relay OFFER with a fake
-price cannot make the official V9.8 seller client lock at that fake amount.
+This is why the button could be visible while Accept said the listing was inactive.
 
-ANTI-SPAM
-For each listing + buyer, only the newest valid purchase request is shown to the
-seller. Repeated requests from the same buyer do not fill the Seller Offers panel.
+V9.9 FIX
 
-SELLER UX
-The seller sees:
-- FIXED PRICE REQUEST
-- exact listing price
-- selected buyer
-- 3% protocol / 97% seller
-- unpaid lock window (60 minutes)
+1. CURRENT-LISTING-ONLY REQUESTS
+Seller Offers only shows a request when:
+- its listingId is exactly the current active listing;
+- seller is still current owner;
+- request price exactly equals the signed listing price;
+- token is not already locked.
 
-The Accept button includes the exact fixed price.
+Old, cancelled, expired or superseded requests disappear automatically.
 
-IMPORTANT
-Accepting a purchase request still means:
-NFT LOCK FIRST -> BUYER PAYMENT SECOND.
+2. HARD ACCEPT CHECK
+Accept & Lock resolves the current listing by Token ID and requires its listingId
+to exactly equal the buyer's signed request.
 
-A fixed-price buyer can still choose not to pay after the seller accepts. The
-unpaid lock therefore expires after the existing 60-minute lock window. V9.8
-prevents price-bait griefing, but it does not pretend that an unpaid buyer request
-is funded.
+If a listing changes during a race, the seller receives a precise message:
+  "This purchase request belongs to an older listing.
+   The buyer must click Request Purchase again on the current listing."
 
-RETAINED FROM V9.7
+3. PREVENT DUPLICATE LISTINGS
+A seller can no longer accidentally create a second active listing for the same
+ZEC BLOCK.
+
+If #123 is already listed, the website tells the seller:
+  "Cancel the current listing before creating a new one."
+
+To change price:
+  Cancel Listing -> create a new listing -> buyer sends a new purchase request.
+
+4. BUYER RACE PROTECTION
+If the seller changes/cancels/re-lists while a buyer has the purchase dialog open,
+the buyer cannot publish against the stale listing. They are told to use the
+newest marketplace card.
+
+5. FIXED PRICE RETAINED
+Buyer still cannot choose or manipulate offer amount.
+The lock price always comes from the seller's signed CURRENT listing.
+
+RETAINED FROM V9.8 / V9.7
+- fixed-price purchase requests
 - payment recovery / no-double-pay protection
+- seller locks first
 - 3% protocol fee + 97% seller payout
-- seller lock before payment
 - historical settlement recovery
 - stable listing discovery
-- latest 30 Activity
+- Activity latest 30
 
 DEPLOY
 Upload every file in this ZIP to www.zecblocks.xyz.
-Old wrong-price offers will automatically disappear from the actionable Seller
-Offers panel after deployment.
+
+After deployment, old stale purchase requests should disappear from Seller Offers.
+Buyers whose requests belonged to an older listing simply need to click
+"Request Purchase" once on the current marketplace listing.
