@@ -1,61 +1,61 @@
-ZEC BLOCKS MAIN V7 — ATOMIC SETTLEMENT EXTENSION
+ZEC BLOCKS MAIN V9 — NOIR-ONLY LOCKED SETTLEMENT
 
-PURPOSE
-V7 removes the unsafe buyer-pays-then-seller-transfers flow.
+GOAL
+Remove Zkool and make marketplace checkout work with Noir Wallet only.
 
-ATOMIC FLOW
-1. Seller lists a ZEC BLOCK.
-2. Buyer publishes an offer.
-3. Seller clicks "Accept & Atomic Lock".
-4. Noir Wallet broadcasts an on-chain ZB-1 ATOMIC_LOCK memo to the protocol mailbox.
-5. Buyer checkout remains disabled until the lock transaction is confirmed.
-6. The confirmed lock binds:
-   - Token ID
-   - seller owner commitment
-   - designated buyer owner commitment
-   - exact price
-   - seller transparent payout address
-   - expiry
-7. Buyer executes ONE multi-recipient Zcash transaction:
-   - 97% output -> seller transparent payout address
-   - 3% output -> ZEC BLOCKS treasury
-8. Buyer pastes the ONE transaction TXID.
-9. The website verifies both exact outputs are present in that same confirmed transaction.
-10. If valid and within the lock window, ZB-1 Atomic Marketplace Extension resolves ownership to the designated buyer.
-11. No final seller approval exists after payment.
+FLOW
+1. Buyer A/B/C can make offers. Offers move no ZEC.
+2. Seller chooses ONE buyer.
+3. Seller clicks Accept & Lock to Buyer.
+4. Seller signs a ZB-1 NOIR_LOCK v3 and broadcasts a public lock anchor.
+5. Lock becomes active only after chain confirmation.
+6. While active:
+   - seller cannot cancel that listing through V9;
+   - seller cannot direct-transfer that NFT through V9;
+   - other buyers do not receive a payment action.
+7. Only the designated buyer sees Pay with Noir.
+8. Buyer approves ONE Noir zcash_sendTransaction directly to the seller.
+9. The amount is:
+   listing price + a tiny lock-specific settlement tag (1–9,999 zatoshi).
+   This produces a unique exact payment amount for the lock while still using
+   only ONE recipient, which Noir supports today.
+10. V9 records the returned TXID when available AND independently scans the
+    seller transparent address for the exact lock-specific amount.
+11. After the payment reaches 6 confirmations, ZB-1 ownership deterministically
+    resolves to the designated buyer.
+12. Seller has NO second approval step after payment.
 
-WHY NOIR CANNOT EXECUTE THE PAYMENT YET
-The currently published Noir Wallet browser adapter exposes zcash_sendTransaction with a single
-`to` destination. It also explicitly does not expose PCZT signing. Therefore V7 does NOT fake
-atomicity by firing two Noir transactions. Buyer checkout generates a ZIP-321 multi-payment request
-instead. It must be executed by a wallet capable of creating both outputs in ONE Zcash transaction.
+WHY THE TINY SETTLEMENT TAG
+Noir's current browser API supports a single destination per send and does not
+expose PCZT signing. A lock-specific exact amount lets V9 identify the correct
+payment without needing a second output, a memo to a transparent address, Zkool,
+or manual TXID paste.
 
-SECURITY RULE
-DO NOT manually send 97% and 3% as two separate transactions.
-Those transactions will NOT pass V7 atomic verification.
+EXAMPLE
+Listing price: 0.003 ZEC
+Lock tag:      0.00001234 ZEC (example only)
+Buyer sends:   0.00301234 ZEC to seller
+The exact tag is different per lock and is shown before payment.
 
-FEE
-- 300 bps / 3%
-- Seller output: 97% of accepted price (integer zatoshi rounding)
-- Treasury output: 3% of accepted price
-- Treasury: t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz
+MARKETPLACE PROTOCOL FEE
+V9 Noir-only mode sets marketplace protocol fee to 0%.
+The previous 3% split cannot be enforced in the same one-recipient Noir payment
+without multi-recipient / PCZT support. Do not fake the 3% with sequential sends.
+Re-enable it only when the wallet layer can safely construct the required payment.
 
-LOCK
-- Default lock window: 24 hours
-- Atomic payment button is disabled during the final 60 minutes to reduce expiry-edge risk.
-- A confirmed lock prevents normal listing cancellation / manual Transfer through this V7 client.
-- Expired unpaid locks resolve back to the seller in the client state machine.
+COUNTERPARTY SAFETY
+- Buyer pays only AFTER seller lock is confirmed.
+- Seller cannot choose a different buyer after the lock without waiting for expiry.
+- A valid payment needs no seller approval to finalize ownership.
+- Other bidders never send funds, so there are no loser refunds.
+- Unpaid seller lock expires after 60 minutes.
+- Payment is disabled during the final 5 minutes of the lock.
+- Payment finality threshold: 6 confirmations.
 
 IMPORTANT
-This is a ZB-1 marketplace protocol extension. Every independent validator/indexer that wants to
-reconstruct Atomic Marketplace ownership must implement the same ATOMIC_LOCK / ATOMIC_SETTLED
-state rules. Relay events are discovery/cache; lock and payment confirmations are checked against
-Zcash chain data.
+ZB-1 ownership is application-layer state on Zcash, not a native Zcash smart
+contract NFT. Every compatible ZB-1 validator/indexer should implement the same
+NOIR_LOCK v3 and NOIR_SETTLED rules.
 
-Deploy the entire ZIP to the MAIN www.zecblocks.xyz Vercel project.
-
-DEPLOYMENT NOTE
-- Noir Wallet remains the identity/signature wallet and can create the on-chain ATOMIC_LOCK.
-- The buyer settlement itself requires a wallet capable of ONE multi-recipient Zcash transaction.
-- The generated request follows ZIP-321 multi-payment syntax.
-- V7 deliberately refuses to simulate atomic settlement with two separate Noir sends.
+DEPLOY
+Upload the entire ZIP to the www.zecblocks.xyz Vercel project.
