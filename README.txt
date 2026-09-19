@@ -1,61 +1,55 @@
-ZEC BLOCKS MARKETPLACE V9.10 — RPC RATE-LIMIT FIX
+ZEC BLOCKS MARKETPLACE V10.0 — SUPABASE PERSISTENT INDEX
 
-WHY
-Vercel observability showed /api/zcash failures caused by CipherScan HTTP 429
-Too Many Requests. The old proxy explicitly used Cache-Control: no-store, and
-the browser also used fetch(..., cache:'no-store'), so repeated reads were
-forwarded upstream instead of being shared/cached.
+GOAL
+Stop treating every visitor's browser as the main indexer.
+The marketplace now renders persistent server snapshots first, then performs
+normal relay / Base / Zcash verification in the background.
 
-V9.10 FIXES
-- removes the Vercel no-store header override;
-- enables Vercel CDN caching with kind-specific short TTLs;
-- adds stale-while-revalidate;
-- adds warm-function memory cache;
-- coalesces identical concurrent requests;
-- adds provider circuit breakers after HTTP 429 / 5xx;
-- honors Retry-After where supplied;
-- serves recent stale chain data during a temporary provider rate limit instead
-  of generating unnecessary 502 responses;
-- returns HTTP 429 for an actual upstream rate limit, not a misleading 502;
-- adds browser-side request coalescing / short memoization;
-- removes browser cache:'no-store'.
+WHAT IS LIVE
+- Supabase tables use the zecblocks_* prefix and do not modify legacy project tables.
+- Base USDC production contract indexer is deployed as Supabase Edge Function:
+  zecblocks-index-usdc
+- Noir/ZB-1 verified claim cache is deployed as Supabase Edge Function:
+  zecblocks-cache-claims
+- Production USDC contract:
+  0x7674a240004fa434bb1082de28e591abb1dc645d
 
-CACHE WINDOWS
-- health: ~12 sec edge
-- tx: ~5 sec pending / ~15 sec mined
-- block: ~30 sec
-- transparent address activity: ~15 sec
+REFRESH FLOW
+1. Browser local cache renders immediately.
+2. Supabase USDC snapshot is fetched immediately.
+3. When Noir connects, Supabase portfolio snapshot is loaded first.
+4. Relay / Zcash / Base verification continues in the background.
+5. Newly reconstructed valid Noir claims are re-verified server-side and cached.
+6. USDC List / Cancel / Buy Now triggers the server Base indexer in the background.
 
-Settlement finality is still independently verified; caching can delay a new
-confirmation by a few seconds, but dramatically reduces upstream request load.
+SECURITY
+- Browser has only the normal public Supabase anon credential.
+- RLS allows public SELECT on marketplace/token snapshots only.
+- Browser cannot directly write zecblocks index tables.
+- Base writes come from chain logs processed by the Edge Function service role.
+- Claim-cache writes are accepted only after server-side PoW, compact-signature,
+  source-block and confirmed-transaction checks.
+- Buy Now still performs the existing client/on-chain verification path.
 
-RETAINED
-- V9.9 fixed-price / stale-offer protections
-- V9.7 payment recovery
-- 3% protocol + 97% seller
-- historical settlement recovery
-- latest 30 Activity
+USDC MARKET
+- Listings remain sorted lowest price first.
+- Total USDC volume/sales/listed/floor can be recovered from persistent DB state.
+- Refresh no longer needs to rebuild USDC market history from zero.
+
+PORTFOLIO
+- First wallet recovery still verifies Noir history.
+- Valid claim ownership is then cached in Supabase.
+- Subsequent reconnect/refresh can restore known holdings from the server snapshot
+  before the slower wallet-history repair finishes.
+- Base USDC purchases update zecblocks_tokens from the settlement contract indexer.
 
 DEPLOY
-Upload the whole ZIP to the www.zecblocks.xyz Vercel project.
-Do not keep an old Vercel header rule that forces /api/* to Cache-Control:no-store.
+Upload the whole folder/ZIP to the existing ZEC BLOCKS Vercel project.
+No additional Supabase setup is required for the schema/functions already deployed.
+On the first V10 visit, the Base indexer bootstraps a recent ~50k-block window;
+after that it is incremental.
 
-V9.13 USDC UI patch
---------------------
-This build keeps the existing ZEC/Noir marketplace intact and makes the Base USDC rail explicit in the seller portfolio and marketplace header. Sellers can choose List ZEC or List USDC. USDC buyers use Buy Now · USDC.
-
-V9.19 SOLID PERSISTENT INDEX
----------------------------
-- Public ZB-1 discovery cache is persistent across page refreshes (localStorage), not session-only.
-- Noir wallet claim recovery is cached per owner commitment and restored instantly on reconnect.
-- Wallet history recovery reuses already verified source block hashes instead of refetching every block on every refresh.
-- Portfolio renders progressively while any missing claims are being reconstructed.
-- Base USDC marketplace has a persistent contract-state cache.
-- USDC listing discovery no longer depends only on relays: the client also scans ListingCreated events from the production Base contract.
-- Cached active USDC listings remain visible while Zcash ownership/indexer state is still rebuilding.
-- Buy Now is disabled until current ZB-1 ownership and the signed listing intent are verified, so the faster cache does not weaken settlement checks.
-- USDC volume and sales are recovered from Base contract state and no longer depend on the Zcash ownership index finishing first.
-- USDC cards remain sorted lowest price first; no dropdown/filter is used.
-
-Production contract remains:
-0x7674a240004fa434bb1082de28e591abb1dc645d
+IMPORTANT
+Keep api/zcash.js and all existing files. V10 is additive; it does not remove the
+old ZEC/Noir market, relay discovery, direct chain verification, local cache,
+portfolio recovery, or USDC Buy Now flow.

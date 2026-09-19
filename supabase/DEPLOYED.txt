@@ -1,0 +1,18 @@
+Supabase project ref: tvwvenyomlwvjtwxasca
+
+Deployed tables:
+- public.zecblocks_tokens
+- public.zecblocks_usdc_listings
+- public.zecblocks_sales
+- public.zecblocks_events
+- public.zecblocks_indexer_state
+
+Deployed RPC functions:
+- public.zecblocks_market_snapshot()
+- public.zecblocks_portfolio_snapshot(text)
+
+Deployed Edge Functions:
+- zecblocks-index-usdc (JWT required)
+- zecblocks-cache-claims (JWT required)
+
+No service-role credential is included in this ZIP.

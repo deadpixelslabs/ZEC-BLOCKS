@@ -201,7 +201,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Dual ZEC + Base USDC Marketplace V9.19 · Solid Persistent Index</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Dual ZEC + Base USDC Marketplace V10.0 · Supabase Persistent Index</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -234,7 +234,13 @@ const CFG={
   usdcMarketContract:'0x7674a240004fa434bb1082de28e591abb1dc645d',
   atomicLockSeconds:3600,atomicPayCutoffSeconds:900,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFeeStepConfirmations:1,atomicFinalConfirmations:6,atomicFundedGraceSeconds:3600,atomicFinalityGraceSeconds:7200
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false};
+const INDEX_CFG={
+  url:'https://tvwvenyomlwvjtwxasca.supabase.co',
+  // Supabase anon key is intentionally public/client-safe. RLS blocks writes;
+  // blockchain index writes happen only inside verified Edge Functions.
+  anon:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2d3ZlbnlvbWx3dmp0d3hhc2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MjIwMTcsImV4cCI6MjEwNDE5ODAxN30.RLGs8yTBd0JyRdHlv63YzLHJ7t8qPNHqZWN3WRu00VY'
+};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverIndexing:false,serverPortfolioLoaded:new Set()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -374,6 +380,79 @@ async function verifyZcashCompactSignature(message,signature,pubkey){
   }catch(e){console.warn('signature verify',e);return false}
 }
 
+function indexHeaders(){return {'apikey':INDEX_CFG.anon,'Authorization':'Bearer '+INDEX_CFG.anon,'Content-Type':'application/json'}}
+async function indexRpc(name,args={}){
+  const r=await fetch(`${INDEX_CFG.url}/rest/v1/rpc/${name}`,{method:'POST',headers:indexHeaders(),body:JSON.stringify(args)});
+  if(!r.ok)throw new Error(`Index API ${name}: HTTP ${r.status}`);
+  return r.json()
+}
+async function indexFunction(name,body={}){
+  const r=await fetch(`${INDEX_CFG.url}/functions/v1/${name}`,{method:'POST',headers:indexHeaders(),body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j?.ok===false)throw new Error(j?.error||`Indexer ${name}: HTTP ${r.status}`);
+  return j
+}
+function dbCommitment(v){const x=String(v||'').replace(/^0x/,'').toLowerCase();return /^[0-9a-f]{64}$/.test(x)?x:''}
+function dbBytes32(v){const x=dbCommitment(v);return x?'0x'+x:'0x'+'0'.repeat(64)}
+function dbStatus(v){return v==='active'?1:v==='sold'?2:v==='cancelled'?3:v==='expired'?3:Number(v)||0}
+async function hydrateServerUsdc(){
+  try{
+    const snap=await indexRpc('zecblocks_market_snapshot',{});
+    const rows=Array.isArray(snap?.listings)?snap.listings:[];
+    const merged=new Map(S.usdcOnchain);
+    for(const x of rows){
+      const id=String(x.listing_id||'').toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(id))continue;
+      const old=merged.get(id)||{};
+      merged.set(id,{...old,
+        listingId:id,tokenId:Number(x.token_id),seller:String(x.seller_evm||'').toLowerCase(),
+        sellerCommitment:dbBytes32(x.seller_commitment),priceUSDC:String(x.price_usdc||0),
+        expiresAt:Number(x.expires_at||0),listingNonce:String(x.listing_nonce||old.listingNonce||''),
+        zb1ListingHash:String(x.zb1_listing_hash||old.zb1ListingHash||''),status:dbStatus(x.status),
+        buyer:String(x.buyer_evm||old.buyer||'0x0000000000000000000000000000000000000000'),
+        buyerCommitment:dbBytes32(x.buyer_commitment),settledAt:Number(x.settled_at||0),
+        relay:old.relay||null,verifiedIntent:!!old.verifiedIntent,serverIndexed:true
+      })
+    }
+    if(rows.length)S.usdcOnchain=merged;
+    S.serverUsdcMetrics=snap?.metrics||null;
+    saveUsdcCache();renderUsdcMarket();updateUsdcMarketMetrics();
+    return rows.length
+  }catch(e){console.warn('server USDC snapshot',e);return 0}
+}
+async function kickServerUsdcIndexer(){
+  if(S.serverIndexing)return;S.serverIndexing=true;
+  try{
+    // Usually one invocation is enough after bootstrap. On a brand-new DB,
+    // allow several bounded passes so the first active visitor can catch up.
+    for(let i=0;i<6;i++){
+      const r=await indexFunction('zecblocks-index-usdc',{});
+      if(r?.caught_up)break
+    }
+    await hydrateServerUsdc()
+  }catch(e){console.warn('server Base indexer',e)}finally{S.serverIndexing=false}
+}
+async function hydrateServerPortfolio(owner=S.ownerCommitment){
+  owner=dbCommitment(owner);if(!owner||S.serverPortfolioLoaded.has(owner))return 0;
+  try{
+    const snap=await indexRpc('zecblocks_portfolio_snapshot',{p_owner_commitment:owner});
+    const rows=Array.isArray(snap?.tokens)?snap.tokens:[];
+    for(const x of rows){
+      const id=Number(x.token_id);if(!Number.isInteger(id)||id<1||id>CFG.supply)continue;
+      const e=normalizeEvent({protocol:'ZB1',v:1,type:'CLAIM',eventId:x.last_event_id||x.claim_txid||`server:${id}:${owner}`,txid:x.claim_txid||'',tokenId:id,
+        ownerCommitment:owner,sourceHeight:Number(x.source_height)||null,sourceHash:String(x.source_hash||''),
+        blockHeight:Number(x.last_zcash_height)||null,timestamp:Math.floor(new Date(x.updated_at||Date.now()).getTime()/1000),source:'supabase-index',serverLastEventType:String(x.last_event_type||'CLAIM')});
+      const k=eventKey(e)||e.eventId;S.walletRecovered.set(k,e);S.walletRecoveredClaims.set(id,e)
+    }
+    S.serverPortfolioLoaded.add(owner);rebuildState();renderPortfolio();updateWalletUI();
+    return rows.length
+  }catch(e){console.warn('server portfolio snapshot',e);return 0}
+}
+async function pushClaimsToServerIndex(){
+  const claims=[...S.walletRecoveredClaims.values()].filter(e=>e?.type==='CLAIM'&&e.tokenId&&e.nonce&&e.pubkey&&e.signature&&e.txid);
+  if(!claims.length)return;
+  const minimal=claims.map(e=>({tokenId:Number(e.tokenId),nonce:String(e.nonce),pubkey:String(e.pubkey),signature:String(e.signature),txid:String(e.txid)}));
+  for(let i=0;i<minimal.length;i+=20){try{await indexFunction('zecblocks-cache-claims',{claims:minimal.slice(i,i+20)})}catch(e){console.warn('claim server cache',e);break}}
+}
 function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
 function discoveryCache(){
   try{
@@ -476,6 +555,7 @@ async function connectWallet(silent=false){
     const k=await rpc('zcash_getPublicKey',[{signingMode:'derived'}]); if(!k?.pubkey)throw new Error('Noir Wallet did not return a derived public key.');
     S.pubkey=k.pubkey;S.ownerCommitment=await sha256HexBytes(hexToBytes(k.pubkey));
     const cachedClaims=hydrateWalletCache();
+    await hydrateServerPortfolio(S.ownerCommitment);
     try{S.balance=await rpc('zcash_getBalance')}catch{}
     rebuildState();updateWalletUI();renderPortfolio();
     if(silent){
@@ -614,6 +694,7 @@ async function loadWalletHistory(){
       }
     }
     saveWalletCache();rebuildState();renderPortfolio();updateWalletUI();
+    pushClaimsToServerIndex().catch(e=>console.warn('server claim sync',e));
     return {recovered,seen,claims:ids};
   }catch(e){
     console.warn('history',e);
@@ -957,7 +1038,8 @@ function tokenState(id){
   id=Number(id);
 
   const canonical=S.claims.get(id),walletClaim=S.walletRecoveredClaims.get(id);
-  const c=canonical||walletClaim||null;
+  const serverOwnerCheckpoint=walletClaim?.source==='supabase-index'&&String(walletClaim?.serverLastEventType||'CLAIM')!=='CLAIM';
+  const c=serverOwnerCheckpoint?walletClaim:(canonical||walletClaim||null);
   const settlements=[...S.verifiedAtomic.values(),...S.usdcVerifiedSettlements.values()]
     .filter(x=>Number(x.tokenId)===id)
     .sort(eventOrder);
@@ -1119,15 +1201,17 @@ function updateUsdcMarketMetrics(){
   const now=Math.floor(Date.now()/1000);
   const active=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===1&&Number(x.expiresAt)>now);
   const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
-  const floor=active.length?active.reduce((min,x)=>{
-    const p=Number(x.priceUSDC||0)/1e6;
-    return !min||p<min?p:min;
-  },0):0;
-  const volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0);
+  let floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
+  let volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0),salesN=sales.length,listedN=active.length;
+  if(S.serverUsdcMetrics){
+    const sf=Number(S.serverUsdcMetrics.floor_base_units||0)/1e6,sv=Number(S.serverUsdcMetrics.volume_base_units||0)/1e6;
+    if(sf>0)floor=sf;if(Number.isFinite(sv))volume=Math.max(volume,sv);
+    salesN=Math.max(salesN,Number(S.serverUsdcMetrics.sales)||0);listedN=Math.max(listedN,Number(S.serverUsdcMetrics.listed)||0)
+  }
   $('usdcFloorPrice').textContent=floor?`${floor.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`:'—';
   $('usdcTotalVolume').textContent=`${volume.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`;
-  $('usdcSalesCount').textContent=sales.length.toLocaleString();
-  $('usdcListedCount').textContent=active.length.toLocaleString();
+  $('usdcSalesCount').textContent=salesN.toLocaleString();
+  $('usdcListedCount').textContent=listedN.toLocaleString();
 }
 function activityKind(e){
   if(e.type==='ATOMIC_SETTLED'||e.type==='NOIR_SETTLED')return 'sale';
@@ -1511,6 +1595,7 @@ async function publishUsdcListing(){
     await publishRelay(relayEvent,{quiet:true});
     modal('usdcListingModal',false);
     toast(`USDC listing live · ${usdcFmt(priceUSDC)} USDC`,8000);
+    kickServerUsdcIndexer().catch(()=>{});
     await reconcileUsdcMarket()
   }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
 }
@@ -1524,6 +1609,7 @@ async function cancelUsdcListing(l){
     toast('Cancel submitted on Base…',6000);
     await tx.wait();
     toast('USDC listing cancelled.',7000);
+    kickServerUsdcIndexer().catch(()=>{});
     await reconcileUsdcMarket()
   }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
 }
@@ -1592,6 +1678,7 @@ async function buyUsdcListing(l){
     });
     rememberRuntimeEvent(settledEvent);
     await publishRelay(settledEvent,{quiet:true});
+    kickServerUsdcIndexer().catch(()=>{});
     await reconcileUsdcMarket();
     rebuildState();renderPortfolio();renderUsdcMarket();
     toast(`Purchase complete · ZEC BLOCK #${fresh.tokenId} · ${usdcFmt(amount)} USDC`,9000)
@@ -2509,6 +2596,7 @@ async function refreshAll(){await fetchRelay();await reconcileAtomicState();rebu
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
 hydrateUsdcCache();rebuildState();renderUsdcMarket();
+hydrateServerUsdc().then(()=>kickServerUsdcIndexer()).catch(()=>{});
 (async()=>{await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}try{await connectEvmWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();try{await reconcileUsdcMarket()}catch(e){console.warn('USDC market init',e)}rebuildState();updateWalletUI();renderUsdcMarket();renderAtomicDesk();updateMarketMetrics();
   if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{
     await fetchRelay();
