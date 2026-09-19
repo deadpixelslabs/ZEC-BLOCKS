@@ -98,7 +98,7 @@
 </div>
 </section>
 
-<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Chain-verified atomic settlement: seller lock first, then one multi-output Zcash payment. Ownership resolves automatically from the confirmed transaction.</p></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List an NFT</button></div></div>
+<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Atomic ZEC settlement extension: seller lock first, then one verified multi-output payment transaction.</p></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List an NFT</button></div></div>
 <section class="card">
   <div class="marketToolbar"><input id="marketSearch" class="input" placeholder="Search token ID or seller commitment"><select id="marketSort" class="select"><option value="new">Newest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option></select><span class="pill" id="relayStatus">Relays: connecting…</span></div>
   <div class="marketBody">
@@ -135,12 +135,12 @@
     </div>
     <div class="atomicCol">
       <h3>Buyer · Atomic Checkout</h3>
-      <p>Payment opens only after the seller lock is chain-verified. One transaction must contain the exact seller payout, 3% treasury fee, and a lock-specific settlement marker. The site watches Zcash automatically.</p>
+      <p>Payment opens only after the seller lock is confirmed. The settlement is valid only when one Zcash transaction contains the exact 97% seller output + 3% treasury output.</p>
       <div id="atomicBuyerList" class="atomicList"><div class="empty">Your locked atomic purchases will appear here.</div></div>
     </div>
   </div>
-  <div class="notice good"><b>Atomic rule:</b> seller authorization is chain-anchored first. Once the matching payment reaches final confirmation, the ZEC BLOCK deterministically resolves to the designated buyer. There is no post-payment seller approval.</div>
-  <div class="notice bad"><b>Wallet requirement:</b> Noir Wallet's current browser API cannot create a multi-recipient transaction. Never split the payment. Use a wallet that executes the generated ZIP-321 request as <b>one Zcash transaction</b>. V8 detects the payment from Zcash automatically — no seller action and no TXID paste are required.</div>
+  <div class="notice good"><b>Atomic rule:</b> seller authorization is locked first. A valid payment transaction deterministically moves the ZEC BLOCK to the designated buyer — no final seller approval is required.</div>
+  <div class="notice bad"><b>Wallet requirement:</b> Noir Wallet's current browser API cannot create a multi-recipient transaction. Do not send two separate payments. Atomic checkout must be executed by a wallet that creates the generated ZIP-321 multi-payment request as <b>one Zcash transaction</b>, then paste that TXID here for verification.</div>
   <div id="portfolioGrid" class="grid" style="margin-top:14px"></div>
 </section>
 
@@ -150,7 +150,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Chain Atomic Settlement V8</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Atomic Settlement V7</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -166,9 +166,9 @@ const CFG={
   supply:5000,powBits:26,freeClaims:500,paidClaimFeeZat:130000,marketFeeBps:300,
   explorer:'/api/zcash',
   relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band'],
-  nostrKind:30078,relayTag:'zb1-mainnet-v1',atomicLockSeconds:86400,atomicPayCutoffSeconds:3600,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFinalConfirmations:10
+  nostrKind:30078,relayTag:'zb1-mainnet-v1',atomicLockSeconds:86400,atomicPayCutoffSeconds:3600
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -201,93 +201,6 @@ function atomicSplit(price){
 }
 function sigPub(s){return s?.pubkey||s?.publicKey||''}
 function sigVal(s){return s?.signature||s?.sig||''}
-
-const B58='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-function bytesToBigIntBE(b){let x=0n;for(const v of b)x=(x<<8n)|BigInt(v);return x}
-function bigIntTo32(x){const b=new Uint8Array(32);for(let i=31;i>=0;i--){b[i]=Number(x&255n);x>>=8n}return b}
-function base58Encode(bytes){
-  let x=bytesToBigIntBE(bytes),s='';
-  while(x>0n){const r=Number(x%58n);s=B58[r]+s;x/=58n}
-  for(let i=0;i<bytes.length&&bytes[i]===0;i++)s='1'+s;
-  return s||'1'
-}
-async function p2pkhAddressFrom20(h20){
-  if(!(h20 instanceof Uint8Array)||h20.length!==20)throw new Error('Invalid P2PKH hash.');
-  const payload=concat(new Uint8Array([0x1c,0xb8]),h20);
-  const c1=await sha256Bytes(payload),c2=await sha256Bytes(c1);
-  return base58Encode(concat(payload,c2.slice(0,4)))
-}
-async function deterministicP2pkh(label){
-  const h=await sha256Bytes(enc.encode(label));
-  return p2pkhAddressFrom20(h.slice(0,20))
-}
-function compactSize(n){
-  if(n<=0xfc)return new Uint8Array([n]);
-  if(n<=0xffff)return new Uint8Array([0xfd,n&255,(n>>8)&255]);
-  const b=new Uint8Array(5);b[0]=0xfe;new DataView(b.buffer).setUint32(1,n,true);return b
-}
-async function doubleSha256(b){return sha256Bytes(await sha256Bytes(b))}
-const SP=0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fn;
-const SN=0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
-const SG={x:0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n,y:0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n};
-function smod(a,m){const r=a%m;return r<0n?r+m:r}
-function spow(a,e,m){let r=1n;a=smod(a,m);while(e>0n){if(e&1n)r=r*a%m;a=a*a%m;e>>=1n}return r}
-function sinv(a,m){if(smod(a,m)===0n)throw new Error('EC inverse of zero');return spow(a,m-2n,m)}
-function pneg(P){return P?{x:P.x,y:smod(-P.y,SP)}:null}
-function padd(P,Q){
-  if(!P)return Q;if(!Q)return P;
-  if(P.x===Q.x&&smod(P.y+Q.y,SP)===0n)return null;
-  let m;
-  if(P.x===Q.x&&P.y===Q.y){
-    if(P.y===0n)return null;
-    m=smod(3n*P.x*P.x*sinv(2n*P.y,SP),SP)
-  }else m=smod((Q.y-P.y)*sinv(Q.x-P.x,SP),SP);
-  const x=smod(m*m-P.x-Q.x,SP),y=smod(m*(P.x-x)-P.y,SP);
-  return {x,y}
-}
-function pmul(k,P){
-  if(!P||k===0n)return null;
-  if(k<0n)return pmul(-k,pneg(P));
-  let R=null,Q=P;
-  while(k>0n){if(k&1n)R=padd(R,Q);Q=padd(Q,Q);k>>=1n}
-  return R
-}
-function pointFromX(x,odd){
-  if(x<0n||x>=SP)return null;
-  const y2=smod(x*x*x+7n,SP),y0=spow(y2,(SP+1n)/4n,SP);
-  if(smod(y0*y0-y2,SP)!==0n)return null;
-  const y=Boolean(y0&1n)===Boolean(odd)?y0:SP-y0;
-  return {x,y}
-}
-function pointFromPubkey(hex){
-  const b=hexToBytes(String(hex||'').replace(/^0x/,''));
-  if(b.length===33&&(b[0]===2||b[0]===3))return pointFromX(bytesToBigIntBE(b.slice(1)),b[0]===3);
-  if(b.length===65&&b[0]===4){
-    const P={x:bytesToBigIntBE(b.slice(1,33)),y:bytesToBigIntBE(b.slice(33,65))};
-    if(smod(P.y*P.y-(P.x*P.x*P.x+7n),SP)!==0n)return null;return P
-  }
-  return null
-}
-async function verifyZcashCompactSignature(message,signature,pubkey){
-  try{
-    const clean=String(signature||'').toLowerCase().replace(/^0x/,'');
-    if(!/^[0-9a-f]{130}$/.test(clean))return false;
-    const sb=hexToBytes(clean),header=sb[0];
-    if(header<27||header>34)return false;
-    const compressed=header>=31,rec=compressed?header-31:header-27;
-    if(rec<0||rec>3)return false;
-    const r=bytesToBigIntBE(sb.slice(1,33)),s=bytesToBigIntBE(sb.slice(33,65));
-    if(r<=0n||r>=SN||s<=0n||s>=SN)return false;
-    const x=r+BigInt(rec>>1)*SN;if(x>=SP)return false;
-    const R=pointFromX(x,(rec&1)===1);if(!R||pmul(SN,R)!==null)return false;
-    const prefix='Zcash Signed Message:\n',pb=enc.encode(prefix),mb=enc.encode(message);
-    const payload=concat(compactSize(prefix.length),pb,compactSize(message.length),mb);
-    const h=await doubleSha256(payload),e=bytesToBigIntBE(h)%SN;
-    const Q=pmul(sinv(r,SN),padd(pmul(s,R),pneg(pmul(e,SG))));
-    const E=pointFromPubkey(pubkey);
-    return !!Q&&!!E&&Q.x===E.x&&Q.y===E.y
-  }catch(e){console.warn('signature verify',e);return false}
-}
 
 function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
 function eventKey(e){return e?.txid||e?.eventId||e?.listingId||null}
@@ -459,27 +372,6 @@ async function explorerFetch(kind,id){
   let j=null;try{j=await r.json()}catch{}
   if(!r.ok)throw new Error(j?.error||('Chain-data proxy error '+r.status));
   return j?.data??j;
-}
-async function explorerAddress(address,page=1,limit=100){
-  const url=CFG.explorer+'?kind=address&id='+encodeURIComponent(address)+'&page='+page+'&limit='+limit;
-  let r;
-  try{r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store'})}
-  catch{throw new Error('Chain-data proxy unreachable.')}
-  let j=null;try{j=await r.json()}catch{}
-  if(!r.ok)throw new Error(j?.error||('Address scan error '+r.status));
-  return j?.data??j
-}
-async function chainHeight(){
-  try{
-    const j=await explorerFetch('health');
-    const h=Number(deepFind(j,['currentHeight','current_height','blockHeight','block_height','height']));
-    return Number.isInteger(h)&&h>0?h:0
-  }catch{return 0}
-}
-async function confirmationCount(tx,bh){
-  const c=Number(deepFind(tx,['confirmations']));
-  if(Number.isInteger(c)&&c>=0)return c;
-  const tip=await chainHeight();return tip&&bh?Math.max(0,tip-bh+1):0
 }
 function deepFind(obj,keys){if(!obj||typeof obj!=='object')return null;for(const k of keys)if(obj[k]!=null)return obj[k];for(const v of Object.values(obj)){if(v&&typeof v==='object'){const x=deepFind(v,keys);if(x!=null)return x}}return null}
 async function resolveGenesis(){
@@ -876,7 +768,7 @@ $('publishListingBtn').onclick=async()=>{try{const tokenId=Number($('listingToke
 async function cancelListing(l){
   try{
     if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
-    if(l.sellerCommitment!==S.ownerCommitment)throw new Error('Only the listing owner can cancel it.');if(tokenIsAtomicLocked(l.tokenId))throw new Error('This listing has a chain-verified atomic lock and cannot be cancelled until settlement or expiry.');
+    if(l.sellerCommitment!==S.ownerCommitment)throw new Error('Only the listing owner can cancel it.');if(tokenIsAtomicLocked(l.tokenId))throw new Error('This listing is atomic-locked and cannot be cancelled until settlement or expiry.');
     const nonce=crypto.randomUUID();
     const msg=`ZB1:SALE_CANCEL:v1|G=${CFG.genesisTxid}|L=${l.listingId}|T=${l.tokenId}|O=${S.ownerCommitment}|X=${nonce}`;
     const sig=await signDerived(msg);
@@ -895,15 +787,6 @@ function openOffer(l){if(!S.ownerCommitment)return toast('Connect Noir Wallet fi
 $('publishOfferBtn').onclick=async()=>{try{const l=S.currentOfferListing;if(!l)throw new Error('No listing selected.');if(tokenIsAtomicLocked(l.tokenId))throw new Error('This NFT is already atomic-locked.');const price=$('offerPrice').value.trim();if(!decimalValid(price))throw new Error('Enter a valid ZEC offer.');const nonce=crypto.randomUUID(),msg=`ZB1:OFFER:v1|L=${l.listingId}|T=${l.tokenId}|P=${price}|B=${S.ownerCommitment}|X=${nonce}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'OFFER',eventId:'offer:'+nonce,listingId:l.listingId,tokenId:l.tokenId,price,buyerCommitment:S.ownerCommitment,sellerCommitment:l.sellerCommitment,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('offerModal',false);toast(pr.ok?`Offer published · ${pr.ok}/${pr.total} relays accepted`:'Offer saved locally. Refresh will retry.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
 
 function atomicLockId(o){const x=String(o.eventId||o.offerId||'').replace(/[^a-zA-Z0-9]/g,'');return 'L'+x.slice(-24)}
-function atomicLockMessage(x){
-  return `ZB1:ATOMIC_LOCK:v2|G=${CFG.genesisTxid}|L=${x.lockId}|I=${Number(x.tokenId)}|B=${x.buyerCommitment}|P=${x.price}|A=${x.sellerPayout}|E=${Number(x.expires)}|S=${x.sellerCommitment}`
-}
-async function atomicLockAnchorAddress(x){
-  return deterministicP2pkh(`ZB1:LOCK_ANCHOR:v2|M=${atomicLockMessage(x)}|K=${x.pubkey}|SIG=${x.signature}`)
-}
-async function atomicSettlementMarkerAddress(x){
-  return deterministicP2pkh(`ZB1:SETTLEMENT_MARKER:v2|L=${x.lockId}|I=${Number(x.tokenId)}|B=${x.buyerCommitment}|P=${x.price}|S=${x.sellerCommitment}|A=${x.sellerPayout}`)
-}
 function lockForOffer(o){
   const id=atomicLockId(o);return S.confirmedLocks.get(id)||S.atomicLocks.get(id)||null
 }
@@ -911,28 +794,24 @@ function sellerOffers(){
   if(!S.ownerCommitment)return[];
   return S.offers.filter(o=>{
     const l=S.listings.get(o.listingId);
-    return l&&o.sellerCommitment===S.ownerCommitment&&currentOwner(o.tokenId)===S.ownerCommitment&&!tokenIsAtomicLocked(o.tokenId)&&!S.verifiedAtomic.has(atomicLockId(o))
+    return l&&o.sellerCommitment===S.ownerCommitment&&currentOwner(o.tokenId)===S.ownerCommitment&&!S.atomicSettlements.has(atomicLockId(o))
   }).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
 }
 function buyerLocks(){
   if(!S.ownerCommitment)return[];
-  return [...S.confirmedLocks.values()].filter(l=>{
-    const active=activeAtomicLockForToken(l.tokenId);
-    return active&&active.lockId===l.lockId&&String(l.buyerCommitment||'').toLowerCase()===String(S.ownerCommitment).toLowerCase()&&!S.verifiedAtomic.has(l.lockId)
-  }).sort((a,b)=>(b.blockTime||b.timestamp||0)-(a.blockTime||a.timestamp||0))
+  return [...S.confirmedLocks.values()].filter(l=>String(l.buyerCommitment||'').toLowerCase()===String(S.ownerCommitment).toLowerCase()&&!S.verifiedAtomic.has(l.lockId))
+    .sort((a,b)=>(b.blockTime||b.timestamp||0)-(a.blockTime||a.timestamp||0))
 }
 function buildZip321(lock){
   const sp=atomicSplit(lock.price);
-  if(!lock.settlementMarker)throw new Error('Settlement marker is not ready.');
   const p=new URLSearchParams();
   p.set('address',lock.sellerPayout);p.set('amount',sp.sellerZec);
   p.set('address.1',CFG.treasury);p.set('amount.1',sp.feeZec);
-  p.set('address.2',lock.settlementMarker);p.set('amount.2',zatToZec(BigInt(CFG.atomicMarkerZat)));
-  p.set('message',`ZEC BLOCKS atomic ${lock.lockId}`);
+  p.set('message',`ZEC BLOCKS atomic settlement ${lock.lockId} / token #${lock.tokenId}`);
   return 'zcash:?'+p.toString()
 }
 function txOutputZat(o){
-  const v=o?.valueZat??o?.value_zat??o?.satoshis??o?.value??o?.amount;
+  const v=o?.value??o?.valueZat??o?.value_zat??o?.amount??o?.satoshis;
   if(v==null)return null;
   if(typeof v==='string'&&/^\d+$/.test(v))return BigInt(v);
   if(typeof v==='number'&&Number.isInteger(v))return BigInt(v);
@@ -941,149 +820,55 @@ function txOutputZat(o){
   return null
 }
 function outputAddress(o){return String(o?.address||o?.addr||o?.scriptPubKey?.addresses?.[0]||o?.scriptPubKey?.address||'')}
-function outputSum(outs,address){
-  let n=0n;for(const o of outs){if(outputAddress(o)!==address)continue;const v=txOutputZat(o);if(v!=null)n+=v}return n
-}
-async function txOrder(tx,bh,txid){
-  let ti=Number(deepFind(tx,['txIndex','tx_index','index']));
-  if(Number.isInteger(ti)&&ti>=0)return ti;
-  try{
-    const b=await explorerFetch('block',bh),a=deepFind(b,['transactions','tx']);
-    if(Array.isArray(a)){
-      ti=a.findIndex(x=>String(typeof x==='string'?x:(x?.txid||x?.hash||'')).toLowerCase()===String(txid).toLowerCase());
-      if(ti>=0)return ti
-    }
-  }catch{}
-  return 0
-}
 async function confirmLockEvent(lock){
+  if(!lock?.txid||!/^[0-9a-f]{64}$/i.test(lock.txid))return null;
   try{
-    if(!lock?.anchorTxid&&!lock?.txid)return null;
-    const txid=String(lock.anchorTxid||lock.txid).toLowerCase();
-    if(!/^[0-9a-f]{64}$/.test(txid))return null;
-    if(!Number.isInteger(Number(lock.tokenId))||Number(lock.tokenId)<1||Number(lock.tokenId)>CFG.supply)return null;
-    if(!/^[0-9a-f]{64}$/i.test(String(lock.sellerCommitment||''))||!/^[0-9a-f]{64}$/i.test(String(lock.buyerCommitment||'')))return null;
-    if(!decimalValid(lock.price)||!/^t[13][A-Za-z0-9]{20,}$/.test(String(lock.sellerPayout||'')))return null;
-    if(!/^[0-9a-f]+$/i.test(String(lock.pubkey||''))||!/^[0-9a-f]{130}$/i.test(String(lock.signature||'').replace(/^0x/,'')))return null;
-
-    const derivedOwner=await sha256HexBytes(hexToBytes(String(lock.pubkey).replace(/^0x/,'')));
-    if(derivedOwner.toLowerCase()!==String(lock.sellerCommitment).toLowerCase())return null;
-    const message=atomicLockMessage(lock);
-    if(!(await verifyZcashCompactSignature(message,lock.signature,lock.pubkey)))return null;
-
-    const anchor=await atomicLockAnchorAddress(lock),marker=await atomicSettlementMarkerAddress(lock);
-    if(lock.anchorAddress&&lock.anchorAddress!==anchor)return null;
-    if(lock.settlementMarker&&lock.settlementMarker!==marker)return null;
-
-    const tx=await explorerFetch('tx',txid);
+    const tx=await explorerFetch('tx',lock.txid);
     const bh=Number(deepFind(tx,['blockHeight','block_height','blockheight','height']));
     if(!Number.isInteger(bh)||bh<=0)return null;
-    const conf=await confirmationCount(tx,bh);
-    if(conf<CFG.atomicLockConfirmations)return null;
-    const bt=Number(deepFind(tx,['blockTime','block_time','time','timestamp']))||Number(lock.timestamp)||0;
-    if(Number(lock.expires||0)<=bt)return null;
-    const outs=Array.isArray(tx?.outputs)?tx.outputs:(deepFind(tx,['outputs','vout'])||[]);
-    if(!Array.isArray(outs))return null;
-    if(outputSum(outs,anchor)!==BigInt(CFG.atomicAnchorZat))return null;
-    const ti=await txOrder(tx,bh,txid);
-    return {...lock,txid,anchorTxid:txid,anchorAddress:anchor,settlementMarker:marker,blockHeight:bh,blockTime:bt,txIndex:ti,confirmations:conf,confirmed:true,validatedSignature:true}
-  }catch(e){console.warn('lock verify',e);return null}
+    const bt=Number(deepFind(tx,['blockTime','block_time','time','timestamp']))||lock.timestamp||0;
+    return {...lock,blockHeight:bh,blockTime:bt,confirmed:true}
+  }catch{return null}
 }
-async function verifyAtomicPaymentTx(lock,txid,{requireFinal=true}={}){
+async function verifyAtomicPaymentTx(lock,txid){
   if(!lock)throw new Error('Atomic lock not found.');
-  if(!/^[0-9a-f]{64}$/i.test(String(txid||'')))throw new Error('Invalid Zcash payment TXID.');
+  if(!/^[0-9a-f]{64}$/i.test(String(txid||'')))throw new Error('Enter a valid 64-character Zcash TXID.');
   const tx=await explorerFetch('tx',txid);
   const bh=Number(deepFind(tx,['blockHeight','block_height','blockheight','height']));
-  if(!Number.isInteger(bh)||bh<=0)throw new Error('Atomic payment is not confirmed yet.');
-  const conf=await confirmationCount(tx,bh);
-  if(requireFinal&&conf<CFG.atomicFinalConfirmations)throw new Error(`Waiting for finality: ${conf}/${CFG.atomicFinalConfirmations} confirmations.`);
+  if(!Number.isInteger(bh)||bh<=0)throw new Error('Atomic payment is not confirmed on Zcash yet.');
   const bt=Number(deepFind(tx,['blockTime','block_time','time','timestamp']))||0;
-  if(lock.blockHeight&&bh<=Number(lock.blockHeight))throw new Error('Payment must confirm after the lock.');
-  if(bt&&Number(lock.expires||0)&&bt>Number(lock.expires))throw new Error('Payment confirmed after lock expiry.');
+  if(lock.blockHeight&&bh<=Number(lock.blockHeight))throw new Error('Payment transaction must confirm after the atomic lock.');
+  if(bt&&Number(lock.expires||0)&&bt>Number(lock.expires))throw new Error('Payment confirmed after the atomic lock expired.');
 
   const sp=atomicSplit(lock.price),outs=Array.isArray(tx?.outputs)?tx.outputs:(deepFind(tx,['outputs','vout'])||[]);
-  if(!Array.isArray(outs))throw new Error('Explorer did not return transparent outputs.');
+  if(!Array.isArray(outs))throw new Error('Explorer did not return transparent outputs for this transaction.');
 
-  const sellerPaid=outputSum(outs,lock.sellerPayout);
-  const feePaid=outputSum(outs,CFG.treasury);
-  const markerPaid=outputSum(outs,lock.settlementMarker);
-  if(sellerPaid!==sp.seller)throw new Error(`Seller output must equal exactly ${sp.sellerZec} ZEC.`);
-  if(feePaid!==sp.fee)throw new Error(`Treasury output must equal exactly ${sp.feeZec} ZEC.`);
-  if(markerPaid!==BigInt(CFG.atomicMarkerZat))throw new Error(`Atomic marker output must equal exactly ${zatToZec(BigInt(CFG.atomicMarkerZat))} ZEC.`);
+  let sellerPaid=0n,feePaid=0n;
+  for(const o of outs){
+    const a=outputAddress(o),v=txOutputZat(o);if(v==null)continue;
+    if(a===lock.sellerPayout)sellerPaid+=v;
+    if(a===CFG.treasury)feePaid+=v
+  }
+  if(sellerPaid<sp.seller)throw new Error(`Seller output mismatch. Required ${sp.sellerZec} ZEC in this same transaction.`);
+  if(feePaid<sp.fee)throw new Error(`Treasury output mismatch. Required ${sp.feeZec} ZEC (3%) in this same transaction.`);
 
-  const ti=await txOrder(tx,bh,txid);
-  return {txid:String(txid).toLowerCase(),paymentTxid:String(txid).toLowerCase(),blockHeight:bh,blockTime:bt,txIndex:ti,confirmations:conf,sellerPaid:sellerPaid.toString(),feePaid:feePaid.toString(),markerPaid:markerPaid.toString()}
-}
-async function sellerAddressCandidates(lock){
-  const out=[],seen=new Set(),floor=(Number(lock.blockTime)||Number(lock.timestamp)||0)-300;
-  for(let page=1;page<=5;page++){
-    let j;try{j=await explorerAddress(lock.sellerPayout,page,100)}catch(e){console.warn('address scan',e);break}
-    const txs=deepFind(j,['transactions','txs','history'])||[];
-    if(!Array.isArray(txs)||!txs.length)break;
-    let oldEnough=false;
-    for(const x of txs){
-      const id=String(x?.txid||x?.hash||'').toLowerCase(),ts=Number(x?.timestamp||x?.blockTime||x?.block_time||0);
-      if(ts&&ts<floor)oldEnough=true;
-      if(/^[0-9a-f]{64}$/.test(id)&&!seen.has(id)&&(!ts||ts>=floor)){seen.add(id);out.push({txid:id,timestamp:ts})}
-    }
-    if(oldEnough||txs.length<100)break
-  }
-  return out.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))
-}
-async function autoFindAtomicPayment(lock){
-  const candidates=await sellerAddressCandidates(lock);
-  let pending=null;
-  for(const c of candidates){
-    try{
-      const v=await verifyAtomicPaymentTx(lock,c.txid,{requireFinal:false});
-      if(v.confirmations>=CFG.atomicFinalConfirmations)return v;
-      if(!pending||v.confirmations>pending.confirmations)pending=v
-    }catch{}
-  }
-  return pending?{...pending,pendingFinality:true}:null
+  return {txid:String(txid).toLowerCase(),blockHeight:bh,blockTime:bt,sellerPaid:sellerPaid.toString(),feePaid:feePaid.toString()}
 }
 async function reconcileAtomicState(){
-  if(S.atomicWatchBusy)return;
-  S.atomicWatchBusy=true;
-  try{
-    const locks=[...S.atomicLocks.values()].slice(-150);
-    for(const l of locks){
-      const old=S.confirmedLocks.get(l.lockId);
-      if(old&&old.confirmations>=CFG.atomicLockConfirmations)continue;
-      const c=await confirmLockEvent(l);if(c)S.confirmedLocks.set(l.lockId,c)
-    }
-
-    // Deterministic conflict rule: first valid confirmed lock in chain order wins for each token.
-    const ordered=[...S.confirmedLocks.values()].sort(eventOrder),winner=new Map();
-    for(const l of ordered){
-      const id=Number(l.tokenId);
-      const existing=winner.get(id);
-      if(existing&&Number(l.blockTime||0)<=Number(existing.expires||0))continue;
-      if(currentOwner(id)!==String(l.sellerCommitment).toLowerCase()&&!existing)continue;
-      winner.set(id,l)
-    }
-    S.confirmedLocks=new Map([...S.confirmedLocks].filter(([id,l])=>winner.get(Number(l.tokenId))?.lockId===id || Number(l.expires||0)<Math.floor(Date.now()/1000)));
-
-    for(const lock of [...S.confirmedLocks.values()]){
-      if(S.verifiedAtomic.has(lock.lockId))continue;
-      const active=activeAtomicLockForToken(lock.tokenId);
-      if(!active||active.lockId!==lock.lockId)continue;
-      const found=await autoFindAtomicPayment(lock);
-      if(!found)continue;
-      if(found.pendingFinality){
-        lock.paymentSeen=found;continue
-      }
-      const e=normalizeEvent({
-        protocol:'ZB1',v:2,type:'ATOMIC_SETTLED',eventId:'atomic-settled:'+lock.lockId,lockId:lock.lockId,
-        tokenId:Number(lock.tokenId),price:lock.price,sellerCommitment:lock.sellerCommitment,buyerCommitment:lock.buyerCommitment,
-        paymentTxid:found.txid,txid:found.txid,listingId:lock.listingId,offerId:lock.offerId,
-        timestamp:found.blockTime||Math.floor(Date.now()/1000),derivedFromChain:true,...found
-      });
-      S.verifiedAtomic.set(lock.lockId,e);
-      saveLocalEvent(e);
-      try{await publishRelay(e)}catch{}
-    }
-  }finally{S.atomicWatchBusy=false}
+  const locks=[...S.atomicLocks.values()].slice(-100);
+  for(const l of locks){
+    if(S.confirmedLocks.has(l.lockId))continue;
+    const c=await confirmLockEvent(l);if(c)S.confirmedLocks.set(l.lockId,c)
+  }
+  const settlements=[...S.atomicSettlements.values()].slice(-100);
+  for(const s of settlements){
+    if(S.verifiedAtomic.has(s.lockId))continue;
+    const lock=S.confirmedLocks.get(s.lockId);if(!lock)continue;
+    try{
+      const v=await verifyAtomicPaymentTx(lock,s.paymentTxid||s.txid);
+      S.verifiedAtomic.set(s.lockId,{...s,...v,type:'ATOMIC_SETTLED',tokenId:Number(lock.tokenId),price:lock.price,buyerCommitment:lock.buyerCommitment,sellerCommitment:lock.sellerCommitment})
+    }catch(e){console.warn('atomic settlement verify',s.lockId,e)}
+  }
 }
 async function atomicAcceptAndLock(o){
   try{
@@ -1093,49 +878,54 @@ async function atomicAcceptAndLock(o){
     if(tokenIsAtomicLocked(o.tokenId))throw new Error('This token is already atomic-locked.');
     const l=S.listings.get(o.listingId);if(!l||!activeListings().some(x=>x.listingId===o.listingId))throw new Error('Listing is no longer active.');
     const payout=String(S.connection?.transparent||'');
-    if(!/^t[13][A-Za-z0-9]{20,}$/.test(payout))throw new Error('Noir Wallet did not expose a transparent payout address.');
+    if(!/^t[13][A-Za-z0-9]{20,}$/.test(payout))throw new Error('Noir Wallet did not expose a mainnet transparent payout address.');
     atomicSplit(o.price);
 
     const lockId=atomicLockId(o),expires=Math.floor(Date.now()/1000)+CFG.atomicLockSeconds;
-    const base={
-      protocol:'ZB1',v:2,type:'ATOMIC_LOCK',eventId:'atomic-lock:'+lockId,lockId,
+    const msg=`ZB1:ATOMIC_LOCK:v1|G=${CFG.genesisTxid}|L=${lockId}|I=${o.tokenId}|B=${o.buyerCommitment}|P=${o.price}|A=${payout}|E=${expires}|S=${S.ownerCommitment}`;
+    const sig=await signDerived(msg);
+    const memo=`ZB1|L|1|L=${lockId}|I=${o.tokenId}|B=${o.buyerCommitment}|P=${o.price}|A=${payout}|E=${expires}|K=${sigPub(sig)}|S=${sigVal(sig)}`;
+    if(enc.encode(memo).length>512)throw new Error(`Atomic lock memo is ${enc.encode(memo).length} bytes; maximum is 512.`);
+
+    toast('Approve the on-chain atomic NFT lock in Noir Wallet. No buyer payment is enabled until this confirms.',9000);
+    const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);
+    const ev=normalizeEvent({
+      protocol:'ZB1',v:1,type:'ATOMIC_LOCK',eventId:'atomic-lock:'+lockId,lockId,txid,memo,
       listingId:o.listingId,offerId:o.eventId,tokenId:Number(o.tokenId),price:String(o.price),
       sellerCommitment:S.ownerCommitment,buyerCommitment:o.buyerCommitment,sellerPayout:payout,expires,
-      timestamp:Math.floor(Date.now()/1000),status:'pending'
-    };
-    const msg=atomicLockMessage(base),sig=await signDerived(msg);
-    base.pubkey=sigPub(sig);base.signature=sigVal(sig);
-    base.anchorAddress=await atomicLockAnchorAddress(base);
-    base.settlementMarker=await atomicSettlementMarkerAddress(base);
-
-    toast(`Approve the public lock anchor (${zatToZec(BigInt(CFG.atomicAnchorZat))} ZEC). Buyer payment remains disabled until ${CFG.atomicLockConfirmations} confirmations.`,10000);
-    const txid=await rpc('zcash_sendTransaction',[{to:base.anchorAddress,amount:zatToZec(BigInt(CFG.atomicAnchorZat)),fundingSource:'shielded'}]);
-    const ev=normalizeEvent({...base,txid,anchorTxid:txid});
-    const pr=await publishRelay(ev);
-    toast(`Atomic lock anchor broadcast: ${short(txid,8)} · ${pr.ok||0}/${pr.total||0} relay acknowledgements.`,10000);
-    await fetchRelay();await reconcileAtomicState();rebuildState();renderAtomicDesk();renderPortfolio();renderMarket()
+      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'
+    });
+    await publishRelay(ev);toast(`Atomic lock broadcast: ${short(txid,8)}. Buyer payment stays disabled until confirmation.`,10000);
+    await fetchRelay();await reconcileAtomicState();renderAtomicDesk();renderPortfolio();renderMarket()
   }catch(e){toast(e.message||String(e),10000)}
 }
 async function copyAtomicRequest(lock){
-  try{
-    const uri=buildZip321(lock);await navigator.clipboard.writeText(uri);
-    toast('Atomic ZIP-321 request copied. Execute all 3 outputs in ONE transaction only.',8000)
-  }catch(e){toast(e.message||String(e),7000)}
+  try{const uri=buildZip321(lock);await navigator.clipboard.writeText(uri);toast('ZIP-321 atomic payment request copied. It must be executed as ONE transaction.',7000)}
+  catch(e){toast(e.message||String(e),7000)}
 }
 function openAtomicRequest(lock){
   if(Math.floor(Date.now()/1000)>Number(lock.expires)-CFG.atomicPayCutoffSeconds)return toast('Payment window is too close to expiry. Do not pay this lock.',9000);
-  window.location.href=buildZip321(lock)
+  const uri=buildZip321(lock);
+  window.location.href=uri
 }
-async function manualAtomicCheck(lock){
+async function submitAtomicTx(lock,input){
   try{
-    toast('Checking Zcash for the matching multi-output payment…',5000);
-    await reconcileAtomicState();rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity();
-    if(S.verifiedAtomic.has(lock.lockId))toast(`Atomic settlement final. ZEC BLOCK #${lock.tokenId} belongs to the buyer.`,9000);
-    else if(lock.paymentSeen)toast(`Payment detected · ${lock.paymentSeen.confirmations}/${CFG.atomicFinalConfirmations} confirmations. Ownership will resolve automatically at finality.`,9000);
-    else toast('No matching atomic payment found yet.',7000)
-  }catch(e){toast(e.message||String(e),9000)}
+    const txid=String(input.value||'').trim().toLowerCase();
+    const v=await verifyAtomicPaymentTx(lock,txid);
+    const nonce=crypto.randomUUID();
+    const msg=`ZB1:ATOMIC_SETTLED:v1|L=${lock.lockId}|I=${lock.tokenId}|P=${lock.price}|B=${lock.buyerCommitment}|X=${txid}`;
+    const sig=await signDerived(msg);
+    const e=normalizeEvent({
+      protocol:'ZB1',v:1,type:'ATOMIC_SETTLED',eventId:'atomic-settled:'+lock.lockId,lockId:lock.lockId,
+      tokenId:Number(lock.tokenId),price:lock.price,sellerCommitment:lock.sellerCommitment,buyerCommitment:lock.buyerCommitment,
+      paymentTxid:txid,txid,listingId:lock.listingId,offerId:lock.offerId,pubkey:sigPub(sig),signature:sigVal(sig),
+      timestamp:Math.floor(Date.now()/1000),...v
+    });
+    S.verifiedAtomic.set(lock.lockId,e);await publishRelay(e);
+    toast(`Atomic settlement verified. ZEC BLOCK #${lock.tokenId} now resolves to the buyer commitment.`,10000);
+    await fetchRelay();await reconcileAtomicState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity()
+  }catch(e){toast(e.message||String(e),10000)}
 }
-
 function renderAtomicDesk(){
   const sl=$('atomicSellerList'),bl=$('atomicBuyerList');if(!sl||!bl)return;
   sl.innerHTML='';bl.innerHTML='';
@@ -1149,38 +939,33 @@ function renderAtomicDesk(){
   for(const o of offers){
     const raw=lockForOffer(o),confirmed=raw&&S.confirmedLocks.has(raw.lockId),locked=confirmed?S.confirmedLocks.get(raw.lockId):raw;
     const item=document.createElement('div');item.className='atomicItem';
-    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(o.tokenId)} · ${esc(o.price)} ZEC</b><span class="atomicState ${confirmed?'atomicLocked':''}">${confirmed?'CHAIN LOCKED':raw?'ANCHOR CONFIRMING':'NEW OFFER'}</span></div>
-      <div class="atomicInfo"><span>Buyer ${esc(short(o.buyerCommitment,7))}</span><span>97% seller · 3% protocol</span>${confirmed?`<span>${esc(String(locked.confirmations||CFG.atomicLockConfirmations))}+ lock conf</span><span>Payment watch active</span>`:''}</div><div class="controls"></div>`;
-    const ctl=item.querySelector('.controls'),b=document.createElement('button');b.className='btn '+(raw?'':'green')+' small';
-    b.textContent=confirmed?'Waiting for Atomic Payment':raw?'Lock Confirmation Pending':'Accept & Chain-Lock';
+    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(o.tokenId)} · ${esc(o.price)} ZEC</b><span class="atomicState ${confirmed?'atomicLocked':''}">${confirmed?'LOCKED':raw?'LOCK PENDING':'NEW OFFER'}</span></div>
+      <div class="atomicInfo"><span>Buyer ${esc(short(o.buyerCommitment,7))}</span><span>3% fee · 97% seller</span></div><div class="controls"></div>`;
+    const ctl=item.querySelector('.controls');
+    const b=document.createElement('button');b.className='btn '+(raw?'':'green')+' small';
+    b.textContent=confirmed?'Waiting for Buyer':raw?'Lock Confirmation Pending':'Accept & Atomic Lock';
     b.disabled=!!raw;b.onclick=()=>atomicAcceptAndLock(o);ctl.appendChild(b);sl.appendChild(item)
   }
 
   const locks=buyerLocks();
   if(!locks.length)bl.innerHTML='<div class="empty">No confirmed atomic locks for this buyer identity.</div>';
   for(const lock of locks){
-    const left=Number(lock.expires)-Math.floor(Date.now()/1000),safe=left>CFG.atomicPayCutoffSeconds,sp=atomicSplit(lock.price),uri=buildZip321(lock),pending=lock.paymentSeen;
+    const left=Number(lock.expires)-Math.floor(Date.now()/1000),safe=left>CFG.atomicPayCutoffSeconds,sp=atomicSplit(lock.price),uri=buildZip321(lock);
     const item=document.createElement('div');item.className='atomicItem';
-    const state=pending?`PAYMENT ${pending.confirmations}/${CFG.atomicFinalConfirmations} CONF`:safe?'PAYMENT READY':'EXPIRING · DO NOT PAY';
-    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(lock.tokenId)} · ${esc(lock.price)} ZEC</b><span class="atomicState ${pending?'atomicLocked':safe?'atomicReady':''}">${esc(state)}</span></div>
-      <div class="atomicInfo"><span>Seller ${esc(sp.sellerZec)} ZEC</span><span>Treasury ${esc(sp.feeZec)} ZEC</span><span>Marker ${esc(zatToZec(BigInt(CFG.atomicMarkerZat)))} ZEC</span><span>${Math.max(0,Math.floor(left/60))} min left</span></div>
+    item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(lock.tokenId)} · ${esc(lock.price)} ZEC</b><span class="atomicState ${safe?'atomicReady':''}">${safe?'PAYMENT READY':'EXPIRING · DO NOT PAY'}</span></div>
+      <div class="atomicInfo"><span>Seller ${esc(sp.sellerZec)} ZEC</span><span>Treasury ${esc(sp.feeZec)} ZEC</span><span>One transaction only</span><span>${Math.max(0,Math.floor(left/60))} min left</span></div>
       <textarea class="atomicUri" readonly>${esc(uri)}</textarea>
       <div class="controls atomicControls"></div>
-      <div class="notice" style="margin-top:8px">After you approve the ONE multi-output transaction, keep this page open if possible. V8 also recovers the settlement later from the seller payout address, so no seller approval or TXID submission is required.</div>`;
+      <div class="inputrow"><input class="input atomicTxid" placeholder="Paste the ONE atomic payment TXID"><button class="btn green verifyAtomicBtn">Verify & Settle</button></div>`;
     const ctl=item.querySelector('.atomicControls');
-    const cp=document.createElement('button');cp.className='btn small';cp.textContent='Copy Atomic Request';cp.onclick=()=>copyAtomicRequest(lock);
-    const op=document.createElement('button');op.className='btn gold small';op.textContent='Open Wallet';op.disabled=!safe||!!pending;op.onclick=()=>openAtomicRequest(lock);
-    const ck=document.createElement('button');ck.className='btn green small';ck.textContent='Check Payment Now';ck.onclick=()=>manualAtomicCheck(lock);
-    ctl.append(cp,op,ck);bl.appendChild(item)
-  }
-
-  const mine=[...S.verifiedAtomic.values()].filter(x=>String(x.buyerCommitment||'').toLowerCase()===String(S.ownerCommitment).toLowerCase()).slice(-5);
-  for(const s of mine){
-    const done=document.createElement('div');done.className='atomicItem';
-    done.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(s.tokenId)} · ${esc(s.price)} ZEC</b><span class="atomicState atomicDone">ATOMIC FINAL</span></div><div class="atomicInfo"><span>Payment ${esc(short(s.paymentTxid||s.txid,7))}</span><span>${esc(String(s.confirmations||CFG.atomicFinalConfirmations))}+ confirmations</span></div>`;
-    bl.appendChild(done)
+    const cp=document.createElement('button');cp.className='btn small';cp.textContent='Copy ZIP-321 Request';cp.onclick=()=>copyAtomicRequest(lock);
+    const op=document.createElement('button');op.className='btn gold small';op.textContent='Open Atomic Payment';op.disabled=!safe;op.onclick=()=>openAtomicRequest(lock);
+    ctl.append(cp,op);
+    item.querySelector('.verifyAtomicBtn').onclick=()=>submitAtomicTx(lock,item.querySelector('.atomicTxid'));
+    bl.appendChild(item)
   }
 }
+
 function renderPortfolio(){
   const own=ownedTokens();$('ownedCount').textContent=own.length;$('listingCount').textContent=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;$('offerCount').textContent=S.ownerCommitment?S.offers.filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;
   const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';renderAtomicDesk();return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS were recovered for this owner commitment. Click Recover & Sync Portfolio; claims made from this Noir Wallet are rebuilt from its ZB-1 transaction memos.</div>';renderAtomicDesk();return}
@@ -1202,12 +987,10 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   await reconcileAtomicState();rebuildState();updateWalletUI();renderPortfolio();renderAtomicDesk();
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
-$('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT has a chain-verified atomic lock. Direct transfer is invalid under ZB-1 v2 until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
-async function refreshAll(){await fetchRelay();await reconcileAtomicState();rebuildState();renderMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
+$('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT is atomic-locked. Direct transfer is invalid until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
+async function refreshAll(){await fetchRelay();await reconcileAtomicState();renderMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
-(async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();updateWalletUI();renderAtomicDesk();updateMarketMetrics();
-  if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{await reconcileAtomicState();rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity()}catch(e){console.warn('atomic watcher',e)}},20000)
-})();
+(async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();updateWalletUI();renderAtomicDesk();updateMarketMetrics()})();
 </script>
 </body></html>

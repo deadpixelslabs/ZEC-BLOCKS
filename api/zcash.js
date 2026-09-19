@@ -25,15 +25,10 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   const kind = String(req.query.kind || 'health');
   const id = req.query.id != null ? String(req.query.id) : '';
-  if (!['health','tx','block','address'].includes(kind)) return res.status(400).json({ error: 'Unsupported kind' });
-  if ((kind === 'tx' || kind === 'block' || kind === 'address') && !id) return res.status(400).json({ error: 'Missing id' });
+  if (!['health','tx','block'].includes(kind)) return res.status(400).json({ error: 'Unsupported kind' });
+  if ((kind === 'tx' || kind === 'block') && !id) return res.status(400).json({ error: 'Missing id' });
 
-  const page = Math.max(1, Math.min(1000, Number(req.query.page || 1)));
-  const limit = Math.max(1, Math.min(100, Number(req.query.limit || 100)));
-  const path = kind === 'health' ? '/info'
-    : kind === 'tx' ? '/tx/' + encodeURIComponent(id)
-    : kind === 'block' ? '/block/' + encodeURIComponent(id)
-    : '/address/' + encodeURIComponent(id) + '?page=' + page + '&limit=' + limit;
+  const path = kind === 'health' ? '/info' : kind === 'tx' ? '/tx/' + encodeURIComponent(id) : '/block/' + encodeURIComponent(id);
   let lastError = null;
   for (const base of BASES) {
     try {
