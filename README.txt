@@ -1,42 +1,60 @@
-ZEC BLOCKS MAIN V6 — LIVE SELLER-APPROVED MARKETPLACE SETTLEMENT
+ZEC BLOCKS — MAIN MARKETPLACE
 
-WHAT IS LIVE
-1. Seller lists a ZEC BLOCK.
-2. Buyer makes a signed offer.
-3. Seller Inbox shows Accept Offer / Reject.
-4. Seller accepts one offer and publishes a shielded payment address.
-5. Buyer sees the accepted trade in My Purchases and pays the exact offer price.
-6. Buyer payment carries a private ZB1PAY memo to the seller.
-7. Seller clicks Verify Payment & Complete Sale.
-8. The site verifies the exact incoming TXID + amount + memo in the connected seller Noir Wallet
-   and requires Zcash confirmation.
-9. Seller pays the 3% marketplace fee to the locked treasury address.
-10. Seller approves the ZB-1 NFT transfer to the buyer.
-11. A SALE_SETTLED event is published. Sales/volume only count after the transfer TX confirms.
+Deploy this folder to the main ZEC BLOCKS Vercel project.
+Recommended domains:
+- https://www.zecblocks.xyz
+- https://zecblocks.xyz -> redirect to www
 
-MARKETPLACE FEE
-- 3% (300 bps)
-- Treasury: t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz
-- Buyer pays the agreed price to seller.
-- Seller pays the 3% fee from received proceeds before NFT transfer.
-- Seller net is therefore approximately 97% before normal Zcash network fees.
+Mining is intentionally separated and linked to:
+https://mine.zecblocks.xyz
 
-IMPORTANT NON-ATOMIC LIMITATION
-Noir Wallet's current dApp API sends to one destination per transaction and does not expose PCZT
-signing to dApps. Therefore buyer ZEC payment + marketplace fee + NFT transfer cannot be one
-atomic transaction from this browser app. This V6 is non-custodial and seller-approved, not escrow:
-a malicious seller could receive buyer payment and refuse to complete the transfer. The UI makes
-that limitation explicit and verifies seller-side receipt before enabling the normal finalization flow.
+Keep api/zcash.js and vercel.json. The marketplace/portfolio still use the same public Zcash data proxy.
 
-COMPATIBILITY
-- Existing V5 listings and offers remain readable.
-- Seller acceptance adds the payment address only when an offer is accepted.
-- Existing ZB-1 CLAIM / TRANSFER rules, Genesis, supply and 26-bit mining are unchanged.
-- Public relays remain discovery/cache; Zcash remains the ownership anchor.
-- api/zcash.js and vercel.json are included. Deploy the entire ZIP to www.zecblocks.xyz.
 
-SAFETY LOCKS ADDED
-- Accepted listings cannot be cancelled through the normal UI.
-- NFTs in an accepted trade cannot be manually transferred through the generic Transfer button.
-- The settlement authorization is signed before the irreversible NFT transfer is broadcast.
-- SALE_SETTLED uses its own event ID instead of reusing the TRANSFER TXID, preventing relay/local de-dup collisions.
+ZEC BLOCKS MAIN MARKETPLACE V2 — PERSISTENT DISCOVERY
+- Multi-relay marketplace mirroring (4 relays)
+- Per-relay read recovery; one unavailable relay does not blank the marketplace
+- Automatic reconstruction after website redeploy
+- Local signed-event cache survives ordinary site updates on the same origin
+- Automatic repair of locally-created events missing from relays (rate-limited)
+- Cancel Listing creates a signed SALE_CANCEL event instead of deleting database state
+- Only newest valid active listing per token is shown
+- Ownership still comes from ZB-1 CLAIM/TRANSFER state, not relay availability
+
+Deploy the whole folder to the www.zecblocks.xyz Vercel project.ZEC BLOCKS MAIN MARKETPLACE V3 — ACTIVITY
+- Marketplace stats: floor, total completed-sale volume, sales count, listed count
+- Activity feed: SALE, LIST, OFFER, CANCEL, TRANSFER
+- Activity filter for sales/listings/offers/transfers
+- Volume is intentionally calculated ONLY from SALE_SETTLED events
+- Listings/offers are never counted as volume
+- Existing multi-relay persistence/recovery remains enabled
+- Ready for future settlement flow without faking historical volume
+
+IMPORTANT:
+The current P2P marketplace does not have an atomic ZEC-for-NFT settlement primitive.
+Until the protocol emits explicit SALE_SETTLED events, Sales and Total Volume correctly remain 0.V4 PORTFOLIO RECOVERY FIX
+- Fixes previously mined ZEC BLOCKS not appearing on www.zecblocks.xyz.
+- Root cause: mine.zecblocks.xyz and www.zecblocks.xyz have separate localStorage,
+  and old CLAIM memos did not store ownerCommitment directly.
+- Main site now reads Noir Wallet transaction history and reconstructs:
+  * CLAIM token ID
+  * ownerCommitment = SHA256(claim public key)
+  * deterministic source height/hash
+  * 26-bit SHA-256 proof validation
+  * outgoing TRANSFER sender commitment
+- "Sync Portfolio" renamed to "Recover & Sync Portfolio".
+- Existing marketplace/activity/multi-relay behavior remains.
+- Genesis and protocol rules are unchanged.
+
+Deploy this package to the MAIN www.zecblocks.xyz Vercel project.
+The mining subdomain does not need to change for this portfolio fix.
+
+V5 PORTFOLIO FIX
+- Fixes the case where Noir Wallet reports ZB-1 events but Owned remains 0.
+- localStorage events are now UPSERTED/ENRICHED instead of ignoring duplicate TXIDs.
+- Wallet-recovered claim data cannot be overwritten by sparse relay copies.
+- Recovered CLAIMs are independently rebuilt and 26-bit PoW checked.
+- Zcash block height / tx index are fetched when available for canonical ordering.
+- Wallet-recovered claims remain visible while relay recovery catches up.
+- Recovery status explicitly prints recovered Token IDs (#1, #2, ...).
+- Genesis and ZB-1 protocol rules are unchanged.
