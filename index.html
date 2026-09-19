@@ -150,7 +150,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.9</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.10</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -521,23 +521,43 @@ async function loadWalletHistory(){
 }
 function parseMemo(m){const p=m.split('|');if(p[0]!=='ZB1'||p.length<3)return null;const type={C:'CLAIM',T:'TRANSFER',L:'ATOMIC_LOCK'}[p[1]]||p[1];const e={protocol:'ZB1',type,v:Number(p[2])||1,memo:m};for(const x of p.slice(3)){const i=x.indexOf('=');if(i>0)e[x.slice(0,i)]=x.slice(i+1)}if(type==='CLAIM'){e.tokenId=Number(e.T);e.nonce=e.N;e.pubkey=e.K;e.signature=e.S}else if(type==='TRANSFER'){e.tokenId=Number(e.I);e.toCommitment=e.O;e.pubkey=e.K;e.signature=e.S}else if(type==='ATOMIC_LOCK'){e.tokenId=Number(e.I);e.lockId=e.L;e.offerId=e.O||null;e.buyerCommitment=e.B;e.price=e.P;e.sellerPayout=e.A;e.expires=Number(e.E);e.pubkey=e.K;e.signature=e.S}return e}
 function normalizeEvent(e){return {...e,eventId:e.eventId||e.txid||crypto.randomUUID(),timestamp:Number(e.timestamp)||Math.floor(Date.now()/1000)}}
+const CHAIN_REQ_CACHE=new Map(),CHAIN_REQ_INFLIGHT=new Map();
+function chainClientTtl(kind){
+  return kind==='block'?12000:kind==='tx'?5000:kind==='health'?8000:7000
+}
+async function chainProxyJson(url,key,kind){
+  const cached=CHAIN_REQ_CACHE.get(key),t=Date.now();
+  if(cached&&cached.until>t)return cached.data;
+  if(CHAIN_REQ_INFLIGHT.has(key))return CHAIN_REQ_INFLIGHT.get(key);
+  const job=(async()=>{
+    let r;
+    try{r=await fetch(url,{headers:{accept:'application/json'}})}
+    catch(e){throw new Error('Chain-data proxy unreachable. Upload the api/zcash.js file together with index.html.')}
+    let j=null;try{j=await r.json()}catch{}
+    if(!r.ok){
+      const retry=r.status===429?' Chain provider is rate-limited; retry shortly.':'';
+      throw new Error((j?.error||('Chain-data proxy error '+r.status))+retry)
+    }
+    const data=j?.data??j;
+    CHAIN_REQ_CACHE.set(key,{data,until:Date.now()+chainClientTtl(kind)});
+    if(CHAIN_REQ_CACHE.size>350){
+      const first=CHAIN_REQ_CACHE.keys().next().value;
+      CHAIN_REQ_CACHE.delete(first)
+    }
+    return data
+  })().finally(()=>CHAIN_REQ_INFLIGHT.delete(key));
+  CHAIN_REQ_INFLIGHT.set(key,job);
+  return job
+}
 async function explorerFetch(kind,id){
   const url=CFG.explorer+'?kind='+encodeURIComponent(kind)+(id!=null?'&id='+encodeURIComponent(String(id)):'');
-  let r;
-  try{r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store'})}
-  catch(e){throw new Error('Chain-data proxy unreachable. Upload the api/zcash.js file together with index.html.')}
-  let j=null;try{j=await r.json()}catch{}
-  if(!r.ok)throw new Error(j?.error||('Chain-data proxy error '+r.status));
-  return j?.data??j;
+  const key=kind+'|'+String(id??'');
+  return chainProxyJson(url,key,kind)
 }
 async function explorerAddress(address,page=1,limit=100){
   const url=CFG.explorer+'?kind=address&id='+encodeURIComponent(address)+'&page='+page+'&limit='+limit;
-  let r;
-  try{r=await fetch(url,{headers:{accept:'application/json'},cache:'no-store'})}
-  catch{throw new Error('Chain-data proxy unreachable.')}
-  let j=null;try{j=await r.json()}catch{}
-  if(!r.ok)throw new Error(j?.error||('Address scan error '+r.status));
-  return j?.data??j
+  const key='address|'+address+'|'+page+'|'+limit;
+  return chainProxyJson(url,key,'address')
 }
 async function chainHeight(){
   try{
