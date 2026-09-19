@@ -39,3 +39,7 @@ RETAINED
 DEPLOY
 Upload the whole ZIP to the www.zecblocks.xyz Vercel project.
 Do not keep an old Vercel header rule that forces /api/* to Cache-Control:no-store.
+
+V9.13 USDC UI patch
+--------------------
+This build keeps the existing ZEC/Noir marketplace intact and makes the Base USDC rail explicit in the seller portfolio and marketplace header. Sellers can choose List ZEC or List USDC. USDC buyers use Buy Now · USDC.

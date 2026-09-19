@@ -117,7 +117,7 @@
 </div>
 </section>
 
-<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Two payment rails. The original ZEC / Noir locked-sale marketplace remains unchanged. Base USDC Buy Now is added as an optional second rail.</p><div class="payrail" style="margin-top:9px"><span class="railBadge">ZEC · Noir Locked Sale</span><span class="railBadge usdc">USDC · Base Buy Now</span></div></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List for ZEC</button></div></div>
+<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Two payment rails. The original ZEC / Noir locked-sale marketplace remains unchanged. Base USDC Buy Now is added as an optional second rail.</p><div class="payrail" style="margin-top:9px"><span class="railBadge">ZEC · Noir Locked Sale</span><span class="railBadge usdc">USDC · Base Buy Now</span></div></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List for ZEC</button><button id="createUsdcListingTopBtn" class="btn usdc" disabled>List for USDC</button></div></div>
 <section class="card">
   <div class="marketToolbar"><input id="marketSearch" class="input" placeholder="Search token ID or seller commitment"><select id="marketSort" class="select"><option value="new">Newest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option></select><span class="pill" id="relayStatus">Relays: connecting…</span></div>
   <div class="marketBody">
@@ -146,7 +146,7 @@
     </div>
   </div>
   <div class="notice" style="margin:14px 16px 0">
-    <b>The ZEC marketplace above is unchanged.</b> USDC listings are an additional option. A valid USDC listing is signed by the ZB-1 owner with Noir and registered on Base. Buyer payment is split 97% to the seller and 3% to protocol treasury.
+    <b>The ZEC marketplace above is unchanged.</b> USDC listings are an additional option. Seller lists once at a fixed USDC price. Buyer then clicks <b>Buy Now · USDC</b>; Base settlement sends 97% directly to the seller and 3% to protocol treasury. No seller accept step is required after payment.
   </div>
   <div id="usdcMarketGrid" class="usdcGrid">
     <div class="empty" style="grid-column:1/-1">Loading verified Base USDC listings…</div>
@@ -180,6 +180,7 @@
       <div id="atomicBuyerList" class="atomicList"><div class="empty">Your locked atomic purchases will appear here.</div></div>
     </div>
   </div>
+  <div class="notice good"><b>USDC Buy Now:</b> choose <b>List USDC</b> on an owned ZEC BLOCK, set one fixed USDC price, and publish once. A buyer sees <b>Buy Now · USDC</b>; Base settlement sends 97% directly to the seller and 3% to protocol treasury, then the ZB-1 ownership transition resolves to the buyer commitment.</div>
   <div class="notice good"><b>Locked-sale rule:</b> seller chooses exactly one buyer and chain-locks the NFT first. The buyer then pays the 3% protocol fee and 97% seller payout with Noir. After both transactions reach finality, ZB-1 ownership resolves automatically to that buyer. Seller has no post-payment approve/reject step.</div>
   <div class="notice"><b>Noir-only checkout:</b> no Zkool, no ZIP-321, no TXID paste. Step 1 sends exactly 3% to the protocol treasury. After that fee confirms, Step 2 sends the remaining 97% to the seller. The NFT settles automatically only after both payments are verified.</div>
   <div id="portfolioGrid" class="grid" style="margin-top:14px"></div>
@@ -191,7 +192,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Dual ZEC + Base USDC Marketplace V9.12 · Production</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Dual ZEC + Base USDC Marketplace V9.13 · Production</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -1224,8 +1225,11 @@ function updateEvmUI(){
     if(!configured){st.textContent='USDC module ready · waiting for production settlement contract address.';st.className='usdcStatus warn'}
     else{st.textContent=`Base USDC · contract ${short(CFG.usdcMarketContract,6)}${S.evmAddress?' · wallet '+short(S.evmAddress,5):''}`;st.className='usdcStatus live'}
   }
+  const canList=configured&&!!S.ownerCommitment&&!!S.evmAddress&&ownedTokens().length>0;
   const list=$('createUsdcListingBtn');
-  if(list)list.disabled=!configured||!S.ownerCommitment||!S.evmAddress||ownedTokens().length===0
+  if(list)list.disabled=!canList;
+  const topList=$('createUsdcListingTopBtn');
+  if(topList)topList.disabled=!canList
 }
 $('evmWalletBtn').onclick=()=>connectEvmWallet(false);
 function activeUsdcListingForToken(id){
@@ -1346,14 +1350,14 @@ function renderUsdcMarket(){
         <div class="nftline"><span class="nfttitle">ZEC BLOCK #${esc(l.tokenId)}</span><span class="usdcPrice">${esc(usdcFmt(l.priceUSDC))} USDC</span></div>
         <div class="meta"><span>Base seller ${esc(short(l.seller,6))}</span><span>${new Date(l.expiresAt*1000).toLocaleDateString()}</span></div>
         <div class="usdcCardTag"><span class="railBadge usdc">BASE BUY NOW</span><span class="usdcStatus">97% seller · 3% protocol</span></div>
-        <div class="controls"><button class="btn usdc usdcAction">Buy Now</button></div>
+        <div class="controls"><button class="btn usdc usdcAction">Buy Now · USDC</button></div>
       </div>`;
     artSvg(card.querySelector('svg'),(c?.sourceHash||CFG.genesisTxid)+':'+(c?.sourceHeight||l.tokenId),'ZB #'+l.tokenId);
     const b=card.querySelector('.usdcAction');
     if(S.evmAddress&&String(S.evmAddress).toLowerCase()===String(l.seller).toLowerCase()){
       b.textContent='Cancel USDC Listing';b.className='btn red usdcAction';b.onclick=()=>cancelUsdcListing(l)
     }else{
-      b.textContent=S.evmAddress?'Buy Now':'Connect Base Wallet to Buy';
+      b.textContent=S.evmAddress?'Buy Now · USDC':'Connect Base Wallet to Buy · USDC';
       b.onclick=()=>buyUsdcListing(l)
     }
     g.appendChild(card)
@@ -1369,6 +1373,7 @@ function openUsdcListing(){
   modal('usdcListingModal',true)
 }
 $('createUsdcListingBtn').onclick=openUsdcListing;
+$('createUsdcListingTopBtn').onclick=openUsdcListing;
 $('refreshUsdcBtn').onclick=()=>reconcileUsdcMarket().catch(e=>toast(e.message||String(e),8000));
 async function publishUsdcListing(){
   try{
@@ -2361,24 +2366,47 @@ function renderAtomicDesk(){
     bl.appendChild(done)
   }
 }
+async function openUsdcListingForToken(tokenId){
+  if(!S.ownerCommitment)return toast('Connect Noir Wallet first.');
+  if(!S.evmAddress){
+    const ok=await connectEvmWallet(false);
+    if(!ok)return
+  }
+  openUsdcListing();
+  const sel=$('usdcListingToken');
+  if(sel&&[...sel.options].some(o=>Number(o.value)===Number(tokenId)))sel.value=String(tokenId)
+}
 function renderPortfolio(){
-  const own=ownedTokens();$('ownedCount').textContent=own.length;$('listingCount').textContent=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;$('offerCount').textContent=S.ownerCommitment?sellerOffers().length:0;
+  const own=ownedTokens();
+  $('ownedCount').textContent=own.length;
+  const zecCount=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;
+  const usdcCount=S.ownerCommitment?[...S.usdcOnchain.values()].filter(x=>Number(x.status)===1&&Number(x.expiresAt)>Math.floor(Date.now()/1000)&&String(x.sellerCommitment||'').slice(2).toLowerCase()===String(S.ownerCommitment).toLowerCase()).length:0;
+  $('listingCount').textContent=zecCount+usdcCount;
+  $('offerCount').textContent=S.ownerCommitment?sellerOffers().length:0;
   const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';renderAtomicDesk();return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS are currently resolved to this owner commitment. Recover & Sync checks wallet history, public discovery, and chain-verified marketplace settlements.</div>';renderAtomicDesk();return}
   for(const c of own){
     if(!c.sourceHash)ensurePortfolioSource(c.tokenId);
-    const card=document.createElement('article');card.className='nft';card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #${c.tokenId}</span><span class="badge live">OWNED</span></div><div class="meta"><span>Source ${esc(c.sourceHeight||'loading…')}</span><span>${esc(short(c.txid||'',6))}</span></div><div class="controls"><button class="btn listOne">List</button><button class="btn transferOne">Transfer</button></div></div>`;
+    const card=document.createElement('article');card.className='nft';card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #${c.tokenId}</span><span class="badge live">OWNED</span></div><div class="meta"><span>Source ${esc(c.sourceHeight||'loading…')}</span><span>${esc(short(c.txid||'',6))}</span></div><div class="controls"><button class="btn listZecOne">List ZEC</button><button class="btn usdc listUsdcOne">List USDC</button><button class="btn transferOne">Transfer</button></div></div>`;
     if(c.sourceHash)artSvg(card.querySelector('svg'),c.sourceHash+':'+(c.sourceHeight||c.tokenId),'ZB #'+c.tokenId);
     else artSvg(card.querySelector('svg'),CFG.genesisTxid+':recover:'+c.tokenId,'ZB #'+c.tokenId);
-    const listBtn=card.querySelector('.listOne'),liveListing=activeListingForToken(c.tokenId);
+    const zecBtn=card.querySelector('.listZecOne'),usdcBtn=card.querySelector('.listUsdcOne'),liveListing=activeListingForToken(c.tokenId);
     const usdcListing=activeUsdcListingForToken(c.tokenId);
     const atomicLock=activeAtomicLockForToken(c.tokenId),transferBtn=card.querySelector('.transferOne');
     if(usdcListing){
-      listBtn.textContent='USDC LISTED';listBtn.disabled=true;
+      zecBtn.textContent='USDC LISTED';zecBtn.disabled=true;
+      usdcBtn.textContent='Cancel USDC';usdcBtn.className='btn red listUsdcOne';usdcBtn.onclick=()=>cancelUsdcListing(usdcListing);
       transferBtn.textContent='CANCEL USDC FIRST';transferBtn.disabled=true
-    }else if(atomicLock){listBtn.textContent='ATOMIC LOCKED';listBtn.disabled=true;transferBtn.textContent='LOCKED';transferBtn.disabled=true}
-    else{
-      if(liveListing){listBtn.textContent='Cancel Listing';listBtn.onclick=()=>cancelListing(liveListing)}
-      else{listBtn.textContent='List';listBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)}}
+    }else if(atomicLock){
+      zecBtn.textContent='ATOMIC LOCKED';zecBtn.disabled=true;
+      usdcBtn.textContent='LOCKED';usdcBtn.disabled=true;
+      transferBtn.textContent='LOCKED';transferBtn.disabled=true
+    }else if(liveListing){
+      zecBtn.textContent='Cancel ZEC Listing';zecBtn.onclick=()=>cancelListing(liveListing);
+      usdcBtn.textContent='ZEC LISTED';usdcBtn.disabled=true;
+      transferBtn.onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)}
+    }else{
+      zecBtn.textContent='List ZEC';zecBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)};
+      usdcBtn.textContent=S.evmAddress?'List USDC':'Connect Base → List USDC';usdcBtn.onclick=()=>openUsdcListingForToken(c.tokenId);
       transferBtn.onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)}
     }
     g.appendChild(card)}
