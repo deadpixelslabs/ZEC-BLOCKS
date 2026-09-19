@@ -114,7 +114,7 @@
   <div class="notice" style="margin-top:12px">Volume counts only explicit completed <b>ZB-1 sale settlement</b> events. Listings and offers are never counted as volume, so redeploys or spam cannot inflate the number.</div>
 </section>
 
-<div class="sectionHead" id="portfolio"><div><h2>Portfolio</h2><p>Recovered from Noir Wallet history + public ZB-1 discovery.</p></div><button id="syncPortfolioBtn" class="btn" disabled>Recover & Sync Portfolio</button></div>
+<div class="sectionHead" id="portfolio"><div><h2>Portfolio</h2><p>Recovered from Noir Wallet history, validated proof data, and public ZB-1 discovery.</p></div><button id="syncPortfolioBtn" class="btn" disabled>Recover & Sync Portfolio</button></div>
 <section class="card panel">
   <div class="portfolioTop"><div class="metric"><small>Owned</small><b id="ownedCount">0</b></div><div class="metric"><small>Active Listings</small><b id="listingCount">0</b></div><div class="metric"><small>Offers Received</small><b id="offerCount">0</b></div><div class="metric"><small>ZEC Available</small><b id="zecBalance">—</b></div></div>
   <div class="walletbox"><div class="copyline"><small>Derived owner identity</small><code id="portfolioCommit">Connect wallet to reveal your commitment.</code></div><div class="copyline"><small>Shielded account</small><code id="portfolioShielded">Private until you connect.</code></div></div>
@@ -127,7 +127,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Portfolio Recovery V4</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Portfolio Recovery V5</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -145,7 +145,7 @@ const CFG={
   relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band'],
   nostrKind:30078,relayTag:'zb1-mainnet-v1'
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -161,7 +161,22 @@ function leadingZeroBits(bytes){let n=0;for(const b of bytes){if(b===0){n+=8;con
 function formatRate(hps){if(hps>=1e6)return (hps/1e6).toFixed(2)+' MH/s';if(hps>=1e3)return (hps/1e3).toFixed(1)+' kH/s';return Math.round(hps)+' H/s'}
 function decimalValid(v){return /^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(String(v))&&Number(v)>0}
 function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
-function saveLocalEvent(e){const a=localEvents();if(!a.some(x=>x.eventId===e.eventId||x.txid&&x.txid===e.txid)){a.push(e);localStorage.setItem('zb1_events_v1',JSON.stringify(a.slice(-10000)))}}
+function eventKey(e){return e?.txid||e?.eventId||e?.listingId||null}
+function mergeEvent(old,e){
+  if(!old)return {...e};
+  // Enriched wallet/chain fields must survive a later relay refresh.
+  const merged={...old,...Object.fromEntries(Object.entries(e||{}).filter(([,v])=>v!==undefined&&v!==null&&v!==''))};
+  const a=Number(old.timestamp)||0,b=Number(e?.timestamp)||0;
+  if(a&&b)merged.timestamp=Math.min(a,b); else merged.timestamp=a||b||Math.floor(Date.now()/1000);
+  if(old.source==='wallet-history'||e?.source==='wallet-history')merged.source='wallet-history';
+  return merged;
+}
+function saveLocalEvent(e){
+  const a=localEvents(),k=eventKey(e);
+  const i=k?a.findIndex(x=>eventKey(x)===k):-1;
+  if(i>=0)a[i]=mergeEvent(a[i],e); else a.push(e);
+  localStorage.setItem('zb1_events_v1',JSON.stringify(a.slice(-10000)));
+}
 function nostrSecretHex(){let h=localStorage.getItem('zb1_nostr_sk');return h||null}
 function setNostrSecretHex(h){localStorage.setItem('zb1_nostr_sk',h)}
 function provider(){const w=window.noirwallet;return w&&w.isNoirWallet&&w.zcash?w.zcash:null}
@@ -189,81 +204,114 @@ function updateWalletUI(){
 }
 $('walletBtn').onclick=()=>connectWallet(false);
 async function loadWalletHistory(){
-  if(!S.connection)return {recovered:0,seen:0};
+  if(!S.connection)return {recovered:0,seen:0,claims:[]};
   let recovered=0,seen=0;
+  const recoveredClaimIds=[];
+  S.walletRecovered.clear();
+  S.walletRecoveredClaims.clear();
   const statusEl=$('portfolioRecoveryStatus');
-  if(statusEl)statusEl.textContent='Reading Noir Wallet transaction history…';
+  if(statusEl)statusEl.textContent='Reading Noir Wallet transaction history and rebuilding ZB-1 claims…';
   try{
     const hist=await rpc('zcash_getTransactionHistory');
     for(const h of (hist||[])){
-      const memo=typeof h.memo==='string'?h.memo:'';
+      const memo=typeof h.memo==='string'?h.memo.trim():'';
       if(!memo.startsWith('ZB1|'))continue;
       const e=parseMemo(memo); if(!e)continue;
       seen++;
-      e.txid=h.txid;
+      e.txid=String(h.txid||'').toLowerCase();
       e.status=h.status;
-      e.timestamp=Number(h.timestamp)||Math.floor(Date.now()/1000);
+      let ts=Number(h.timestamp)||Math.floor(Date.now()/1000);
+      if(ts>20_000_000_000)ts=Math.floor(ts/1000); // tolerate millisecond wallet timestamps
+      e.timestamp=ts;
       e.source='wallet-history';
 
       if(e.type==='CLAIM'){
-        if(!Number.isInteger(Number(e.tokenId))||Number(e.tokenId)<1||Number(e.tokenId)>CFG.supply)continue;
+        const tokenId=Number(e.tokenId);
+        if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply)continue;
         if(!/^[0-9a-fA-F]+$/.test(String(e.pubkey||''))||String(e.pubkey).length%2)continue;
         if(!/^\d+$/.test(String(e.nonce||'')))continue;
 
-        // Claim owner identity can be reconstructed from the public key stored in the claim memo.
+        // This is exactly the identity that the mining client committed into the PoW.
         e.ownerCommitment=await sha256HexBytes(hexToBytes(e.pubkey));
 
-        // Rebuild deterministic source-block data, so an old claim is fully usable
-        // even when the original browser's localStorage / relay cache is gone.
         try{
           const gh=await resolveGenesis();
-          e.sourceHeight=gh-Number(e.tokenId);
+          e.sourceHeight=gh-tokenId;
           const block=await explorerFetch('block',e.sourceHeight);
           const sourceHash=String(deepFind(block,['hash','block_hash','blockHash'])||'').toLowerCase();
-          if(/^[0-9a-f]{64}$/.test(sourceHash)){
-            e.sourceHash=sourceHash;
-            const pre=concat(
-              enc.encode('ZB1:MINE:v1'),
-              hexToBytes(CFG.genesisTxid),
-              u32le(Number(e.tokenId)),
-              hexToBytes(sourceHash),
-              hexToBytes(e.ownerCommitment),
-              u64le(BigInt(e.nonce))
-            );
-            const proof=await sha256Bytes(pre);
-            e.proofHash=bytesToHex(proof);
-            e.proofBits=leadingZeroBits(proof);
-            if(e.proofBits<CFG.powBits)continue; // never recover an invalid proof
-          }
-        }catch(err){
-          console.warn('claim source reconstruction',err);
-        }
+          if(!/^[0-9a-f]{64}$/.test(sourceHash))continue;
+          e.sourceHash=sourceHash;
 
-        const normalized=normalizeEvent(e);
-        const before=localEvents().length;
-        saveLocalEvent(normalized);
-        if(localEvents().length>before)recovered++;
+          const pre=concat(
+            enc.encode('ZB1:MINE:v1'),
+            hexToBytes(CFG.genesisTxid),
+            u32le(tokenId),
+            hexToBytes(sourceHash),
+            hexToBytes(e.ownerCommitment),
+            u64le(BigInt(e.nonce))
+          );
+          const proof=await sha256Bytes(pre);
+          e.proofHash=bytesToHex(proof);
+          e.proofBits=leadingZeroBits(proof);
+          if(e.proofBits<CFG.powBits)continue;
+
+          // Add chain confirmation/order metadata when explorer can resolve it.
+          if(/^[0-9a-f]{64}$/.test(e.txid)){
+            try{
+              const tx=await explorerFetch('tx',e.txid);
+              const bh=Number(deepFind(tx,['blockHeight','block_height','blockheight','height']));
+              const ti=Number(deepFind(tx,['txIndex','tx_index','index']));
+              if(Number.isInteger(bh)&&bh>0)e.blockHeight=bh;
+              if(Number.isInteger(ti)&&ti>=0)e.txIndex=ti;
+              e.confirmed=Number.isInteger(bh)&&bh>0;
+            }catch{}
+          }
+
+          const normalized=normalizeEvent(e);
+          const before=JSON.stringify(localEvents().find(x=>eventKey(x)===eventKey(normalized))||null);
+          saveLocalEvent(normalized);
+          const after=JSON.stringify(localEvents().find(x=>eventKey(x)===eventKey(normalized))||null);
+          if(before!==after)recovered++;
+          S.walletRecovered.set(eventKey(normalized),normalized);
+          S.walletRecoveredClaims.set(tokenId,normalized);
+          recoveredClaimIds.push(tokenId);
+        }catch(err){
+          console.warn('claim reconstruction',tokenId,err);
+        }
       }else if(e.type==='TRANSFER'){
-        // The transfer memo stores the signer public key; derive the sender commitment.
         if(/^[0-9a-fA-F]+$/.test(String(e.pubkey||''))&&String(e.pubkey).length%2===0){
           e.fromCommitment=await sha256HexBytes(hexToBytes(e.pubkey));
         }
+        if(/^[0-9a-f]{64}$/i.test(e.txid)){
+          try{
+            const tx=await explorerFetch('tx',e.txid);
+            const bh=Number(deepFind(tx,['blockHeight','block_height','blockheight','height']));
+            const ti=Number(deepFind(tx,['txIndex','tx_index','index']));
+            if(Number.isInteger(bh)&&bh>0)e.blockHeight=bh;
+            if(Number.isInteger(ti)&&ti>=0)e.txIndex=ti;
+          }catch{}
+        }
         const normalized=normalizeEvent(e);
-        const before=localEvents().length;
         saveLocalEvent(normalized);
-        if(localEvents().length>before)recovered++;
+        S.walletRecovered.set(eventKey(normalized),normalized);
       }
     }
+
+    const ids=[...new Set(recoveredClaimIds)].sort((a,b)=>a-b);
     if(statusEl){
-      statusEl.textContent=seen
-        ?`Wallet recovery complete: ${seen} ZB-1 wallet event${seen===1?'':'s'} found · ${recovered} restored to this site's cache.`
-        :'No ZB-1 memo transactions were found in the connected Noir Wallet history.';
+      if(ids.length){
+        statusEl.innerHTML=`Recovered <b>${ids.length}</b> valid claim${ids.length===1?'':'s'} from Noir Wallet: <b>${ids.map(x=>'#'+x).join(', ')}</b>. Discovery events are being merged now.`;
+      }else if(seen){
+        statusEl.textContent=`Found ${seen} ZB-1 wallet event${seen===1?'':'s'}, but no valid CLAIM proof was reconstructed for this wallet.`;
+      }else{
+        statusEl.textContent='No ZB-1 memo transactions were found in the connected Noir Wallet history.';
+      }
     }
-    return {recovered,seen};
+    return {recovered,seen,claims:ids};
   }catch(e){
     console.warn('history',e);
     if(statusEl)statusEl.textContent='Noir Wallet history recovery failed: '+(e.message||String(e));
-    return {recovered,seen,error:e};
+    return {recovered,seen,error:e,claims:[]};
   }
 }
 function parseMemo(m){const p=m.split('|');if(p[0]!=='ZB1'||p.length<3)return null;const type={C:'CLAIM',T:'TRANSFER'}[p[1]]||p[1];const e={protocol:'ZB1',type,v:Number(p[2])||1,memo:m};for(const x of p.slice(3)){const i=x.indexOf('=');if(i>0)e[x.slice(0,i)]=x.slice(i+1)}if(type==='CLAIM'){e.tokenId=Number(e.T);e.nonce=e.N;e.pubkey=e.K;e.signature=e.S}else if(type==='TRANSFER'){e.tokenId=Number(e.I);e.toCommitment=e.O;e.pubkey=e.K;e.signature=e.S}return e}
@@ -459,11 +507,13 @@ async function fetchRelay(){
       }
     }
   }
+  // Wallet history is authoritative for private memo visibility on this connected wallet.
+  // Merge it with relay discovery instead of allowing a sparse relay copy to replace it.
+  for(const e of S.walletRecovered.values())arr.push(e);
   const ded=new Map();
   for(const e of arr){
-    const k=innerEventKey(e)||JSON.stringify(e);
-    const old=ded.get(k);
-    if(!old||(e.timestamp||0)>(old.timestamp||0))ded.set(k,e);
+    const k=innerEventKey(e)||eventKey(e)||JSON.stringify(e);
+    ded.set(k,mergeEvent(ded.get(k),e));
   }
   S.events=[...ded.values()];
   rebuildState();
@@ -471,9 +521,24 @@ async function fetchRelay(){
   try{repaired=await repairLocalDiscovery(seenByRelay)}catch(e){console.warn('relay repair',e)}
   $('relayStatus').textContent=`Relays: ${relayOk}/${CFG.relays.length} · ${S.events.length} events${repaired?` · repaired ${repaired}`:''}`;
 }
+function eventOrder(a,b){
+  const ah=Number(a.blockHeight),bh=Number(b.blockHeight);
+  const ac=Number.isInteger(ah)&&ah>0,bc=Number.isInteger(bh)&&bh>0;
+  if(ac&&bc&&ah!==bh)return ah-bh;
+  if(ac!==bc)return ac?-1:1;
+  const ai=Number(a.txIndex),bi=Number(b.txIndex);
+  if(Number.isInteger(ai)&&Number.isInteger(bi)&&ai!==bi)return ai-bi;
+  return (Number(a.timestamp)||0)-(Number(b.timestamp)||0);
+}
 function rebuildState(){
-  const claims=new Map(),trans=[];const sorted=[...S.events].sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
-  for(const e of sorted){if(e.type==='CLAIM'&&Number.isInteger(Number(e.tokenId))&&!claims.has(Number(e.tokenId)))claims.set(Number(e.tokenId),e);else if(e.type==='TRANSFER')trans.push(e)}
+  const claims=new Map(),trans=[];const sorted=[...S.events].sort(eventOrder);
+  for(const e of sorted){
+    if(e.type==='CLAIM'&&Number.isInteger(Number(e.tokenId))){
+      const id=Number(e.tokenId),old=claims.get(id);
+      if(!old)claims.set(id,e);
+      else if(eventKey(old)===eventKey(e))claims.set(id,mergeEvent(old,e));
+    }else if(e.type==='TRANSFER')trans.push(e)
+  }
   for(const e of trans){const id=Number(e.tokenId),c=claims.get(id);if(c)e._applied=true}
   S.claims=claims;S.transfers=trans;
   const listings=new Map(),offers=[],canceled=new Set();
@@ -490,7 +555,24 @@ function rebuildState(){
   $('claimCount').textContent=claims.size.toLocaleString();renderMarket();renderActivity();renderPortfolio();updateWalletUI();
 }
 function currentOwner(id){const c=S.claims.get(Number(id));if(!c)return null;let owner=String(c.ownerCommitment||'').toLowerCase()||null;for(const t of S.transfers.filter(x=>Number(x.tokenId)===Number(id)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))){if(t.fromCommitment&&owner&&String(t.fromCommitment).toLowerCase()!==owner)continue;owner=String(t.toCommitment||owner).toLowerCase()}return owner}
-function ownedTokens(){if(!S.ownerCommitment)return[];const mine=String(S.ownerCommitment).toLowerCase();return [...S.claims.values()].filter(c=>currentOwner(c.tokenId)===mine).sort((a,b)=>a.tokenId-b.tokenId)}
+function ownedTokens(){
+  if(!S.ownerCommitment)return[];
+  const mine=String(S.ownerCommitment).toLowerCase();
+  const out=new Map();
+  for(const c of S.claims.values()){
+    const wc=S.walletRecoveredClaims.get(Number(c.tokenId));
+    const merged=(wc&&eventKey(wc)===eventKey(c))?mergeEvent(c,wc):c;
+    if(String(currentOwner(merged.tokenId)||'').toLowerCase()===mine)out.set(Number(merged.tokenId),merged);
+  }
+  // If discovery has not yet returned a claim that this wallet can prove locally,
+  // keep the validated wallet-history claim visible while relay recovery catches up.
+  for(const [id,wc] of S.walletRecoveredClaims){
+    if(String(wc.ownerCommitment||'').toLowerCase()!==mine)continue;
+    const canonical=S.claims.get(id);
+    if(!canonical||eventKey(canonical)===eventKey(wc))out.set(id,mergeEvent(canonical,wc));
+  }
+  return [...out.values()].sort((a,b)=>a.tokenId-b.tokenId)
+}
 function activeListings(){
   const now=Math.floor(Date.now()/1000),byToken=new Map();
   for(const x of S.listings.values()){
@@ -631,7 +713,13 @@ function renderPortfolio(){
     else{listBtn.textContent='List';listBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)}}
     card.querySelector('.transferOne').onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)};g.appendChild(card)}
 }
-$('syncPortfolioBtn').onclick=async()=>{try{S.balance=await rpc('zcash_getBalance');const r=await loadWalletHistory();await fetchRelay();updateWalletUI();renderPortfolio();toast(`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found.`,6500)}catch(e){toast(e.message||String(e),7000)}};
+$('syncPortfolioBtn').onclick=async()=>{try{
+  S.balance=await rpc('zcash_getBalance');
+  const r=await loadWalletHistory();
+  await fetchRelay();
+  rebuildState();updateWalletUI();renderPortfolio();
+  toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
+}catch(e){toast(e.message||String(e),7000)}};
 $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sig.pubkey}|S=${sig.signature}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sig.pubkey,signature:sig.signature,timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
 async function refreshAll(){await fetchRelay();renderMarket();renderPortfolio()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}

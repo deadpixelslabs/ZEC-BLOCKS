@@ -48,3 +48,13 @@ Until the protocol emits explicit SALE_SETTLED events, Sales and Total Volume co
 
 Deploy this package to the MAIN www.zecblocks.xyz Vercel project.
 The mining subdomain does not need to change for this portfolio fix.
+
+V5 PORTFOLIO FIX
+- Fixes the case where Noir Wallet reports ZB-1 events but Owned remains 0.
+- localStorage events are now UPSERTED/ENRICHED instead of ignoring duplicate TXIDs.
+- Wallet-recovered claim data cannot be overwritten by sparse relay copies.
+- Recovered CLAIMs are independently rebuilt and 26-bit PoW checked.
+- Zcash block height / tx index are fetched when available for canonical ordering.
+- Wallet-recovered claims remain visible while relay recovery catches up.
+- Recovery status explicitly prints recovered Token IDs (#1, #2, ...).
+- Genesis and ZB-1 protocol rules are unchanged.
