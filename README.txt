@@ -32,4 +32,19 @@ Deploy the whole folder to the www.zecblocks.xyz Vercel project.ZEC BLOCKS MAIN 
 
 IMPORTANT:
 The current P2P marketplace does not have an atomic ZEC-for-NFT settlement primitive.
-Until the protocol emits explicit SALE_SETTLED events, Sales and Total Volume correctly remain 0.
+Until the protocol emits explicit SALE_SETTLED events, Sales and Total Volume correctly remain 0.V4 PORTFOLIO RECOVERY FIX
+- Fixes previously mined ZEC BLOCKS not appearing on www.zecblocks.xyz.
+- Root cause: mine.zecblocks.xyz and www.zecblocks.xyz have separate localStorage,
+  and old CLAIM memos did not store ownerCommitment directly.
+- Main site now reads Noir Wallet transaction history and reconstructs:
+  * CLAIM token ID
+  * ownerCommitment = SHA256(claim public key)
+  * deterministic source height/hash
+  * 26-bit SHA-256 proof validation
+  * outgoing TRANSFER sender commitment
+- "Sync Portfolio" renamed to "Recover & Sync Portfolio".
+- Existing marketplace/activity/multi-relay behavior remains.
+- Genesis and protocol rules are unchanged.
+
+Deploy this package to the MAIN www.zecblocks.xyz Vercel project.
+The mining subdomain does not need to change for this portfolio fix.
