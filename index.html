@@ -172,6 +172,35 @@
     .message.show{display:block}
     .message.ok{color:#a8eab9;border-color:rgba(120,213,148,.22);background:rgba(120,213,148,.05)}
     .message.err{color:#ffabab;border-color:rgba(255,130,130,.18);background:rgba(255,130,130,.05)}
+    .mining-stage{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 35%,rgba(211,168,79,.12),transparent 54%),#090909}
+    .scanline{position:absolute;inset:auto 0 0 0;height:28%;background:linear-gradient(180deg,rgba(240,202,114,0),rgba(240,202,114,.14),rgba(240,202,114,0));mix-blend-mode:screen;animation:scanMove 3.2s linear infinite;pointer-events:none}
+    .glow-orb{position:absolute;border-radius:50%;filter:blur(16px);opacity:.22;pointer-events:none}
+    .orb-a{width:88px;height:88px;background:var(--gold2);left:18px;top:16px;animation:floatOrb 5.5s ease-in-out infinite}
+    .orb-b{width:68px;height:68px;background:#78d594;right:22px;bottom:22px;animation:floatOrb 6.8s ease-in-out infinite reverse}
+    .mining-hud{position:absolute;left:12px;right:12px;bottom:12px;display:flex;justify-content:space-between;gap:10px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#d5bf8c;background:rgba(8,8,8,.72);border:1px solid rgba(211,168,79,.18);padding:9px 10px;border-radius:9px;backdrop-filter:blur(8px)}
+    .mining-panel{position:relative;overflow:hidden}
+    .mining-panel:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at top right,rgba(211,168,79,.08),transparent 34%);pointer-events:none}
+    .mining-layout{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+    .terminal,.mini-card{border:1px solid #252525;background:#0b0b0b;border-radius:12px;overflow:hidden}
+    .terminal-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1d1d1d;background:#101010;color:#d9d9d9;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .terminal-dot{width:9px;height:9px;border-radius:50%;background:var(--gold2);box-shadow:0 0 16px rgba(240,202,114,.5)}
+    .terminal-screen{padding:14px}
+    .terminal-line{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #171717;font-size:12px;color:#d6d6d6}
+    .terminal-line:last-of-type{border-bottom:0}
+    .term-key{color:#757575;text-transform:uppercase;letter-spacing:.08em;font-size:10px;font-weight:700;min-width:96px}
+    .hash-stream{margin:14px 0 12px;padding:12px;border:1px solid #1b1b1b;border-radius:10px;background:#080808;color:#8fd3a4;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:11px;min-height:132px;display:grid;gap:6px;overflow:hidden}
+    .progress-wrap{height:10px;border-radius:999px;background:#141414;border:1px solid #202020;overflow:hidden}
+    .progress-bar{height:100%;width:44%;background:linear-gradient(90deg,var(--gold),var(--gold2),#f6dfa5);background-size:220px 100%;animation:progressMove 2.2s linear infinite}
+    .terminal-foot{margin-top:12px;font-size:11px;color:#808080}
+    .terminal-foot b{color:#dcbc6f}
+    .mining-side{display:grid;gap:12px}
+    .mini-card{padding:16px}
+    .mini-kicker{font-size:10px;color:var(--gold2);text-transform:uppercase;letter-spacing:.12em;font-weight:800;margin-bottom:10px}
+    .mini-card h3{margin:0 0 8px;font-size:18px}
+    .mini-card p{margin:0;color:#7f7f7f;font-size:12px;line-height:1.65}
+    @keyframes scanMove{0%{transform:translateY(110%)}100%{transform:translateY(-340%)}}
+    @keyframes floatOrb{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
+    @keyframes progressMove{0%{transform:translateX(-65%)}100%{transform:translateX(210%)}}
     .footer{display:flex;justify-content:space-between;gap:20px;color:#555;font-size:10px;padding:28px 3px 0;margin-top:28px;border-top:1px solid #191919}
     .footer-links{display:flex;gap:18px}
     .footer a:hover{color:#aaa}
@@ -186,6 +215,7 @@
       .market-body{grid-template-columns:1fr}.filters{display:none}
       .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
       .privacy{grid-template-columns:1fr}
+      .mining-layout{grid-template-columns:1fr}
       .form-grid{grid-template-columns:1fr}
       .mobile-toggle{display:inline-flex}
     }
@@ -213,8 +243,7 @@
     <a class="brand" href="#home"><img src="./logo.png" alt="ZEC BLOCKS"><b>ZEC BLOCKS</b></a>
     <nav class="nav">
       <a href="#market" class="active">Marketplace</a>
-      <a href="#mint">Mint</a>
-      <a href="#whitelist">Whitelist</a>
+      <a href="#mine">Mining</a>
       <a href="#protocol">Protocol</a>
     </nav>
     <div class="top-right">
@@ -235,35 +264,41 @@
         </p>
         <div class="hero-actions">
           <a class="btn gold" href="#market">Explore Marketplace</a>
-          <a class="btn" href="#whitelist">Apply Whitelist</a>
+          <a class="btn" href="#mining">Mining Overview</a>
         </div>
         <div class="stats">
           <div class="stat"><small>Total Supply</small><b>5,000</b></div>
-          <div class="stat"><small>Early Free Mint</small><b>500</b></div>
+          <div class="stat"><small>Access</small><b>Mining</b></div>
           <div class="stat"><small>Network</small><b>Zcash</b></div>
-          <div class="stat"><small>Ownership</small><b>Private</b></div>
+          <div class="stat"><small>Status</small><b>Coming Soon</b></div>
         </div>
       </div>
 
-      <aside class="mint-card" id="mint">
+      <aside class="mint-card" id="mine">
         <div class="mint-top">
-          <h2>Mint ZEC BLOCK</h2>
-          <span class="badge">Not Live</span>
+          <h2>Mine ZEC BLOCK</h2>
+          <span class="badge">Coming Soon</span>
         </div>
-        <div class="art-main"><svg id="heroArt" class="block-art" viewBox="0 0 600 600" aria-label="ZEC BLOCK artwork"></svg></div>
+        <div class="art-main mining-stage">
+          <svg id="heroArt" class="block-art" viewBox="0 0 600 600" aria-label="ZEC BLOCK artwork"></svg>
+          <div class="scanline"></div>
+          <div class="glow-orb orb-a"></div>
+          <div class="glow-orb orb-b"></div>
+          <div class="mining-hud"><span>MODE: MINING</span><span>STATE: PREVIEW</span></div>
+        </div>
         <div class="mint-info">
           <div><small>Supply</small><strong>5,000</strong></div>
-          <div><small>Minted</small><strong>—</strong></div>
+          <div><small>Mined</small><strong>0</strong></div>
           <div><small>Source Block</small><strong>3,484,871</strong></div>
-          <div><small>Owner</small><strong>Private</strong></div>
+          <div><small>Claim Model</small><strong>First Valid Proof</strong></div>
         </div>
-        <button class="btn gold disabled" type="button" disabled>COMING SOON</button>
+        <button class="btn gold disabled" type="button" disabled>MINING COMING SOON</button>
       </aside>
     </section>
 
     <div class="section-title" id="market">
       <div><h2>ZEC BLOCKS Marketplace</h2><p>Public catalog. Private collectors.</p></div>
-      <p>Real Zcash mainnet block sources · trading opens after mint</p>
+      <p>Real Zcash mainnet block sources · mining opens soon</p>
     </div>
 
     <section class="market-shell">
@@ -292,8 +327,8 @@
           <div class="filter-group">
             <div class="filter-title">Status</div>
             <div class="check"><span><span class="fake-check"></span>All</span><span>12</span></div>
-            <div class="check"><span><span class="fake-check"></span>Listed</span><span>0</span></div>
-            <div class="check"><span><span class="fake-check"></span>Real source blocks</span><span>12</span></div>
+            <div class="check"><span><span class="fake-check"></span>Unmined</span><span>12</span></div>
+            <div class="check"><span><span class="fake-check"></span>Mined</span><span>0</span></div>
           </div>
           <div class="filter-group">
             <div class="filter-title">Rarity</div>
@@ -341,46 +376,52 @@
       </div>
     </section>
 
-    <section class="wl-card" id="whitelist">
+    <section class="wl-card mining-panel" id="mining">
       <div class="wl-head">
         <div>
-          <h2>Whitelist</h2>
-          <p>First 500 successful applications receive a FREE MINT allocation.<br>Your Zcash address is submitted privately and should never be posted publicly on X.</p>
+          <h2>Mining Protocol</h2>
+          <p>ZEC BLOCKS is moving to a mining-based release. No whitelist. No manual approval. The website is being prepared for browser-based mining and onchain claim flow.</p>
         </div>
-        <span class="badge" id="authBadge">Not signed in</span>
+        <span class="badge">Coming Soon</span>
       </div>
 
-      <div id="existingBox" class="message"></div>
-
-      <div class="auth-row">
-        <div class="auth-copy">
-          <b id="authTitle">Google authentication required</b>
-          <span id="authSub">Sign in before submitting your application.</span>
+      <div class="mining-layout">
+        <div class="terminal">
+          <div class="terminal-head">
+            <span class="terminal-dot"></span>
+            <span>ZEC BLOCKS MINER / PREVIEW</span>
+          </div>
+          <div class="terminal-screen">
+            <div class="terminal-line"><span class="term-key">status</span><span id="mineStatus">Preparing mining interface…</span></div>
+            <div class="terminal-line"><span class="term-key">target</span><span id="mineTarget">ZEC BLOCK #3,484,871</span></div>
+            <div class="terminal-line"><span class="term-key">network</span><span>Zcash Mainnet</span></div>
+            <div class="terminal-line"><span class="term-key">claim model</span><span>First valid proof confirmed onchain wins</span></div>
+            <div class="terminal-line"><span class="term-key">hashrate</span><span id="mineHashrate">Preview mode</span></div>
+            <div class="terminal-line"><span class="term-key">difficulty</span><span id="mineDifficulty">Calibrating…</span></div>
+            <div class="hash-stream" id="hashStream"></div>
+            <div class="progress-wrap"><div class="progress-bar"></div></div>
+            <div class="terminal-foot">Mining UI is under construction. Launch status: <b>COMING SOON</b></div>
+          </div>
         </div>
-        <button id="googleBtn" class="btn gold" type="button">Continue with Google</button>
+
+        <div class="mining-side">
+          <div class="mini-card">
+            <div class="mini-kicker">Release model</div>
+            <h3>No whitelist</h3>
+            <p>Access moves from applications to protocol-based mining. Everyone will enter through the same mining flow once live.</p>
+          </div>
+          <div class="mini-card">
+            <div class="mini-kicker">How it works</div>
+            <h3>Mine → claim → verify</h3>
+            <p>Choose a block, run the miner, and submit a valid proof. The website will index the result, but the protocol remains the source of truth.</p>
+          </div>
+          <div class="mini-card">
+            <div class="mini-kicker">Current state</div>
+            <h3>Preview only</h3>
+            <p>The mining interface, animation, and dashboard are now staged in the UI. Claiming is still disabled until launch.</p>
+          </div>
+        </div>
       </div>
-
-      <form id="wlForm">
-        <div class="form-grid">
-          <div class="field">
-            <label>Shielded / Unified Zcash Address</label>
-            <input id="zecAddress" autocomplete="off" spellcheck="false" placeholder="u1... or zs1..." required>
-          </div>
-          <div class="field">
-            <label>X Username — optional</label>
-            <input id="xUsername" autocomplete="off" placeholder="@username">
-          </div>
-          <div class="field">
-            <label>X Post URL — optional</label>
-            <input id="xPostUrl" type="url" autocomplete="off" placeholder="https://x.com/.../status/...">
-          </div>
-        </div>
-        <div class="wl-footer">
-          <div class="wl-note">Accepted for new applications: <b>u1...</b> or <b>zs1...</b>. For public X verification, comment “Applied” instead of your wallet address.</div>
-          <button id="submitBtn" class="btn gold" type="submit" disabled>Submit Application</button>
-        </div>
-        <div id="message" class="message"></div>
-      </form>
     </section>
 
     <footer class="footer">
@@ -388,19 +429,14 @@
       <div class="footer-links">
         <a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X</a>
         <a href="#market">Marketplace</a>
-        <a href="#whitelist">Whitelist</a>
+        <a href="#mine">Mining</a>
+        <a href="#protocol">Protocol</a>
       </div>
     </footer>
   </main>
 </div>
 
-<script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-  const supabase = createClient(
-    "https://tvwvenyomlwvjtwxasca.supabase.co",
-    "sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN"
-  );
+<script>
 
   // ---------- deterministic artwork ----------
   function hashString(str){
@@ -543,7 +579,7 @@
           <div class="nft-line"><div class="nft-title">ZEC BLOCK ${it.height.toLocaleString()}</div><div class="rank">${rarityName}</div></div>
           <div class="meta"><span>${it.txs} tx · ${formatBytes(it.size)}</span><span>Real Mainnet Block</span></div>
           <div class="meta"><span>${shortHash(it.hash)}</span><span>${it.privacy==="—"?"Zcash":it.privacy}</span></div>
-          <div class="sale"><span>Not minted</span><button class="mini-btn" disabled>Coming Soon</button></div>
+          <div class="sale"><span>Unmined</span><button class="mini-btn" disabled>Mining Soon</button></div>
         </div>`;
       grid.appendChild(card);
       artSvg(card.querySelector("svg"),it.hash+":"+it.height,"BLOCK "+it.height);
@@ -560,83 +596,44 @@
     alert("Zcash wallet connection is coming soon.");
   });
 
-  // ---------- whitelist ----------
-  const $=id=>document.getElementById(id);
-  const googleBtn=$("googleBtn"), submitBtn=$("submitBtn"), msg=$("message"), existingBox=$("existingBox");
-  let currentUser=null, existingApplication=null;
+  // ---------- mining preview ----------
+  function randomHex(len){
+    const chars="0123456789abcdef";
+    let out="";
+    for(let i=0;i<len;i++) out+=chars[Math.floor(Math.random()*chars.length)];
+    return out;
+  }
+  const statusMessages=[
+    "Preparing browser mining interface…",
+    "Syncing deterministic block artifacts…",
+    "Calibrating local proof search…",
+    "Mining dashboard staged. Launch coming soon.",
+    "Watching the next claim window…"
+  ];
+  const hashrates=["0.92 MH/s preview","1.18 MH/s preview","0.77 MH/s preview","1.04 MH/s preview"];
+  const difficulties=["target / 2^18","target / 2^19","target / 2^20","adaptive preview"];
+  const statusEl=document.getElementById("mineStatus");
+  const targetEl=document.getElementById("mineTarget");
+  const hashrateEl=document.getElementById("mineHashrate");
+  const difficultyEl=document.getElementById("mineDifficulty");
+  const hashStreamEl=document.getElementById("hashStream");
 
-  function showMessage(text,type="ok"){msg.textContent=text;msg.className="message show "+type}
-  function clearMessage(){msg.textContent="";msg.className="message"}
-  function validPrivateAddress(v){v=(v||"").trim();return /^(u1|zs1)[0-9a-z]{20,250}$/.test(v)}
-  function errorText(err){
-    const raw=String(err?.message||err||"");
-    const map={
-      AUTH_REQUIRED:"Please sign in with Google first.",
-      GOOGLE_AUTH_REQUIRED:"Please sign in with a Google account.",
-      EMAIL_REQUIRED:"No email was found on your Google account.",
-      INVALID_SHIELDED_ADDRESS:"Enter a valid Zcash Unified (u1...) or Sapling shielded (zs1...) address.",
-      GOOGLE_ACCOUNT_ALREADY_USED:"This Google account has already submitted an application.",
-      ZEC_ADDRESS_ALREADY_USED:"This Zcash address has already been used."
-    };
-    const key=Object.keys(map).find(k=>raw.includes(k));
-    return key?map[key]:(raw||"Something went wrong.");
-  }
-  async function loadExisting(){
-    existingApplication=null;existingBox.className="message";
-    if(!currentUser)return;
-    const {data,error}=await supabase.from("zecblocks_whitelist_applications")
-      .select("application_no,zec_address,status,created_at").eq("user_id",currentUser.id).maybeSingle();
-    if(!error&&data){
-      existingApplication=data;
-      existingBox.textContent=`Application #${data.application_no} · ${String(data.status).toUpperCase()} · address stored privately`;
-      existingBox.className="message show ok";
+  function updateMiningPreview(){
+    const item=items[Math.floor(Math.random()*items.length)];
+    if(statusEl) statusEl.textContent=statusMessages[Math.floor(Math.random()*statusMessages.length)];
+    if(targetEl) targetEl.textContent=`ZEC BLOCK #${item.height.toLocaleString()}`;
+    if(hashrateEl) hashrateEl.textContent=hashrates[Math.floor(Math.random()*hashrates.length)];
+    if(difficultyEl) difficultyEl.textContent=difficulties[Math.floor(Math.random()*difficulties.length)];
+    if(hashStreamEl){
+      const rows=[];
+      for(let i=0;i<7;i++){
+        rows.push(`<div>${randomHex(8)} · ${randomHex(8)} · ${randomHex(8)} · nonce ${Math.floor(Math.random()*90000000+10000000)}</div>`);
+      }
+      hashStreamEl.innerHTML=rows.join("");
     }
   }
-  async function updateAuth(){
-    const {data:{session}}=await supabase.auth.getSession();
-    currentUser=session?.user||null;
-    if(currentUser){
-      $("authBadge").textContent="Signed in";
-      $("authTitle").textContent="Google account connected";
-      $("authSub").textContent=currentUser.email||"Authenticated";
-      googleBtn.textContent="Sign out";
-      googleBtn.classList.remove("gold");
-      submitBtn.disabled=false;
-      await loadExisting();
-      if(existingApplication)submitBtn.disabled=true;
-    }else{
-      $("authBadge").textContent="Not signed in";
-      $("authTitle").textContent="Google authentication required";
-      $("authSub").textContent="Sign in before submitting your application.";
-      googleBtn.textContent="Continue with Google";
-      googleBtn.classList.add("gold");
-      submitBtn.disabled=true;
-      existingBox.className="message";
-    }
-  }
-  googleBtn.addEventListener("click",async()=>{
-    clearMessage();
-    const {data:{session}}=await supabase.auth.getSession();
-    if(session){await supabase.auth.signOut();await updateAuth();return}
-    const redirectTo=window.location.origin+window.location.pathname;
-    const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo}});
-    if(error)showMessage(error.message,"err");
-  });
-  $("wlForm").addEventListener("submit",async e=>{
-    e.preventDefault();clearMessage();
-    if(!currentUser){showMessage("Please sign in with Google first.","err");return}
-    if(existingApplication){showMessage("This Google account has already submitted an application.","err");return}
-    const zec=$("zecAddress").value.trim(), xu=$("xUsername").value.trim(), xp=$("xPostUrl").value.trim();
-    if(!validPrivateAddress(zec)){showMessage("Enter a valid Zcash Unified (u1...) or Sapling shielded (zs1...) address.","err");return}
-    submitBtn.disabled=true;submitBtn.textContent="Submitting...";
-    const {error}=await supabase.rpc("submit_zecblocks_whitelist",{p_zec_address:zec,p_x_username:xu||null,p_x_post_url:xp||null});
-    submitBtn.textContent="Submit Application";
-    if(error){showMessage(errorText(error),"err");submitBtn.disabled=false;return}
-    showMessage("Application submitted successfully. Your Zcash address is stored privately.","ok");
-    await loadExisting();submitBtn.disabled=true;
-  });
-  supabase.auth.onAuthStateChange(()=>setTimeout(updateAuth,0));
-  await updateAuth();
+  updateMiningPreview();
+  setInterval(updateMiningPreview,1900);
 </script>
 </body>
 </html>
