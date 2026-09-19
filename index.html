@@ -112,7 +112,7 @@
   </div>
 </section>
 
-<div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Latest 30 marketplace events. Live discovery keeps claims, listings and sales updated.</p></div><div class="tabs"><select id="activityFilter" class="select" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button id="refreshActivityBtn" class="btn">Refresh</button></div></div>
+<div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Latest 30 marketplace events. Activity refreshes automatically every 20 seconds; marketplace listings update live.</p></div><div class="tabs"><select id="activityFilter" class="select" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button id="refreshActivityBtn" class="btn">Refresh</button></div></div>
 <section class="card panel">
   <div class="activityWrap">
     <table class="activityTable">
@@ -150,7 +150,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.4</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.6</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -168,7 +168,7 @@ const CFG={
   relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band','wss://relay.snort.social','wss://nostr.mom'],
   nostrKind:30078,relayTag:'zb1-mainnet-v1',atomicLockSeconds:3600,atomicPayCutoffSeconds:900,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFeeStepConfirmations:1,atomicFinalConfirmations:6,atomicFundedGraceSeconds:3600,atomicFinalityGraceSeconds:7200
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -309,6 +309,34 @@ async function verifyZcashCompactSignature(message,signature,pubkey){
 }
 
 function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
+function discoveryCache(){
+  try{
+    const a=JSON.parse(sessionStorage.getItem('zb1_public_discovery_v1')||'[]');
+    return Array.isArray(a)?a:[]
+  }catch{return[]}
+}
+function verifiedSettlementJournal(){
+  try{
+    const a=JSON.parse(localStorage.getItem('zb1_verified_settlements_v1')||'[]');
+    return Array.isArray(a)?a:[]
+  }catch{return[]}
+}
+function saveVerifiedSettlementJournal(e){
+  try{
+    const a=verifiedSettlementJournal(),k=e.lockId||eventKey(e);
+    const i=a.findIndex(x=>(x.lockId||eventKey(x))===k);
+    if(i>=0)a[i]=mergeEvent(a[i],e);else a.push(e);
+    localStorage.setItem('zb1_verified_settlements_v1',JSON.stringify(a.slice(-1000)))
+  }catch(err){console.warn('verified settlement journal',err)}
+}
+function saveDiscoveryCache(events){
+  try{
+    const a=[...events]
+      .sort((x,y)=>(Number(x.timestamp)||0)-(Number(y.timestamp)||0))
+      .slice(-8000);
+    sessionStorage.setItem('zb1_public_discovery_v1',JSON.stringify(a))
+  }catch(e){console.warn('discovery cache full/unavailable',e)}
+}
 function eventKey(e){return e?.txid||e?.eventId||e?.listingId||null}
 function mergeEvent(old,e){
   if(!old)return {...e};
@@ -651,7 +679,7 @@ function ingestLiveRelayEvent(n){
         rebuildState();
         await reconcileAtomicState();
         rebuildState();
-        renderMarket();renderActivity();renderPortfolio();renderAtomicDesk();updateMarketMetrics()
+        renderMarket();renderPortfolio();renderAtomicDesk();updateMarketMetrics()
       }catch(e){console.warn('live relay render',e)}
     },250)
   }catch(e){console.warn('live relay event',e)}
@@ -706,7 +734,7 @@ async function fetchRelay(){
   S.relayFetchBusy=true;
   try{
 
-  let arr=[...localEvents(),...S.liveDiscoveryEvents.values()];
+  let arr=[...S.events,...discoveryCache(),...verifiedSettlementJournal(),...localEvents(),...S.liveDiscoveryEvents.values()];
   const seenByRelay=new Map();
   let relayOk=0,relayEvents=0;
   if(S.nostr&&S.relay){
@@ -741,6 +769,7 @@ async function fetchRelay(){
     ded.set(k,mergeEvent(ded.get(k),e));
   }
   S.events=[...ded.values()];
+  saveDiscoveryCache(S.events);
   rebuildState();
   let repaired=0;
   try{repaired=await repairLocalDiscovery(seenByRelay)}catch(e){console.warn('relay repair',e)}
@@ -909,9 +938,9 @@ function visibleMarketListings(){
   const now=Math.floor(Date.now()/1000),byToken=new Map();
   for(const x of S.listings.values()){
     if((x.expires||0)<=now||tokenIsAtomicLocked(x.tokenId))continue;
-    const owner=currentOwner(x.tokenId);
-    // Known contradictory owner => stale listing, hide it.
-    if(owner&&owner!==x.sellerCommitment)continue;
+    // Do not remove a published listing merely because ownership discovery is
+    // behind or temporarily contradictory. renderMarket() disables the action
+    // until currentOwner() resolves to the listing seller.
     const old=byToken.get(Number(x.tokenId));
     if(!old||(x.timestamp||0)>(old.timestamp||0))byToken.set(Number(x.tokenId),x)
   }
@@ -924,13 +953,13 @@ function settledSales(){
     .sort((a,b)=>(b.blockTime||b.timestamp||0)-(a.blockTime||a.timestamp||0))
 }
 function updateMarketMetrics(){
-  const active=activeListings(),sales=settledSales();
+  const active=activeListings(),visible=visibleMarketListings(),sales=settledSales();
   const floor=active.length?Math.min(...active.map(x=>validPrice(x.price)).filter(Boolean)):0;
   const volume=sales.reduce((sum,x)=>sum+validPrice(x.price),0);
   $('floorPrice').textContent=floor?`${floor.toLocaleString(undefined,{maximumFractionDigits:8})} ZEC`:'—';
   $('totalVolume').textContent=`${volume.toLocaleString(undefined,{maximumFractionDigits:8})} ZEC`;
   $('salesCount').textContent=sales.length.toLocaleString();
-  $('listedCount').textContent=active.length.toLocaleString();
+  $('listedCount').textContent=visible.length.toLocaleString();
 }
 function activityKind(e){
   if(e.type==='ATOMIC_SETTLED'||e.type==='NOIR_SETTLED')return 'sale';
@@ -1009,7 +1038,10 @@ function renderMarket(){
     if(tokenIsAtomicLocked(l.tokenId)){action.textContent='ATOMIC LOCKED';action.disabled=true}
     else if(!resolvedOwner){
       action.textContent='OWNER SYNCING';action.disabled=true;
-      action.title='Listing discovered live. Waiting for the ZB-1 ownership record before offers are enabled.'
+      action.title='Listing is visible, but ZB-1 ownership is still syncing. Offers stay disabled until verified.'
+    }else if(resolvedOwner!==l.sellerCommitment){
+      action.textContent='OWNER VERIFYING';action.disabled=true;
+      action.title='The listing stays visible while ownership discovery catches up. It cannot be traded unless the seller resolves as current owner.'
     }else if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
       action.textContent='Cancel Listing';action.onclick=()=>cancelListing(l);
     }else{action.textContent='Make Offer';action.onclick=()=>openOffer(l)}
@@ -1275,16 +1307,109 @@ async function autoFindAtomicPayment(lock){
   }
   return pending?{...pending,pendingFinality:true}:null
 }
+async function recoverOneHistoricalSettlement(raw){
+  try{
+    if(!raw?.lockId||S.verifiedAtomic.has(raw.lockId))return null;
+    const rawLock=S.atomicLocks.get(raw.lockId);
+    if(!rawLock)return null;
+
+    const lock=await confirmLockEvent(rawLock);
+    if(!lock)return null;
+
+    // The settlement hint must describe the exact buyer/seller/token bound into
+    // the seller-signed lock. These fields are not accepted from the hint alone.
+    if(Number(raw.tokenId)!==Number(lock.tokenId))return null;
+    if(String(raw.buyerCommitment||'').toLowerCase()!==String(lock.buyerCommitment||'').toLowerCase())return null;
+    if(String(raw.sellerCommitment||'').toLowerCase()!==String(lock.sellerCommitment||'').toLowerCase())return null;
+
+    if(Number(lock.v)>=4){
+      const feeTxid=String(raw.feeTxid||'').toLowerCase();
+      const sellerTxid=String(raw.sellerPaymentTxid||raw.paymentTxid||raw.txid||'').toLowerCase();
+      if(!/^[0-9a-f]{64}$/.test(feeTxid)||!/^[0-9a-f]{64}$/.test(sellerTxid))return null;
+
+      const fee=await verifyNoirStepTx(lock,feeTxid,'fee',{requireFinal:true});
+      // seller step's allowed grace is derived from the actually confirmed fee.
+      lock.feeSeen=fee;
+      const seller=await verifyNoirStepTx(lock,sellerTxid,'seller',{requireFinal:true});
+      if(seller.blockHeight<=fee.blockHeight)return null;
+
+      const e=normalizeEvent({
+        protocol:'ZB1',v:4,type:'NOIR_SETTLED',eventId:'noir-settled:'+lock.lockId,lockId:lock.lockId,
+        tokenId:Number(lock.tokenId),price:lock.price,
+        sellerCommitment:lock.sellerCommitment,buyerCommitment:lock.buyerCommitment,
+        sourceHeight:lock.sourceHeight||raw.sourceHeight||null,
+        sourceHash:lock.sourceHash||raw.sourceHash||null,
+        claimTxid:lock.claimTxid||raw.claimTxid||null,
+        feeTxid:fee.txid,sellerPaymentTxid:seller.txid,paymentTxid:seller.txid,txid:seller.txid,
+        protocolFeeZec:lock.feeZec,sellerZec:lock.sellerZec,protocolFeeBps:CFG.marketFeeBps,
+        listingId:lock.listingId,offerId:lock.offerId,
+        timestamp:seller.blockTime||Number(raw.timestamp)||Math.floor(Date.now()/1000),
+        blockTime:seller.blockTime,blockHeight:seller.blockHeight,txIndex:seller.txIndex,
+        confirmations:Math.min(fee.confirmations,seller.confirmations),derivedFromChain:true,recoveredHistorical:true
+      });
+      return e
+    }
+
+    // Legacy V9 single-payment sale.
+    const txid=String(raw.paymentTxid||raw.txid||'').toLowerCase();
+    if(!/^[0-9a-f]{64}$/.test(txid))return null;
+    const pay=await verifyLegacyAtomicPaymentTx(lock,txid,{requireFinal:true});
+    const e=normalizeEvent({
+      protocol:'ZB1',v:3,type:'NOIR_SETTLED',eventId:'noir-settled:'+lock.lockId,lockId:lock.lockId,
+      tokenId:Number(lock.tokenId),price:lock.price,
+      sellerCommitment:lock.sellerCommitment,buyerCommitment:lock.buyerCommitment,
+      sourceHeight:lock.sourceHeight||raw.sourceHeight||null,
+      sourceHash:lock.sourceHash||raw.sourceHash||null,
+      claimTxid:lock.claimTxid||raw.claimTxid||null,
+      paymentTxid:pay.txid,txid:pay.txid,listingId:lock.listingId,offerId:lock.offerId,
+      timestamp:pay.blockTime||Number(raw.timestamp)||Math.floor(Date.now()/1000),
+      derivedFromChain:true,recoveredHistorical:true,...pay
+    });
+    return e
+  }catch(e){
+    console.warn('historical settlement verify',raw?.lockId,e);
+    return null
+  }
+}
+async function recoverHistoricalSettlements(){
+  if(S.historicalSettlementRecoveryBusy)return 0;
+  S.historicalSettlementRecoveryBusy=true;
+  let recovered=0;
+  try{
+    const hints=new Map();
+    for(const e of [...S.atomicSettlements.values(),...verifiedSettlementJournal()]){
+      if(e?.lockId)hints.set(e.lockId,mergeEvent(hints.get(e.lockId),e))
+    }
+    for(const raw of hints.values()){
+      if(S.verifiedAtomic.has(raw.lockId))continue;
+      const e=await recoverOneHistoricalSettlement(raw);
+      if(!e)continue;
+      S.verifiedAtomic.set(e.lockId,e);
+      rememberRuntimeEvent(e);
+      saveVerifiedSettlementJournal(e);
+      recovered++
+    }
+    return recovered
+  }finally{
+    S.historicalSettlementRecoveryBusy=false
+  }
+}
 async function reconcileAtomicState(){
   if(S.atomicWatchBusy)return;
   S.atomicWatchBusy=true;
   try{
-    const locks=[...S.atomicLocks.values()].slice(-150);
+    const locks=[...S.atomicLocks.values()].slice(-300);
     for(const l of locks){
       const old=S.confirmedLocks.get(l.lockId);
       if(old&&old.confirmations>=CFG.atomicLockConfirmations)continue;
       const c=await confirmLockEvent(l);if(c)S.confirmedLocks.set(l.lockId,c)
     }
+
+    // Critical for reloads after an old sale lock has expired:
+    // re-verify completed settlement history before deciding which locks are
+    // currently active. Otherwise a valid historical SALE can disappear from
+    // Portfolio / Volume simply because its original lock is no longer active.
+    await recoverHistoricalSettlements();
 
     const ordered=[...S.confirmedLocks.values()].sort(eventOrder),winner=new Map();
     for(const l of ordered){
@@ -1323,6 +1448,7 @@ async function reconcileAtomicState(){
         });
         S.verifiedAtomic.set(lock.lockId,e);
         rememberRuntimeEvent(e);
+        saveVerifiedSettlementJournal(e);
         try{await publishRelay(e)}catch{}
         continue
       }
@@ -1337,6 +1463,7 @@ async function reconcileAtomicState(){
       });
       S.verifiedAtomic.set(lock.lockId,e);
       rememberRuntimeEvent(e);
+      saveVerifiedSettlementJournal(e);
       try{await publishRelay(e)}catch{}
     }
   }finally{S.atomicWatchBusy=false}
