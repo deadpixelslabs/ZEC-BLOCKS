@@ -8,7 +8,16 @@
 <title>ZEC BLOCKS — Marketplace</title>
 <style>
 :root{--bg:#070707;--panel:#0d0d0d;--panel2:#111;--line:#232323;--line2:#313131;--text:#f4f4f4;--muted:#8b8b8b;--gold:#d3a84f;--gold2:#f1cc76;--green:#78d594;--red:#ff8989;--blue:#86b7ff;--r:14px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input,select{font:inherit}button{cursor:pointer}.top{height:68px;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;padding:0 24px;background:rgba(7,7,7,.92);border-bottom:1px solid #1d1d1d;backdrop-filter:blur(16px)}.brand{display:flex;align-items:center;gap:10px;min-width:max-content}.brandmark{width:34px;height:34px;border:1px solid #3c3322;border-radius:8px;display:grid;place-items:center;background:#0d0b08;color:var(--gold2);font-family:ui-monospace,monospace;font-weight:900}.brand b{font-size:13px;letter-spacing:.12em}.nav{display:flex;gap:4px}.nav a{padding:9px 11px;border-radius:9px;color:#8d8d8d;font-size:13px;font-weight:700}.nav a:hover{background:#131313;color:#fff}.topright{margin-left:auto;display:flex;align-items:center;gap:8px}.pill{border:1px solid #292929;background:#0d0d0d;padding:8px 10px;border-radius:999px;font-size:11px;color:#aaa}.liveDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px rgba(120,213,148,.7);margin-right:7px}.btn{min-height:39px;padding:0 14px;border:1px solid #2b2b2b;background:#111;color:#ddd;border-radius:10px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn:hover{border-color:#494949;color:#fff}.btn.gold{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#17120a;border-color:transparent}.btn.green{border-color:rgba(120,213,148,.3);color:#b8f0c6;background:rgba(120,213,148,.08)}.btn.red{border-color:rgba(255,137,137,.3);color:#ffb2b2;background:rgba(255,137,137,.06)}.btn:disabled{opacity:.45;cursor:not-allowed}.walletbtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}main{max-width:1420px;margin:0 auto;padding:28px 24px 70px}.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.7fr);gap:18px}.card,.heroMain{border:1px solid #202020;background:linear-gradient(180deg,#0e0e0e,#0a0a0a);border-radius:var(--r)}.heroMain{padding:38px;min-height:420px;position:relative;overflow:hidden}.heroMain:after{content:"";position:absolute;width:500px;height:500px;right:-180px;top:-160px;border-radius:50%;background:radial-gradient(circle,rgba(211,168,79,.14),transparent 68%);pointer-events:none}.kicker{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold2);font-weight:900;margin-bottom:17px}.hero h1{font-size:clamp(50px,7vw,88px);line-height:.92;letter-spacing:-.055em;margin:0;max-width:900px}.hero p{max-width:720px;color:#969696;font-size:15px;line-height:1.72;margin:24px 0 28px}.actions{display:flex;gap:9px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#222;border:1px solid #222;border-radius:11px;overflow:hidden;margin-top:34px;max-width:760px}.stat{background:#0a0a0a;padding:14px 15px}.stat small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}.stat b{font-size:14px}.heroSide{padding:22px;display:flex;flex-direction:column}.heroSideTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.heroSideTop h2{font-size:16px;margin:0}.badge{font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-radius:999px;border:1px solid #333;color:#aaa}.badge.live{color:#aee9bd;border-color:rgba(120,213,148,.25);background:rgba(120,213,148,.05)}.art{aspect-ratio:1;border:1px solid #222;border-radius:11px;background:#070707;overflow:hidden}.blockArt{display:block;width:100%;height:100%;shape-rendering:crispEdges;image-rendering:pixelated}.heroSide .kvgrid{margin-top:14px}.kvgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#222;border:1px solid #222;border-radius:10px;overflow:hidden}.kv{background:#0a0a0a;padding:12px}.kv small{display:block;color:#636363;font-size:9px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px}.kv b{font-size:12px;word-break:break-all}.sectionHead{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:36px 0 14px}.sectionHead h2{margin:0;font-size:21px}.sectionHead p{margin:0;color:#6e6e6e;font-size:11px}.tabs{display:flex;gap:8px;flex-wrap:wrap}.panel{padding:22px}.miningGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.terminal{border:1px solid #252525;background:#090909;border-radius:12px;overflow:hidden}.terminalHead{padding:12px 14px;border-bottom:1px solid #1e1e1e;background:#101010;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;display:flex;align-items:center;gap:9px}.termDot{width:9px;height:9px;border-radius:50%;background:var(--gold2);box-shadow:0 0 14px rgba(240,202,114,.55)}.termBody{padding:14px}.row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #171717;font-size:12px}.row:last-child{border-bottom:0}.key{font-size:9px;color:#696969;text-transform:uppercase;letter-spacing:.09em;font-weight:900;min-width:120px}.val{text-align:right;color:#d8d8d8;word-break:break-all}.inputrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:14px}.input,.select{width:100%;height:42px;border:1px solid #2a2a2a;border-radius:9px;background:#080808;color:#eee;padding:0 12px;outline:none}.input:focus,.select:focus{border-color:#5a492d}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.progress{height:10px;border:1px solid #222;background:#121212;border-radius:999px;overflow:hidden;margin-top:14px}.progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .2s}.hashlog{height:150px;overflow:auto;margin-top:12px;border:1px solid #1d1d1d;border-radius:9px;background:#070707;padding:10px;color:#83c99a;font:10px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.sideStack{display:grid;gap:12px}.mini{border:1px solid #242424;border-radius:11px;background:#0a0a0a;padding:16px}.mini h3{margin:0 0 7px;font-size:15px}.mini p{margin:0;color:#7d7d7d;font-size:11px;line-height:1.65}.notice{border:1px solid rgba(240,202,114,.22);background:rgba(240,202,114,.05);color:#cdbb91;padding:11px 12px;border-radius:9px;font-size:11px;line-height:1.55;margin-top:12px}.notice.good{border-color:rgba(120,213,148,.22);background:rgba(120,213,148,.05);color:#aee7bc}.notice.bad{border-color:rgba(255,137,137,.22);background:rgba(255,137,137,.05);color:#ffb0b0}.marketToolbar{display:flex;gap:9px;align-items:center;padding:13px;border-bottom:1px solid #1e1e1e}.marketToolbar .input{max-width:440px}.marketBody{padding:15px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.nft{border:1px solid #202020;border-radius:11px;background:#0c0c0c;overflow:hidden;transition:.16s}.nft:hover{transform:translateY(-2px);border-color:#3a342b}.nftart{aspect-ratio:1;border-bottom:1px solid #1d1d1d}.nftinfo{padding:11px}.nftline{display:flex;justify-content:space-between;align-items:center;gap:8px}.nfttitle{font-size:12px;font-weight:900}.meta{font-size:9px;color:#646464;margin-top:6px;display:flex;justify-content:space-between;gap:8px}.price{font-size:12px;color:#d8bd78;font-weight:900}.empty{padding:42px 20px;text-align:center;color:#666;font-size:12px;border:1px dashed #292929;border-radius:11px}.portfolioTop{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.metric{border:1px solid #222;background:#0a0a0a;border-radius:10px;padding:14px}.metric small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.08em}.metric b{display:block;font-size:17px;margin-top:6px}.walletbox{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.copyline{border:1px solid #242424;border-radius:10px;background:#0a0a0a;padding:12px}.copyline small{display:block;color:#666;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.copyline code{font-size:10px;color:#bbb;word-break:break-all}.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}.modal.show{display:flex}.modalCard{width:min(560px,100%);max-height:88vh;overflow:auto;border:1px solid #303030;border-radius:14px;background:#0c0c0c;padding:20px;box-shadow:0 30px 100px rgba(0,0,0,.6)}.modalHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modalHead h3{margin:0;font-size:17px}.xbtn{border:0;background:transparent;color:#888;font-size:20px}.field{margin-bottom:12px}.field label{display:block;font-size:9px;color:#717171;text-transform:uppercase;letter-spacing:.09em;font-weight:900;margin-bottom:6px}.field textarea{width:100%;min-height:100px;border:1px solid #292929;background:#080808;color:#ddd;border-radius:9px;padding:10px;resize:vertical}.protocolGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.protocolGrid .mini{min-height:160px}.footer{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #191919;margin-top:34px;padding-top:24px;color:#595959;font-size:10px}.footerlinks{display:flex;gap:16px;flex-wrap:wrap}.toast{position:fixed;right:18px;bottom:18px;z-index:200;max-width:380px;border:1px solid #333;background:#101010;color:#ddd;border-radius:10px;padding:12px 14px;font-size:11px;box-shadow:0 18px 60px rgba(0,0,0,.5);display:none}.toast.show{display:block}.muted{color:#777}.gold{color:var(--gold2)}.green{color:var(--green)}.red{color:var(--red)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}button,input,select{font:inherit}button{cursor:pointer}.top{height:68px;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:24px;padding:0 24px;background:rgba(7,7,7,.92);border-bottom:1px solid #1d1d1d;backdrop-filter:blur(16px)}.brand{display:flex;align-items:center;gap:10px;min-width:max-content}.brandmark{width:34px;height:34px;border:1px solid #3c3322;border-radius:8px;display:grid;place-items:center;background:#0d0b08;color:var(--gold2);font-family:ui-monospace,monospace;font-weight:900}.brand b{font-size:13px;letter-spacing:.12em}.nav{display:flex;gap:4px}.nav a{padding:9px 11px;border-radius:9px;color:#8d8d8d;font-size:13px;font-weight:700}.nav a:hover{background:#131313;color:#fff}.topright{margin-left:auto;display:flex;align-items:center;gap:8px}.pill{border:1px solid #292929;background:#0d0d0d;padding:8px 10px;border-radius:999px;font-size:11px;color:#aaa}.liveDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px rgba(120,213,148,.7);margin-right:7px}.btn{min-height:39px;padding:0 14px;border:1px solid #2b2b2b;background:#111;color:#ddd;border-radius:10px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn:hover{border-color:#494949;color:#fff}.btn.gold{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#17120a;border-color:transparent}.btn.green{border-color:rgba(120,213,148,.3);color:#b8f0c6;background:rgba(120,213,148,.08)}.btn.red{border-color:rgba(255,137,137,.3);color:#ffb2b2;background:rgba(255,137,137,.06)}.btn:disabled{opacity:.45;cursor:not-allowed}.walletbtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}main{max-width:1420px;margin:0 auto;padding:28px 24px 70px}.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.7fr);gap:18px}.card,.heroMain{border:1px solid #202020;background:linear-gradient(180deg,#0e0e0e,#0a0a0a);border-radius:var(--r)}.heroMain{padding:38px;min-height:420px;position:relative;overflow:hidden}.heroMain:after{content:"";position:absolute;width:500px;height:500px;right:-180px;top:-160px;border-radius:50%;background:radial-gradient(circle,rgba(211,168,79,.14),transparent 68%);pointer-events:none}.kicker{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold2);font-weight:900;margin-bottom:17px}.hero h1{font-size:clamp(50px,7vw,88px);line-height:.92;letter-spacing:-.055em;margin:0;max-width:900px}.hero p{max-width:720px;color:#969696;font-size:15px;line-height:1.72;margin:24px 0 28px}.actions{display:flex;gap:9px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#222;border:1px solid #222;border-radius:11px;overflow:hidden;margin-top:34px;max-width:760px}.stat{background:#0a0a0a;padding:14px 15px}.stat small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}.stat b{font-size:14px}.heroSide{padding:22px;display:flex;flex-direction:column}.heroSideTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.heroSideTop h2{font-size:16px;margin:0}.badge{font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border-radius:999px;border:1px solid #333;color:#aaa}.badge.live{color:#aee9bd;border-color:rgba(120,213,148,.25);background:rgba(120,213,148,.05)}.art{aspect-ratio:1;border:1px solid #222;border-radius:11px;background:#070707;overflow:hidden}.blockArt{display:block;width:100%;height:100%;shape-rendering:crispEdges;image-rendering:pixelated}.heroSide .kvgrid{margin-top:14px}.kvgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#222;border:1px solid #222;border-radius:10px;overflow:hidden}.kv{background:#0a0a0a;padding:12px}.kv small{display:block;color:#636363;font-size:9px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px}.kv b{font-size:12px;word-break:break-all}.sectionHead{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:36px 0 14px}.sectionHead h2{margin:0;font-size:21px}.sectionHead p{margin:0;color:#6e6e6e;font-size:11px}.tabs{display:flex;gap:8px;flex-wrap:wrap}.panel{padding:22px}.miningGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.terminal{border:1px solid #252525;background:#090909;border-radius:12px;overflow:hidden}.terminalHead{padding:12px 14px;border-bottom:1px solid #1e1e1e;background:#101010;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;display:flex;align-items:center;gap:9px}.termDot{width:9px;height:9px;border-radius:50%;background:var(--gold2);box-shadow:0 0 14px rgba(240,202,114,.55)}.termBody{padding:14px}.row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #171717;font-size:12px}.row:last-child{border-bottom:0}.key{font-size:9px;color:#696969;text-transform:uppercase;letter-spacing:.09em;font-weight:900;min-width:120px}.val{text-align:right;color:#d8d8d8;word-break:break-all}.inputrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:14px}.input,.select{width:100%;height:42px;border:1px solid #2a2a2a;border-radius:9px;background:#080808;color:#eee;padding:0 12px;outline:none}.input:focus,.select:focus{border-color:#5a492d}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.progress{height:10px;border:1px solid #222;background:#121212;border-radius:999px;overflow:hidden;margin-top:14px}.progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .2s}.hashlog{height:150px;overflow:auto;margin-top:12px;border:1px solid #1d1d1d;border-radius:9px;background:#070707;padding:10px;color:#83c99a;font:10px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.sideStack{display:grid;gap:12px}.mini{border:1px solid #242424;border-radius:11px;background:#0a0a0a;padding:16px}.mini h3{margin:0 0 7px;font-size:15px}.mini p{margin:0;color:#7d7d7d;font-size:11px;line-height:1.65}.notice{border:1px solid rgba(240,202,114,.22);background:rgba(240,202,114,.05);color:#cdbb91;padding:11px 12px;border-radius:9px;font-size:11px;line-height:1.55;margin-top:12px}.notice.good{border-color:rgba(120,213,148,.22);background:rgba(120,213,148,.05);color:#aee7bc}.notice.bad{border-color:rgba(255,137,137,.22);background:rgba(255,137,137,.05);color:#ffb0b0}.marketToolbar{display:flex;gap:9px;align-items:center;padding:13px;border-bottom:1px solid #1e1e1e}.marketToolbar .input{max-width:440px}.marketBody{padding:15px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.nft{border:1px solid #202020;border-radius:11px;background:#0c0c0c;overflow:hidden;transition:.16s}.nft:hover{transform:translateY(-2px);border-color:#3a342b}.nftart{aspect-ratio:1;border-bottom:1px solid #1d1d1d}.nftinfo{padding:11px}.nftline{display:flex;justify-content:space-between;align-items:center;gap:8px}.nfttitle{font-size:12px;font-weight:900}.meta{font-size:9px;color:#646464;margin-top:6px;display:flex;justify-content:space-between;gap:8px}.price{font-size:12px;color:#d8bd78;font-weight:900}.empty{padding:42px 20px;text-align:center;color:#666;font-size:12px;border:1px dashed #292929;border-radius:11px}.portfolioTop{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.metric{border:1px solid #222;background:#0a0a0a;border-radius:10px;padding:14px}.metric small{display:block;font-size:9px;color:#626262;text-transform:uppercase;letter-spacing:.08em}.metric b{display:block;font-size:17px;margin-top:6px}.walletbox{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tradeDesk{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+.tradeCol{border:1px solid #222;background:#090909;border-radius:11px;padding:14px}
+.tradeCol h3{margin:0 0 5px;font-size:14px}.tradeCol>p{margin:0 0 11px;color:#666;font-size:10px;line-height:1.5}
+.tradeList{display:grid;gap:8px}.tradeItem{border:1px solid #242424;background:#0d0d0d;border-radius:9px;padding:11px}
+.tradeItemTop{display:flex;justify-content:space-between;gap:10px;align-items:center}.tradeItemTop b{font-size:12px}.tradeState{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#cdbb91}
+.tradeInfo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:8px;font-size:9px;color:#686868}
+.tradeItem .controls{margin-top:9px}.btn.small{min-height:31px;padding:0 10px;font-size:10px}
+.pending{color:#f1cc76}.paid{color:#aee7bc}.settled{color:#78d594}.rejected{color:#ff9d9d}
+.copyline{border:1px solid #242424;border-radius:10px;background:#0a0a0a;padding:12px}.copyline small{display:block;color:#666;font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.copyline code{font-size:10px;color:#bbb;word-break:break-all}.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}.modal.show{display:flex}.modalCard{width:min(560px,100%);max-height:88vh;overflow:auto;border:1px solid #303030;border-radius:14px;background:#0c0c0c;padding:20px;box-shadow:0 30px 100px rgba(0,0,0,.6)}.modalHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modalHead h3{margin:0;font-size:17px}.xbtn{border:0;background:transparent;color:#888;font-size:20px}.field{margin-bottom:12px}.field label{display:block;font-size:9px;color:#717171;text-transform:uppercase;letter-spacing:.09em;font-weight:900;margin-bottom:6px}.field textarea{width:100%;min-height:100px;border:1px solid #292929;background:#080808;color:#ddd;border-radius:9px;padding:10px;resize:vertical}.protocolGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.protocolGrid .mini{min-height:160px}.footer{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #191919;margin-top:34px;padding-top:24px;color:#595959;font-size:10px}.footerlinks{display:flex;gap:16px;flex-wrap:wrap}.toast{position:fixed;right:18px;bottom:18px;z-index:200;max-width:380px;border:1px solid #333;background:#101010;color:#ddd;border-radius:10px;padding:12px 14px;font-size:11px;box-shadow:0 18px 60px rgba(0,0,0,.5);display:none}.toast.show{display:block}.muted{color:#777}.gold{color:var(--gold2)}.green{color:var(--green)}.red{color:var(--red)}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hero{grid-template-columns:1fr 360px}}
 @media(max-width:900px){.nav,.pill.network{display:none}.hero{grid-template-columns:1fr}.miningGrid,.protocolGrid{grid-template-columns:1fr}.portfolioTop{grid-template-columns:1fr 1fr}.walletbox{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.top{padding:0 12px}.topright .btn.secondary{display:none}main{padding:18px 12px 56px}.heroMain{padding:28px 20px}.hero h1{font-size:50px}.stats{grid-template-columns:1fr 1fr}.panel{padding:14px}.grid{grid-template-columns:1fr 1fr;gap:8px}.marketToolbar{flex-wrap:wrap}.marketToolbar .input{max-width:none}.portfolioTop{grid-template-columns:1fr 1fr}.footer{flex-direction:column}}
@@ -89,7 +98,7 @@
 </div>
 </section>
 
-<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Signed P2P listings and offers. Multi-relay mirrored. No custody.</p></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List an NFT</button></div></div>
+<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Signed P2P listings, offers and seller-approved ZEC settlement. Multi-relay mirrored. No custody.</p></div><div class="tabs"><button id="refreshMarketBtn" class="btn">Refresh</button><button id="createListingBtn" class="btn gold" disabled>List an NFT</button></div></div>
 <section class="card">
   <div class="marketToolbar"><input id="marketSearch" class="input" placeholder="Search token ID or seller commitment"><select id="marketSort" class="select"><option value="new">Newest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option></select><span class="pill" id="relayStatus">Relays: connecting…</span></div>
   <div class="marketBody">
@@ -103,7 +112,7 @@
   </div>
 </section>
 
-<div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Listings, offers, transfers and completed ZB-1 sale settlements.</p></div><div class="tabs"><select id="activityFilter" class="select" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button id="refreshActivityBtn" class="btn">Refresh</button></div></div>
+<div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Listings, offers, transfers and completed ZB-1 sale settlements.</p></div><div class="tabs"><select id="activityFilter" class="select" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="payment">Payments</option><option value="transfer">Transfers</option></select><button id="refreshActivityBtn" class="btn">Refresh</button></div></div>
 <section class="card panel">
   <div class="activityWrap">
     <table class="activityTable">
@@ -118,7 +127,20 @@
 <section class="card panel">
   <div class="portfolioTop"><div class="metric"><small>Owned</small><b id="ownedCount">0</b></div><div class="metric"><small>Active Listings</small><b id="listingCount">0</b></div><div class="metric"><small>Offers Received</small><b id="offerCount">0</b></div><div class="metric"><small>ZEC Available</small><b id="zecBalance">—</b></div></div>
   <div class="walletbox"><div class="copyline"><small>Derived owner identity</small><code id="portfolioCommit">Connect wallet to reveal your commitment.</code></div><div class="copyline"><small>Shielded account</small><code id="portfolioShielded">Private until you connect.</code></div></div>
-  <div id="portfolioGrid" class="grid"></div>
+  <div class="tradeDesk">
+    <div class="tradeCol">
+      <h3>Seller Inbox</h3>
+      <p>Accept or reject offers. After the buyer pays, verify the incoming ZEC in Noir Wallet, pay the 3% marketplace fee, then transfer the NFT.</p>
+      <div id="sellerOfferList" class="tradeList"><div class="empty">Connect your seller wallet to load offers.</div></div>
+    </div>
+    <div class="tradeCol">
+      <h3>My Purchases</h3>
+      <p>When a seller accepts your offer, pay the exact agreed price from Noir Wallet. The seller must verify payment and approve the NFT transfer.</p>
+      <div id="buyerPurchaseList" class="tradeList"><div class="empty">Accepted offers will appear here.</div></div>
+    </div>
+  </div>
+  <div class="notice bad"><b>Seller-approved settlement:</b> Noir Wallet currently exposes one-recipient sends, so ZEC payment and NFT transfer cannot be atomic in one dApp transaction. Buyer pays only after a signed seller acceptance. Seller then verifies the payment before transferring. Do not treat this flow as escrow.</div>
+  <div id="portfolioGrid" class="grid" style="margin-top:14px"></div>
 </section>
 
 <div class="sectionHead" id="protocol"><div><h2>Open Protocol</h2><p>ZB-1 is documented in public.</p></div><a class="btn" href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Open GitBook</a></div>
@@ -127,11 +149,11 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Portfolio Recovery V5</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Live Settlement V6</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
-<div id="offerModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Make Offer</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input id="offerToken" class="input" disabled></div><div class="field"><label>Offer (ZEC)</label><input id="offerPrice" class="input" inputmode="decimal"></div><div class="notice">Offers are signed intents only. No ZEC is moved by this action. Settlement remains P2P; transfer should only be submitted after both parties agree.</div><div class="controls"><button id="publishOfferBtn" class="btn gold">Sign & Publish Offer</button></div></div></div>
+<div id="offerModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Make Offer</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input id="offerToken" class="input" disabled></div><div class="field"><label>Offer (ZEC)</label><input id="offerPrice" class="input" inputmode="decimal"></div><div class="notice">Making an offer does not move ZEC. If the seller accepts, the accepted trade appears in My Purchases and you can pay the exact agreed price from Noir Wallet.</div><div class="controls"><button id="publishOfferBtn" class="btn gold">Sign & Publish Offer</button></div></div></div>
 <div id="transferModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>Transfer ZEC BLOCK</h3><button class="xbtn" data-close="transferModal">×</button></div><div class="field"><label>Token</label><input id="transferToken" class="input" disabled></div><div class="field"><label>Recipient owner commitment (64 hex)</label><input id="recipientCommit" class="input" placeholder="SHA-256 owner commitment"></div><div class="notice bad">Transfers are irreversible protocol events. Verify the recipient commitment carefully before approving the Zcash transaction.</div><div class="controls"><button id="submitTransferBtn" class="btn red">Sign & Submit Transfer</button></div></div></div>
 <div id="toast" class="toast"></div>
 <script>
@@ -145,7 +167,7 @@ const CFG={
   relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band'],
   nostrKind:30078,relayTag:'zb1-mainnet-v1'
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map()};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),acceptances:new Map(),rejections:new Map(),payments:new Map(),marketFees:new Map(),settlements:new Map(),confirmedSales:new Set()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -160,6 +182,22 @@ function concat(...arr){const n=arr.reduce((s,a)=>s+a.length,0),o=new Uint8Array
 function leadingZeroBits(bytes){let n=0;for(const b of bytes){if(b===0){n+=8;continue}for(let m=0x80;(b&m)===0;m>>=1)n++;break}return n}
 function formatRate(hps){if(hps>=1e6)return (hps/1e6).toFixed(2)+' MH/s';if(hps>=1e3)return (hps/1e3).toFixed(1)+' kH/s';return Math.round(hps)+' H/s'}
 function decimalValid(v){return /^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(String(v))&&Number(v)>0}
+function zecToZat(v){
+  let s=String(v??'').trim(); if(s.startsWith('+'))s=s.slice(1); if(s.startsWith('-'))s=s.slice(1);
+  if(!/^\d+(?:\.\d{0,8})?$/.test(s))return null;
+  const [w,f='']=s.split('.'); return BigInt(w)*100000000n+BigInt((f+'00000000').slice(0,8));
+}
+function zatToZec(z){
+  z=BigInt(z); const w=z/100000000n,f=(z%100000000n).toString().padStart(8,'0').replace(/0+$/,'');
+  return f?`${w}.${f}`:String(w)
+}
+function marketFeeForPrice(price){
+  const total=zecToZat(price); if(total==null||total<=0n)return 0n;
+  const f=(total*BigInt(CFG.marketFeeBps)+5000n)/10000n; return f>0n?f:1n
+}
+function sigPub(s){return s?.pubkey||s?.publicKey||''}
+function sigVal(s){return s?.signature||s?.sig||''}
+
 function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
 function eventKey(e){return e?.txid||e?.eventId||e?.listingId||null}
 function mergeEvent(old,e){
@@ -469,7 +507,7 @@ async function repairLocalDiscovery(seenByRelay){
   const last=Number(localStorage.getItem('zb1_relay_repair_at')||0);
   if(Date.now()-last<10*60*1000){S.didRepair=true;return 0}
   S.didRepair=true;
-  const local=localEvents().filter(e=>['SALE','SALE_CANCEL','OFFER','CLAIM','TRANSFER'].includes(e.type));
+  const local=localEvents().filter(e=>['SALE','SALE_CANCEL','OFFER','OFFER_ACCEPTED','OFFER_REJECTED','PAYMENT_SUBMITTED','MARKET_FEE','SALE_SETTLED','CLAIM','TRANSFER'].includes(e.type));
   let repaired=0;
   for(const e of local){
     const key=innerEventKey(e); if(!key)continue;
@@ -541,18 +579,39 @@ function rebuildState(){
   }
   for(const e of trans){const id=Number(e.tokenId),c=claims.get(id);if(c)e._applied=true}
   S.claims=claims;S.transfers=trans;
+
   const listings=new Map(),offers=[],canceled=new Set();
+  const acceptances=new Map(),rejections=new Map(),payments=new Map(),fees=new Map(),settlements=new Map();
+
   for(const e of sorted){
     if(e.type==='SALE'){
       const k=e.listingId||e.eventId;
       if(k&&!canceled.has(k))listings.set(k,e);
     }else if(e.type==='SALE_CANCEL'){
       if(e.listingId){canceled.add(e.listingId);listings.delete(e.listingId)}
-    }else if(e.type==='OFFER')offers.push(e)
+    }else if(e.type==='OFFER'){
+      offers.push(e)
+    }else if(e.type==='OFFER_ACCEPTED'&&e.offerId){
+      const old=acceptances.get(e.offerId);
+      if(!old||(e.timestamp||0)>=(old.timestamp||0))acceptances.set(e.offerId,e)
+    }else if(e.type==='OFFER_REJECTED'&&e.offerId){
+      const old=rejections.get(e.offerId);
+      if(!old||(e.timestamp||0)>=(old.timestamp||0))rejections.set(e.offerId,e)
+    }else if(e.type==='PAYMENT_SUBMITTED'&&e.offerId){
+      const old=payments.get(e.offerId);
+      if(!old||(e.timestamp||0)>=(old.timestamp||0))payments.set(e.offerId,e)
+    }else if(e.type==='MARKET_FEE'&&e.offerId){
+      const old=fees.get(e.offerId);
+      if(!old||(e.timestamp||0)>=(old.timestamp||0))fees.set(e.offerId,e)
+    }else if(e.type==='SALE_SETTLED'&&e.offerId){
+      const old=settlements.get(e.offerId);
+      if(!old||(e.timestamp||0)>=(old.timestamp||0))settlements.set(e.offerId,e)
+    }
   }
   for(const id of canceled)listings.delete(id);
-  S.listings=listings;S.offers=offers;
-  $('claimCount').textContent=claims.size.toLocaleString();renderMarket();renderActivity();renderPortfolio();updateWalletUI();
+  S.listings=listings;S.offers=offers;S.acceptances=acceptances;S.rejections=rejections;S.payments=payments;S.marketFees=fees;S.settlements=settlements;
+  $('claimCount').textContent=claims.size.toLocaleString();
+  renderMarket();renderActivity();renderPortfolio();renderTradeDesk();updateWalletUI();
 }
 function currentOwner(id){const c=S.claims.get(Number(id));if(!c)return null;let owner=String(c.ownerCommitment||'').toLowerCase()||null;for(const t of S.transfers.filter(x=>Number(x.tokenId)===Number(id)).sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))){if(t.fromCommitment&&owner&&String(t.fromCommitment).toLowerCase()!==owner)continue;owner=String(t.toCommitment||owner).toLowerCase()}return owner}
 function ownedTokens(){
@@ -576,21 +635,58 @@ function ownedTokens(){
 function activeListings(){
   const now=Math.floor(Date.now()/1000),byToken=new Map();
   for(const x of S.listings.values()){
-    if((x.expires||0)<=now||currentOwner(x.tokenId)!==x.sellerCommitment)continue;
+    if((x.expires||0)<=now||currentOwner(x.tokenId)!==x.sellerCommitment||listingIsSettled(x))continue;
     const old=byToken.get(Number(x.tokenId));
     if(!old||(x.timestamp||0)>(old.timestamp||0))byToken.set(Number(x.tokenId),x);
   }
   return [...byToken.values()];
 }
 function activeListingForToken(id){return activeListings().find(x=>Number(x.tokenId)===Number(id))||null}
+function offerId(o){return o?.eventId||o?.offerId||''}
+function settlementForOffer(id){return S.settlements.get(String(id))||null}
+function paymentForOffer(id){return S.payments.get(String(id))||null}
+function acceptanceForOffer(id){
+  const a=S.acceptances.get(String(id)); if(!a)return null;
+  if(settlementForOffer(id))return null;
+  if(S.rejections.has(String(id)))return null;
+  const paid=paymentForOffer(id);
+  if(!paid && Number(a.expires||0)<=Math.floor(Date.now()/1000))return null;
+  return a
+}
+function acceptanceForListing(listingId){
+  const candidates=[...S.acceptances.values()]
+    .filter(a=>a.listingId===listingId&&acceptanceForOffer(a.offerId))
+    .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+  return candidates[0]||null
+}
+function listingIsSettled(l){return [...S.settlements.values()].some(s=>s.listingId===l.listingId||Number(s.tokenId)===Number(l.tokenId)&&s.sellerCommitment===l.sellerCommitment)}
+function actionableOffersForSeller(){
+  if(!S.ownerCommitment)return[];
+  const now=Math.floor(Date.now()/1000);
+  return S.offers.filter(o=>{
+    if(o.sellerCommitment!==S.ownerCommitment||o.buyerCommitment===S.ownerCommitment)return false;
+    if(S.rejections.has(offerId(o))||settlementForOffer(offerId(o)))return false;
+    const l=S.listings.get(o.listingId);
+    if(!l||Number(l.expires||0)<=now||currentOwner(o.tokenId)!==S.ownerCommitment)return false;
+    const accepted=acceptanceForListing(o.listingId);
+    if(accepted&&accepted.offerId!==offerId(o))return false;
+    return true
+  }).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+}
+function buyerTrades(){
+  if(!S.ownerCommitment)return[];
+  return S.offers.filter(o=>o.buyerCommitment===S.ownerCommitment&&acceptanceForOffer(offerId(o)))
+    .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))
+}
 function validPrice(v){const n=Number(v);return Number.isFinite(n)&&n>0?n:0}
 function settledSales(){
   const seen=new Map();
   for(const e of S.events){
     if(e.type!=='SALE_SETTLED')continue;
     const tokenId=Number(e.tokenId),price=validPrice(e.price);
-    if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.maxSupply||!price)continue;
-    const key=e.saleId||e.eventId||e.txid||`${tokenId}:${e.timestamp||0}:${price}`;
+    if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply||!price)continue;
+    if(!S.confirmedSales.has(e.offerId||e.saleId||e.eventId))continue;
+    const key=e.saleId||e.offerId||e.eventId||e.txid||`${tokenId}:${e.timestamp||0}:${price}`;
     const old=seen.get(key);
     if(!old||(e.timestamp||0)>(old.timestamp||0))seen.set(key,e);
   }
@@ -609,11 +705,12 @@ function activityKind(e){
   if(e.type==='SALE_SETTLED')return 'sale';
   if(e.type==='SALE')return 'list';
   if(e.type==='OFFER')return 'offer';
+  if(e.type==='PAYMENT_SUBMITTED')return 'payment';
   if(e.type==='SALE_CANCEL')return 'cancel';
   if(e.type==='TRANSFER')return 'transfer';
   return null;
 }
-function activityLabel(kind){return {sale:'SALE',list:'LIST',offer:'OFFER',cancel:'CANCEL',transfer:'TRANSFER'}[kind]||kind.toUpperCase()}
+function activityLabel(kind){return {sale:'SALE',list:'LIST',offer:'OFFER',payment:'PAYMENT',cancel:'CANCEL',transfer:'TRANSFER'}[kind]||kind.toUpperCase()}
 function ago(ts){
   if(!ts)return '—';
   const s=Math.max(0,Math.floor(Date.now()/1000-Number(ts)));
@@ -626,18 +723,18 @@ function ago(ts){
 function activityFrom(e,kind){
   if(kind==='sale')return e.sellerCommitment||e.fromCommitment||'';
   if(kind==='list'||kind==='cancel')return e.sellerCommitment||'';
-  if(kind==='offer')return e.buyerCommitment||'';
+  if(kind==='offer'||kind==='payment')return e.buyerCommitment||'';
   if(kind==='transfer')return e.fromCommitment||'';
   return '';
 }
 function activityTo(e,kind){
   if(kind==='sale')return e.buyerCommitment||e.toCommitment||'';
-  if(kind==='offer')return e.sellerCommitment||'';
+  if(kind==='offer'||kind==='payment')return e.sellerCommitment||'';
   if(kind==='transfer')return e.toCommitment||'';
   return '';
 }
 function activityPrice(e,kind){
-  if(kind==='sale'||kind==='list'||kind==='offer')return validPrice(e.price);
+  if(kind==='sale'||kind==='list'||kind==='offer'||kind==='payment')return validPrice(e.price);
   return 0;
 }
 function renderActivity(){
@@ -673,29 +770,35 @@ function renderMarket(){
   if(sort==='priceLow')a.sort((x,y)=>Number(x.price)-Number(y.price));else if(sort==='priceHigh')a.sort((x,y)=>Number(y.price)-Number(x.price));else a.sort((x,y)=>(y.timestamp||0)-(x.timestamp||0));
   const g=$('marketGrid');g.innerHTML='';if(!a.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No active listings found yet. Connect a wallet and list an owned ZEC BLOCK to open the order board.</div>';return}
   for(const l of a){const c=S.claims.get(Number(l.tokenId));const artHash=c?.sourceHash||CFG.genesisTxid;const card=document.createElement('article');card.className='nft';card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #${esc(l.tokenId)}</span><span class="price">${esc(l.price)} ZEC</span></div><div class="meta"><span>Seller ${esc(short(l.sellerCommitment,6))}</span><span>${new Date((l.expires||0)*1000).toLocaleDateString()}</span></div><div class="controls"><button class="btn offerBtn" style="min-height:32px">Make Offer</button></div></div>`;artSvg(card.querySelector('svg'),artHash+':'+(c?.sourceHeight||l.tokenId),'ZB #'+l.tokenId);const action=card.querySelector('.offerBtn');
-    if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
+    const pending=acceptanceForListing(l.listingId);
+    if(pending){
+      action.textContent=paymentForOffer(pending.offerId)?'Payment Submitted':'Sale Pending';
+      action.disabled=true;
+    }else if(S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment){
       action.textContent='Cancel Listing';action.onclick=()=>cancelListing(l);
     }else{action.textContent='Make Offer';action.onclick=()=>openOffer(l)}
     g.appendChild(card)}
+  renderTradeDesk();
 }
 $('marketSearch').oninput=renderMarket;$('marketSort').onchange=renderMarket;$('refreshMarketBtn').onclick=()=>fetchRelay().catch(e=>toast(e.message));
 $('activityFilter').onchange=renderActivity;$('refreshActivityBtn').onclick=()=>fetchRelay().catch(e=>toast(e.message));
 function modal(id,on=true){$(id).classList.toggle('show',on)}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>modal(b.dataset.close,false));
 function openListing(){const own=ownedTokens();if(!own.length)return toast('No owned ZEC BLOCKS found in the current discovery state.');const s=$('listingToken');s.innerHTML=own.map(x=>`<option value="${x.tokenId}">ZEC BLOCK #${x.tokenId}</option>`).join('');modal('listingModal',true)}
 $('createListingBtn').onclick=openListing;
-async function signDerived(msg){const r=await rpc('zcash_signMessage',[msg,{signingMode:'derived'}]);return r}
-$('publishListingBtn').onclick=async()=>{try{const tokenId=Number($('listingToken').value),price=$('listingPrice').value.trim(),days=Number($('listingDays').value);if(!ownedTokens().some(x=>x.tokenId===tokenId))throw new Error('Token is not owned by this commitment.');if(!decimalValid(price))throw new Error('Enter a valid ZEC price.');if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');const nonce=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+days*86400,msg=`ZB1:SALE:v1|G=${CFG.genesisTxid}|T=${tokenId}|P=${price}|E=${expires}|X=${nonce}|O=${S.ownerCommitment}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'SALE',eventId:'sale:'+nonce,listingId:'sale:'+nonce,tokenId,price,expires,nonce,sellerCommitment:S.ownerCommitment,pubkey:sig.pubkey,signature:sig.signature,timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('listingModal',false);toast(pr.ok?`Listing published · ${pr.ok}/${pr.total} relays accepted`:'Listing saved locally. Refresh will retry relay publication.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
+async function signDerived(msg){const r=await rpc('zcash_signMessage',[msg,{signingMode:'derived'}]);if(!sigPub(r)||!sigVal(r))throw new Error('Noir Wallet did not return a usable derived signature.');return r}
+$('publishListingBtn').onclick=async()=>{try{const tokenId=Number($('listingToken').value),price=$('listingPrice').value.trim(),days=Number($('listingDays').value);if(!ownedTokens().some(x=>x.tokenId===tokenId))throw new Error('Token is not owned by this commitment.');if(!decimalValid(price))throw new Error('Enter a valid ZEC price.');if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');const nonce=crypto.randomUUID(),expires=Math.floor(Date.now()/1000)+days*86400,msg=`ZB1:SALE:v1|G=${CFG.genesisTxid}|T=${tokenId}|P=${price}|E=${expires}|X=${nonce}|O=${S.ownerCommitment}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'SALE',eventId:'sale:'+nonce,listingId:'sale:'+nonce,tokenId,price,expires,nonce,sellerCommitment:S.ownerCommitment,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('listingModal',false);toast(pr.ok?`Listing published · ${pr.ok}/${pr.total} relays accepted`:'Listing saved locally. Refresh will retry relay publication.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
 async function cancelListing(l){
   try{
     if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
     if(l.sellerCommitment!==S.ownerCommitment)throw new Error('Only the listing owner can cancel it.');
+    if(acceptanceForListing(l.listingId))throw new Error('This listing has an accepted offer. Complete or wait for the accepted trade to expire before cancelling.');
     const nonce=crypto.randomUUID();
     const msg=`ZB1:SALE_CANCEL:v1|G=${CFG.genesisTxid}|L=${l.listingId}|T=${l.tokenId}|O=${S.ownerCommitment}|X=${nonce}`;
     const sig=await signDerived(msg);
     const e=normalizeEvent({
       protocol:'ZB1',v:1,type:'SALE_CANCEL',
       eventId:'cancel:'+nonce,listingId:l.listingId,tokenId:Number(l.tokenId),
-      sellerCommitment:S.ownerCommitment,nonce,pubkey:sig.pubkey,signature:sig.signature,
+      sellerCommitment:S.ownerCommitment,nonce,pubkey:sigPub(sig),signature:sigVal(sig),
       timestamp:Math.floor(Date.now()/1000)
     });
     const r=await publishRelay(e);
@@ -704,14 +807,228 @@ async function cancelListing(l){
   }catch(e){toast(e.message||String(e),7000)}
 }
 function openOffer(l){if(!S.ownerCommitment)return toast('Connect Noir Wallet first.');S.currentOfferListing=l;$('offerToken').value='ZEC BLOCK #'+l.tokenId;$('offerPrice').value=l.price;modal('offerModal',true)}
-$('publishOfferBtn').onclick=async()=>{try{const l=S.currentOfferListing;if(!l)throw new Error('No listing selected.');const price=$('offerPrice').value.trim();if(!decimalValid(price))throw new Error('Enter a valid ZEC offer.');const nonce=crypto.randomUUID(),msg=`ZB1:OFFER:v1|L=${l.listingId}|T=${l.tokenId}|P=${price}|B=${S.ownerCommitment}|X=${nonce}`;const sig=await signDerived(msg);const e=normalizeEvent({protocol:'ZB1',v:1,type:'OFFER',eventId:'offer:'+nonce,listingId:l.listingId,tokenId:l.tokenId,price,buyerCommitment:S.ownerCommitment,sellerCommitment:l.sellerCommitment,pubkey:sig.pubkey,signature:sig.signature,timestamp:Math.floor(Date.now()/1000)});const pr=await publishRelay(e);modal('offerModal',false);toast(pr.ok?`Offer published · ${pr.ok}/${pr.total} relays accepted`:'Offer saved locally. Refresh will retry.',7000);await fetchRelay()}catch(e){toast(e.message||String(e),7000)}};
+$('publishOfferBtn').onclick=async()=>{try{
+  const l=S.currentOfferListing;if(!l)throw new Error('No listing selected.');
+  if(acceptanceForListing(l.listingId))throw new Error('This listing already has an accepted offer in settlement.');
+  const price=$('offerPrice').value.trim();if(!decimalValid(price))throw new Error('Enter a valid ZEC offer.');
+  if(l.sellerCommitment===S.ownerCommitment)throw new Error('You cannot offer on your own listing.');
+  const nonce=crypto.randomUUID(),msg=`ZB1:OFFER:v1|L=${l.listingId}|T=${l.tokenId}|P=${price}|B=${S.ownerCommitment}|X=${nonce}`;
+  const sig=await signDerived(msg);
+  const e=normalizeEvent({protocol:'ZB1',v:1,type:'OFFER',eventId:'offer:'+nonce,listingId:l.listingId,tokenId:l.tokenId,price,buyerCommitment:S.ownerCommitment,sellerCommitment:l.sellerCommitment,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});
+  const pr=await publishRelay(e);modal('offerModal',false);
+  toast(pr.ok?`Offer published · ${pr.ok}/${pr.total} relays accepted`:'Offer saved locally. Refresh will retry relay publication.',7000);
+  await fetchRelay()
+}catch(e){toast(e.message||String(e),7000)}};
+
+function expectedPaymentMemo(o){
+  return `ZB1PAY|1|O=${offerId(o)}|T=${Number(o.tokenId)}|P=${o.price}|B=${o.buyerCommitment}`
+}
+async function acceptOffer(o){
+  try{
+    if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
+    if(o.sellerCommitment!==S.ownerCommitment)throw new Error('Only the seller can accept this offer.');
+    if(currentOwner(o.tokenId)!==S.ownerCommitment)throw new Error('You are no longer the current owner of this token.');
+    const l=S.listings.get(o.listingId); if(!l||!activeListings().some(x=>x.listingId===o.listingId))throw new Error('Listing is no longer active.');
+    if(acceptanceForListing(o.listingId))throw new Error('Another offer is already accepted for this listing.');
+    const payAddr=S.connection?.shielded;
+    if(!payAddr)throw new Error('Noir Wallet did not expose a shielded receiving address. Seller acceptance requires a shielded address so the buyer payment can carry a private trade memo.');
+    const expires=Math.floor(Date.now()/1000)+3600,nonce=crypto.randomUUID();
+    const msg=`ZB1:OFFER_ACCEPT:v1|O=${offerId(o)}|L=${o.listingId}|T=${o.tokenId}|P=${o.price}|B=${o.buyerCommitment}|S=${S.ownerCommitment}|E=${expires}|X=${nonce}`;
+    const sig=await signDerived(msg);
+    const e=normalizeEvent({
+      protocol:'ZB1',v:1,type:'OFFER_ACCEPTED',eventId:'accept:'+nonce,offerId:offerId(o),listingId:o.listingId,
+      tokenId:Number(o.tokenId),price:o.price,buyerCommitment:o.buyerCommitment,sellerCommitment:S.ownerCommitment,
+      sellerPaymentAddress:payAddr,expires,nonce,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)
+    });
+    const r=await publishRelay(e);
+    toast(r.ok?`Offer accepted. Buyer has 60 minutes to submit payment.`:'Acceptance saved locally; relay publication needs retry.',8000);
+    await fetchRelay()
+  }catch(e){toast(e.message||String(e),8000)}
+}
+async function rejectOffer(o){
+  try{
+    if(o.sellerCommitment!==S.ownerCommitment)throw new Error('Only the seller can reject this offer.');
+    const nonce=crypto.randomUUID(),msg=`ZB1:OFFER_REJECT:v1|O=${offerId(o)}|L=${o.listingId}|T=${o.tokenId}|S=${S.ownerCommitment}|X=${nonce}`;
+    const sig=await signDerived(msg);
+    const e=normalizeEvent({protocol:'ZB1',v:1,type:'OFFER_REJECTED',eventId:'reject:'+nonce,offerId:offerId(o),listingId:o.listingId,tokenId:Number(o.tokenId),sellerCommitment:S.ownerCommitment,buyerCommitment:o.buyerCommitment,nonce,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000)});
+    await publishRelay(e);toast('Offer rejected.');await fetchRelay()
+  }catch(e){toast(e.message||String(e),8000)}
+}
+async function payAcceptedOffer(o){
+  try{
+    if(o.buyerCommitment!==S.ownerCommitment)throw new Error('Connect the buyer wallet that created this offer.');
+    const a=acceptanceForOffer(offerId(o));if(!a)throw new Error('Seller acceptance is missing or expired.');
+    if(paymentForOffer(offerId(o)))throw new Error('Payment was already submitted for this offer.');
+    if(currentOwner(o.tokenId)!==o.sellerCommitment)throw new Error('Seller is no longer the current NFT owner. Do not pay.');
+    if(!decimalValid(o.price))throw new Error('Invalid accepted price.');
+    const memo=expectedPaymentMemo(o);
+    if(enc.encode(memo).length>512)throw new Error('Trade payment memo exceeds 512 bytes.');
+    const auth=`ZB1:PAYMENT_AUTH:v1|O=${offerId(o)}|L=${o.listingId}|T=${o.tokenId}|P=${o.price}|B=${S.ownerCommitment}`;
+    const sig=await signDerived(auth);
+    toast(`Approve payment of ${o.price} ZEC to the seller in Noir Wallet.`,7000);
+    const txid=await rpc('zcash_sendTransaction',[{to:a.sellerPaymentAddress,amount:String(o.price),memo,fundingSource:'shielded'}]);
+    const e=normalizeEvent({
+      protocol:'ZB1',v:1,type:'PAYMENT_SUBMITTED',eventId:'payment:'+offerId(o)+':'+txid,offerId:offerId(o),listingId:o.listingId,
+      tokenId:Number(o.tokenId),price:o.price,buyerCommitment:S.ownerCommitment,sellerCommitment:o.sellerCommitment,
+      sellerPaymentAddress:a.sellerPaymentAddress,paymentTxid:txid,txid,memo,pubkey:sigPub(sig),signature:sigVal(sig),
+      timestamp:Math.floor(Date.now()/1000),status:'pending'
+    });
+    const r=await publishRelay(e);
+    toast(`Payment broadcast: ${short(txid,8)} · waiting for seller verification.`,9000);
+    await fetchRelay()
+  }catch(e){toast(e.message||String(e),9000)}
+}
+async function paymentConfirmedOnChain(txid){
+  try{
+    const j=await explorerFetch('tx',txid);
+    const h=Number(deepFind(j,['blockHeight','block_height','blockheight','height']));
+    return Number.isInteger(h)&&h>0
+  }catch{return false}
+}
+async function verifySellerIncomingPayment(o,p){
+  const expectedZat=zecToZat(o.price); if(expectedZat==null)throw new Error('Invalid offer price.');
+  const expectedMemo=expectedPaymentMemo(o);
+  const hist=await rpc('zcash_getTransactionHistory');
+  const h=(hist||[]).find(x=>String(x.txid||'').toLowerCase()===String(p.paymentTxid||p.txid||'').toLowerCase());
+  if(!h)throw new Error('Payment TX is not visible in this seller wallet yet. Sync Noir Wallet and retry.');
+  const typ=String(h.type||'').toLowerCase();
+  if(/send|outgoing|spent/.test(typ))throw new Error('Matched transaction is not an incoming seller payment.');
+  const got=zecToZat(h.amount);
+  if(got==null||got!==expectedZat)throw new Error(`Incoming payment amount does not match ${o.price} ZEC.`);
+  if(String(h.memo||'').trim()!==expectedMemo)throw new Error('Incoming payment memo does not match this accepted offer.');
+  const st=String(h.status||'').toLowerCase();
+  let confirmed=/confirm|mined|success|complete/.test(st);
+  if(!confirmed)confirmed=await paymentConfirmedOnChain(p.paymentTxid||p.txid);
+  if(!confirmed)throw new Error('Payment was found, but it is not confirmed yet. Retry after Zcash confirmation.');
+  return true
+}
+async function finalizePaidSale(o){
+  try{
+    if(o.sellerCommitment!==S.ownerCommitment)throw new Error('Connect the seller wallet.');
+    if(currentOwner(o.tokenId)!==S.ownerCommitment)throw new Error('Seller no longer owns this ZEC BLOCK.');
+    const a=acceptanceForOffer(offerId(o)); if(!a)throw new Error('Accepted trade is no longer active.');
+    const p=paymentForOffer(offerId(o)); if(!p)throw new Error('Buyer payment has not been submitted.');
+    if(settlementForOffer(offerId(o)))throw new Error('This sale is already settled.');
+    toast('Verifying buyer payment in Noir Wallet…',6000);
+    await verifySellerIncomingPayment(o,p);
+
+    const feeZat=marketFeeForPrice(o.price),feeAmount=zatToZec(feeZat);
+    let fee=S.marketFees.get(offerId(o));
+    if(!fee){
+      const feeAuth=`ZB1:MARKET_FEE_AUTH:v1|O=${offerId(o)}|T=${o.tokenId}|P=${o.price}|F=${feeAmount}|S=${S.ownerCommitment}`;
+      const fsig=await signDerived(feeAuth);
+      toast(`Payment verified. Approve ${feeAmount} ZEC marketplace fee (3%).`,8000);
+      const feeTxid=await rpc('zcash_sendTransaction',[{to:CFG.treasury,amount:feeAmount,fundingSource:'shielded'}]);
+      fee=normalizeEvent({
+        protocol:'ZB1',v:1,type:'MARKET_FEE',eventId:'fee:'+offerId(o)+':'+feeTxid,offerId:offerId(o),listingId:o.listingId,
+        tokenId:Number(o.tokenId),price:o.price,feeAmount,feeBps:CFG.marketFeeBps,sellerCommitment:S.ownerCommitment,
+        buyerCommitment:o.buyerCommitment,feeTxid,txid:feeTxid,pubkey:sigPub(fsig),signature:sigVal(fsig),timestamp:Math.floor(Date.now()/1000)
+      });
+      await publishRelay(fee);
+    }
+
+    const settleAuth=`ZB1:SALE_SETTLED_AUTH:v1|O=${offerId(o)}|L=${o.listingId}|T=${o.tokenId}|P=${o.price}|B=${o.buyerCommitment}|S=${S.ownerCommitment}`;
+    const ssig=await signDerived(settleAuth);
+
+    const transferMsg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${o.tokenId}|F=${S.ownerCommitment}|O=${o.buyerCommitment}`;
+    const tsig=await signDerived(transferMsg);
+    const transferMemo=`ZB1|T|1|I=${o.tokenId}|O=${o.buyerCommitment}|K=${sigPub(tsig)}|S=${sigVal(tsig)}`;
+    if(enc.encode(transferMemo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');
+    toast('Fee submitted. Approve the NFT transfer to the buyer.',8000);
+    const transferTxid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo:transferMemo,fundingSource:'shielded'}]);
+
+    const transfer=normalizeEvent({
+      protocol:'ZB1',v:1,type:'TRANSFER',txid:transferTxid,memo:transferMemo,tokenId:Number(o.tokenId),
+      fromCommitment:S.ownerCommitment,toCommitment:o.buyerCommitment,pubkey:sigPub(tsig),signature:sigVal(tsig),
+      timestamp:Math.floor(Date.now()/1000),status:'pending'
+    });
+    await publishRelay(transfer);
+
+    const sale=normalizeEvent({
+      protocol:'ZB1',v:1,type:'SALE_SETTLED',eventId:'settled:'+offerId(o),saleId:'settled:'+offerId(o),
+      offerId:offerId(o),listingId:o.listingId,tokenId:Number(o.tokenId),price:o.price,
+      sellerCommitment:S.ownerCommitment,buyerCommitment:o.buyerCommitment,paymentTxid:p.paymentTxid||p.txid,
+      feeTxid:fee.feeTxid||fee.txid,transferTxid,feeAmount:fee.feeAmount||feeAmount,
+      pubkey:sigPub(ssig),signature:sigVal(ssig),timestamp:Math.floor(Date.now()/1000),status:'broadcast'
+    });
+    await publishRelay(sale);
+    toast(`NFT transfer broadcast. Sale will count in volume after Zcash confirms ${short(transferTxid,8)}.`,10000);
+    await fetchRelay(); await reconcileSaleConfirmations(); renderActivity();renderTradeDesk()
+  }catch(e){toast(e.message||String(e),10000)}
+}
+async function reconcileSaleConfirmations(){
+  const sales=[...S.settlements.values()].slice(-80);
+  await Promise.allSettled(sales.map(async s=>{
+    const id=s.offerId||s.saleId||s.eventId;
+    if(S.confirmedSales.has(id))return;
+    const tx=s.transferTxid||s.txid;if(!tx)return;
+    if(await paymentConfirmedOnChain(tx))S.confirmedSales.add(id)
+  }));
+  updateMarketMetrics()
+}
+function renderTradeDesk(){
+  const seller=$('sellerOfferList'),buyer=$('buyerPurchaseList'); if(!seller||!buyer)return;
+  seller.innerHTML='';buyer.innerHTML='';
+  if(!S.ownerCommitment){
+    seller.innerHTML='<div class="empty">Connect Noir Wallet to load seller offers.</div>';
+    buyer.innerHTML='<div class="empty">Connect Noir Wallet to load accepted purchases.</div>';
+    return
+  }
+
+  const incoming=actionableOffersForSeller();
+  if(!incoming.length)seller.innerHTML='<div class="empty">No actionable offers right now.</div>';
+  for(const o of incoming){
+    const a=acceptanceForOffer(offerId(o)),p=paymentForOffer(offerId(o));
+    const item=document.createElement('div');item.className='tradeItem';
+    const state=p?'PAYMENT SUBMITTED':a?'ACCEPTED · WAITING PAYMENT':'NEW OFFER';
+    item.innerHTML=`<div class="tradeItemTop"><b>ZEC BLOCK #${esc(o.tokenId)} · ${esc(o.price)} ZEC</b><span class="tradeState ${p?'paid':a?'pending':''}">${state}</span></div>
+      <div class="tradeInfo"><span>Buyer ${esc(short(o.buyerCommitment,7))}</span><span>${esc(ago(o.timestamp))}</span></div><div class="controls"></div>`;
+    const ctl=item.querySelector('.controls');
+    if(p){
+      const b=document.createElement('button');b.className='btn green small';b.textContent='Verify Payment & Complete Sale';b.onclick=()=>finalizePaidSale(o);ctl.appendChild(b)
+    }else if(a){
+      const b=document.createElement('button');b.className='btn small';b.textContent='Waiting for Buyer';b.disabled=true;ctl.appendChild(b)
+    }else{
+      const ac=document.createElement('button');ac.className='btn green small';ac.textContent='Accept Offer';ac.onclick=()=>acceptOffer(o);
+      const rj=document.createElement('button');rj.className='btn red small';rj.textContent='Reject';rj.onclick=()=>rejectOffer(o);
+      ctl.append(ac,rj)
+    }
+    seller.appendChild(item)
+  }
+
+  const mine=buyerTrades();
+  if(!mine.length)buyer.innerHTML='<div class="empty">No accepted offers waiting for you.</div>';
+  for(const o of mine){
+    const a=acceptanceForOffer(offerId(o)),p=paymentForOffer(offerId(o)),s=settlementForOffer(offerId(o));
+    const item=document.createElement('div');item.className='tradeItem';
+    const state=s?'SETTLED':p?'PAID · WAITING SELLER':'SELLER ACCEPTED';
+    item.innerHTML=`<div class="tradeItemTop"><b>ZEC BLOCK #${esc(o.tokenId)} · ${esc(o.price)} ZEC</b><span class="tradeState ${s?'settled':p?'paid':'pending'}">${state}</span></div>
+      <div class="tradeInfo"><span>Seller ${esc(short(o.sellerCommitment,7))}</span><span>${a?.expires?`valid until ${esc(new Date(Number(a.expires)*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}))}`:''}</span></div><div class="controls"></div>`;
+    const ctl=item.querySelector('.controls');
+    if(s){
+      const b=document.createElement('button');b.className='btn green small';b.textContent='Sale Complete';b.disabled=true;ctl.appendChild(b)
+    }else if(p){
+      const b=document.createElement('button');b.className='btn small';b.textContent='Payment Submitted · Seller Must Approve';b.disabled=true;ctl.appendChild(b)
+      const rp=document.createElement('button');rp.className='btn small';rp.textContent='Republish Payment';rp.onclick=()=>publishRelay(p).then(()=>toast('Payment event republished.'));ctl.appendChild(rp)
+    }else{
+      const pay=document.createElement('button');pay.className='btn gold small';pay.textContent=`Pay ${o.price} ZEC`;pay.onclick=()=>payAcceptedOffer(o);ctl.appendChild(pay)
+    }
+    buyer.appendChild(item)
+  }
+}
+
 function renderPortfolio(){
-  const own=ownedTokens();$('ownedCount').textContent=own.length;$('listingCount').textContent=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;$('offerCount').textContent=S.ownerCommitment?S.offers.filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;
-  const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS were recovered for this owner commitment. Click Recover & Sync Portfolio; claims made from this Noir Wallet are rebuilt from its ZB-1 transaction memos.</div>';return}
+  const own=ownedTokens();$('ownedCount').textContent=own.length;$('listingCount').textContent=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;$('offerCount').textContent=S.ownerCommitment?actionableOffersForSeller().length:0;
+  const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';renderTradeDesk();return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS were recovered for this owner commitment. Click Recover & Sync Portfolio; claims made from this Noir Wallet are rebuilt from its ZB-1 transaction memos.</div>';renderTradeDesk();return}
   for(const c of own){const card=document.createElement('article');card.className='nft';card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #${c.tokenId}</span><span class="badge live">OWNED</span></div><div class="meta"><span>Source ${esc(c.sourceHeight||'—')}</span><span>${esc(short(c.txid||'',6))}</span></div><div class="controls"><button class="btn listOne">List</button><button class="btn transferOne">Transfer</button></div></div>`;artSvg(card.querySelector('svg'),(c.sourceHash||CFG.genesisTxid)+':'+(c.sourceHeight||c.tokenId),'ZB #'+c.tokenId);const listBtn=card.querySelector('.listOne'),liveListing=activeListingForToken(c.tokenId);
-    if(liveListing){listBtn.textContent='Cancel Listing';listBtn.onclick=()=>cancelListing(liveListing)}
+    const pendingSale=liveListing?acceptanceForListing(liveListing.listingId):null;
+    if(pendingSale){listBtn.textContent=paymentForOffer(pendingSale.offerId)?'Payment Submitted':'Sale Pending';listBtn.disabled=true}
+    else if(liveListing){listBtn.textContent='Cancel Listing';listBtn.onclick=()=>cancelListing(liveListing)}
     else{listBtn.textContent='List';listBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)}}
-    card.querySelector('.transferOne').onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)};g.appendChild(card)}
+    const transferBtn=card.querySelector('.transferOne');
+    if(pendingSale){transferBtn.textContent='Trade Locked';transferBtn.disabled=true}
+    else transferBtn.onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)};
+    g.appendChild(card)}
 }
 $('syncPortfolioBtn').onclick=async()=>{try{
   S.balance=await rpc('zcash_getBalance');
@@ -720,10 +1037,10 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   rebuildState();updateWalletUI();renderPortfolio();
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
-$('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sig.pubkey}|S=${sig.signature}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sig.pubkey,signature:sig.signature,timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
-async function refreshAll(){await fetchRelay();renderMarket();renderPortfolio()}
+$('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();const listed=activeListingForToken(tokenId);if(listed&&acceptanceForListing(listed.listingId))throw new Error('This NFT is locked in an accepted marketplace trade. Use Seller Inbox to complete the sale.');if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
+async function refreshAll(){await fetchRelay();await reconcileSaleConfirmations();renderMarket();renderPortfolio();renderTradeDesk();renderActivity()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
-(async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();updateWalletUI()})();
+(async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();await reconcileSaleConfirmations();updateWalletUI();renderTradeDesk();renderActivity()})();
 </script>
 </body></html>
