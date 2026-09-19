@@ -78,3 +78,10 @@ The Base USDC index is already caught up server-side. Global event verification 
 continue processing historical ZB-1 events for several minutes after this build is
 first deployed. The website can still render persistent market data immediately;
 portfolio coverage improves automatically as the verification queue completes.
+
+V10.5 STALE USDC LISTING CLEANUP
+- Base USDC active listings are visible only while sellerCommitment matches the canonical current owner.
+- Ownership-stale listings are removed from cards, floor, and listed count.
+- Sold rows remain indexed for volume, sales history, activity, and ownership settlement history.
+- Old browser cache entries are purged after the production Base index reports caught-up.
+- A stale listing cannot block the new owner from creating a fresh USDC listing.
