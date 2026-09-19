@@ -150,7 +150,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.6</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.7</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -320,6 +320,21 @@ function verifiedSettlementJournal(){
     const a=JSON.parse(localStorage.getItem('zb1_verified_settlements_v1')||'[]');
     return Array.isArray(a)?a:[]
   }catch{return[]}
+}
+function paymentRecoveryJournal(){
+  try{
+    const a=JSON.parse(localStorage.getItem('zb1_payment_recovery_v1')||'[]');
+    return Array.isArray(a)?a:[]
+  }catch{return[]}
+}
+function savePaymentRecovery(e){
+  try{
+    const a=paymentRecoveryJournal();
+    const k=`${e.lockId}:${e.step||e.type}:${e.paymentTxid||e.txid}`;
+    const i=a.findIndex(x=>`${x.lockId}:${x.step||x.type}:${x.paymentTxid||x.txid}`===k);
+    if(i>=0)a[i]=mergeEvent(a[i],e);else a.push(e);
+    localStorage.setItem('zb1_payment_recovery_v1',JSON.stringify(a.slice(-2000)))
+  }catch(err){console.warn('payment recovery journal',err)}
 }
 function saveVerifiedSettlementJournal(e){
   try{
@@ -734,7 +749,7 @@ async function fetchRelay(){
   S.relayFetchBusy=true;
   try{
 
-  let arr=[...S.events,...discoveryCache(),...verifiedSettlementJournal(),...localEvents(),...S.liveDiscoveryEvents.values()];
+  let arr=[...S.events,...discoveryCache(),...verifiedSettlementJournal(),...paymentRecoveryJournal(),...localEvents(),...S.liveDiscoveryEvents.values()];
   const seenByRelay=new Map();
   let relayOk=0,relayEvents=0;
   if(S.nostr&&S.relay){
@@ -1189,6 +1204,10 @@ async function confirmLockEvent(lock){
     return {...lock,txid,anchorTxid:txid,anchorAddress:anchor,blockHeight:bh,blockTime:bt,txIndex:ti,confirmations:conf,confirmed:true,validatedSignature:true}
   }catch(e){console.warn('lock verify',e);return null}
 }
+function paymentAuthMessage(lock,step){
+  if(step==='fee')return `ZB1:NOIR_FEE_AUTH:v3|L=${lock.lockId}|I=${lock.tokenId}|A=${lock.feeZec}|TO=${CFG.treasury}|B=${lock.buyerCommitment}`;
+  return `ZB1:NOIR_SELLER_AUTH:v3|L=${lock.lockId}|I=${lock.tokenId}|A=${lock.sellerZec}|TO=${lock.sellerPayout}|B=${lock.buyerCommitment}`
+}
 function paymentNoticeMessage(lock,step,txid){
   if(step==='fee')return `ZB1:NOIR_FEE_PAYMENT:v2|L=${lock.lockId}|I=${lock.tokenId}|X=${txid}|A=${lock.feeZec}|B=${lock.buyerCommitment}`;
   return `ZB1:NOIR_SELLER_PAYMENT:v2|L=${lock.lockId}|I=${lock.tokenId}|X=${txid}|A=${lock.sellerZec}|B=${lock.buyerCommitment}`
@@ -1201,7 +1220,12 @@ async function verifyBuyerPaymentNotice(lock,n,step){
     if(derived.toLowerCase()!==String(lock.buyerCommitment).toLowerCase())return false;
     const txid=String(n.paymentTxid||n.txid||'').toLowerCase();
     if(!/^[0-9a-f]{64}$/.test(txid))return false;
-    return await verifyZcashCompactSignature(paymentNoticeMessage(lock,step,txid),n.signature,n.pubkey)
+
+    const msg=Number(n.authVersion)>=3
+      ?paymentAuthMessage(lock,step)
+      :paymentNoticeMessage(lock,step,txid);
+
+    return await verifyZcashCompactSignature(msg,n.signature,n.pubkey)
   }catch{return false}
 }
 async function verifyNoirStepTx(lock,txid,step,{requireFinal=false}={}){
@@ -1276,12 +1300,83 @@ async function sellerAddressCandidates(lock){
   }
   return out.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0))
 }
+async function matchingUnresolvedLocksForSellerPayment(candidate,lock){
+  const matches=[];
+  for(const l0 of S.confirmedLocks.values()){
+    if(Number(l0.v)<4||S.verifiedAtomic.has(l0.lockId))continue;
+    if(String(l0.sellerPayout)!==String(lock.sellerPayout))continue;
+    if(String(l0.sellerZat)!==String(lock.sellerZat))continue;
+
+    let fee=l0.feeSeen;
+    if(!fee){
+      try{fee=await findVerifiedStep(l0,'NOIR_FEE_PAYMENT','fee')}catch{}
+      if(fee)l0.feeSeen=fee
+    }
+    if(!fee||fee.confirmations<CFG.atomicFeeStepConfirmations)continue;
+    if(candidate.blockHeight<=fee.blockHeight)continue;
+    if(candidate.blockTime&&candidate.blockTime>lockEffectiveExpiry(l0))continue;
+    matches.push(l0)
+  }
+  return matches
+}
+async function recoverUnnoticedSellerPayment(lock){
+  // Recovery is only authorized from the connected BUYER identity. The chain
+  // scan discovers the missing TXID; Noir signs a v3 authorization for the
+  // already-locked destination/amount so the repair becomes portable to relays.
+  if(!S.ownerCommitment||String(S.ownerCommitment).toLowerCase()!==String(lock.buyerCommitment||'').toLowerCase())return null;
+  if(Number(lock.v)<4||!lock.feeSeen)return null;
+
+  const used=new Set([...S.verifiedAtomic.values()].map(x=>String(x.sellerPaymentTxid||x.paymentTxid||x.txid||'').toLowerCase()).filter(Boolean));
+  let candidates=[];
+  try{candidates=await sellerAddressCandidates(lock)}catch(e){console.warn('seller payment recovery scan',e);return null}
+
+  for(const c of candidates){
+    if(used.has(c.txid))continue;
+    let v;
+    try{v=await verifyNoirStepTx(lock,c.txid,'seller',{requireFinal:false})}catch{continue}
+    if(v.blockHeight<=lock.feeSeen.blockHeight)continue;
+
+    const locks=await matchingUnresolvedLocksForSellerPayment(v,lock);
+    if(locks.length!==1||locks[0].lockId!==lock.lockId)continue;
+
+    // Create a portable signed repair event. Signing happens AFTER discovery but
+    // does not spend funds; if Noir is slow, the payment stays safe and Check
+    // Payments can retry later without another transfer.
+    try{
+      const sig=await signDerived(paymentAuthMessage(lock,'seller'));
+      const e=normalizeEvent({
+        protocol:'ZB1',v:3,authVersion:3,type:'NOIR_SELLER_PAYMENT',
+        eventId:'noir-seller-payment:'+lock.lockId+':'+v.txid,
+        lockId:lock.lockId,tokenId:Number(lock.tokenId),paymentTxid:v.txid,txid:v.txid,
+        price:lock.price,paymentZec:lock.sellerZec,paymentZat:lock.sellerZat,
+        buyerCommitment:S.ownerCommitment,sellerCommitment:lock.sellerCommitment,
+        sellerPayout:lock.sellerPayout,pubkey:sigPub(sig),signature:sigVal(sig),
+        timestamp:v.blockTime||Math.floor(Date.now()/1000),status:'recovered',step:'seller',
+        recoveredFromChain:true
+      });
+      rememberRuntimeEvent(e);savePaymentRecovery(e);
+      try{await publishRelay(e)}catch{}
+      return {...v,notice:e,recoveredFromChain:true}
+    }catch(e){
+      console.warn('seller payment repair signing',e);
+      return null
+    }
+  }
+  return null
+}
 async function autoFindAtomicPayment(lock){
   if(Number(lock.v)>=4){
     const fee=await findVerifiedStep(lock,'NOIR_FEE_PAYMENT','fee');
     if(fee)lock.feeSeen=fee;
-    const seller=fee&&fee.confirmations>=CFG.atomicFeeStepConfirmations
+
+    let seller=fee&&fee.confirmations>=CFG.atomicFeeStepConfirmations
       ?await findVerifiedStep(lock,'NOIR_SELLER_PAYMENT','seller'):null;
+
+    // Important repair path for a transaction that was already sent but whose
+    // payment notice was lost because Noir stalled during the post-send step.
+    if(!seller&&fee&&fee.confirmations>=CFG.atomicFeeStepConfirmations){
+      seller=await recoverUnnoticedSellerPayment(lock)
+    }
     if(seller)lock.sellerSeen=seller;
 
     if(!fee||!seller)return {fee,seller,pending:true};
@@ -1532,19 +1627,27 @@ async function payProtocolFeeWithNoir(lock){
     const now=Math.floor(Date.now()/1000);
     if(now>Number(lock.expires)-CFG.atomicPayCutoffSeconds)throw new Error('Too close to lock expiry to safely start the 2-step payment.');
 
+    // Sign BEFORE spending. Noir slowness after payment can no longer erase the
+    // protocol evidence that this buyer authorized this exact lock/amount.
+    toast('Preparing Step 1 authorization…',5000);
+    const sig=await signDerived(paymentAuthMessage(lock,'fee'));
+
     toast(`STEP 1/2 · Approve exactly ${lock.feeZec} ZEC protocol fee to the ZEC BLOCKS treasury.`,10000);
     const txid=String(await rpc('zcash_sendTransaction',[{to:CFG.treasury,amount:lock.feeZec,fundingSource:'shielded'}])).toLowerCase();
     if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Noir Wallet did not return a valid fee TXID.');
 
-    const msg=paymentNoticeMessage(lock,'fee',txid),sig=await signDerived(msg);
     const e=normalizeEvent({
-      protocol:'ZB1',v:2,type:'NOIR_FEE_PAYMENT',eventId:'noir-fee:'+lock.lockId+':'+txid,
-      lockId:lock.lockId,tokenId:Number(lock.tokenId),paymentTxid:txid,txid,price:lock.price,
-      paymentZec:lock.feeZec,paymentZat:lock.feeZat,buyerCommitment:S.ownerCommitment,
-      sellerCommitment:lock.sellerCommitment,treasury:CFG.treasury,
-      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'
+      protocol:'ZB1',v:3,authVersion:3,type:'NOIR_FEE_PAYMENT',
+      eventId:'noir-fee:'+lock.lockId+':'+txid,lockId:lock.lockId,tokenId:Number(lock.tokenId),
+      paymentTxid:txid,txid,price:lock.price,paymentZec:lock.feeZec,paymentZat:lock.feeZat,
+      buyerCommitment:S.ownerCommitment,sellerCommitment:lock.sellerCommitment,treasury:CFG.treasury,
+      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),
+      status:'pending',step:'fee'
     });
-    rememberRuntimeEvent(e);try{await publishRelay(e)}catch{}
+
+    // FIRST operation after the TXID exists: durable local recovery.
+    rememberRuntimeEvent(e);savePaymentRecovery(e);
+    try{await publishRelay(e)}catch{}
     toast(`Step 1 broadcast: ${short(txid,8)}. Wait for ${CFG.atomicFeeStepConfirmations} confirmation, then Step 2 will unlock.`,10000);
     await reconcileAtomicState();rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity()
   }catch(e){toast(e.message||String(e),11000)}
@@ -1560,19 +1663,30 @@ async function paySellerWithNoir(lock){
     if(!lock.feeSeen||lock.feeSeen.confirmations<CFG.atomicFeeStepConfirmations)throw new Error(`Protocol fee needs ${CFG.atomicFeeStepConfirmations} confirmation before Step 2.`);
     if(Math.floor(Date.now()/1000)>lockEffectiveExpiry(lock)-120)throw new Error('Payment completion window is too close to expiry.');
 
+    // Sign authorization BEFORE sending ZEC. This removes the old failure mode:
+    // payment succeeds -> Noir becomes slow -> post-payment sign fails -> UI
+    // forgets the payment and leaves "Pay Seller" enabled.
+    toast('Preparing Step 2 authorization…',5000);
+    const sig=await signDerived(paymentAuthMessage(lock,'seller'));
+
     toast(`STEP 2/2 · Approve exactly ${lock.sellerZec} ZEC to the seller. After both payments reach finality, the NFT transfers automatically.`,11000);
     const txid=String(await rpc('zcash_sendTransaction',[{to:lock.sellerPayout,amount:lock.sellerZec,fundingSource:'shielded'}])).toLowerCase();
     if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Noir Wallet did not return a valid seller-payment TXID.');
 
-    const msg=paymentNoticeMessage(lock,'seller',txid),sig=await signDerived(msg);
     const e=normalizeEvent({
-      protocol:'ZB1',v:2,type:'NOIR_SELLER_PAYMENT',eventId:'noir-seller-payment:'+lock.lockId+':'+txid,
+      protocol:'ZB1',v:3,authVersion:3,type:'NOIR_SELLER_PAYMENT',
+      eventId:'noir-seller-payment:'+lock.lockId+':'+txid,
       lockId:lock.lockId,tokenId:Number(lock.tokenId),paymentTxid:txid,txid,price:lock.price,
       paymentZec:lock.sellerZec,paymentZat:lock.sellerZat,buyerCommitment:S.ownerCommitment,
       sellerCommitment:lock.sellerCommitment,sellerPayout:lock.sellerPayout,
-      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'
+      pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),
+      status:'pending',step:'seller'
     });
-    rememberRuntimeEvent(e);try{await publishRelay(e)}catch{}
+
+    // Persist before any relay/network follow-up. A page refresh cannot expose
+    // the Pay Seller button again for this same transaction.
+    rememberRuntimeEvent(e);savePaymentRecovery(e);
+    try{await publishRelay(e)}catch{}
     toast(`Step 2 broadcast: ${short(txid,8)}. No seller action is required. Waiting for ${CFG.atomicFinalConfirmations} confirmations on both payments.`,11000);
     await reconcileAtomicState();rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity()
   }catch(e){toast(e.message||String(e),11000)}
@@ -1580,7 +1694,7 @@ async function paySellerWithNoir(lock){
 
 async function manualAtomicCheck(lock){
   try{
-    toast('Checking Zcash confirmations for this locked sale…',5000);
+    toast('Checking Zcash confirmations and recovering any already-sent payment. Do NOT pay again while this check is running…',7000);
     await reconcileAtomicState();rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity();
     if(S.verifiedAtomic.has(lock.lockId))toast(`Settlement final. ZEC BLOCK #${lock.tokenId} now belongs to the buyer and the SALE was added to Activity.`,9000);
     else if(Number(lock.v)>=4){
@@ -1638,7 +1752,7 @@ function renderAtomicDesk(){
 
     item.innerHTML=`<div class="atomicTop"><b>ZEC BLOCK #${esc(lock.tokenId)} · ${esc(lock.price)} ZEC</b><span class="atomicState ${seller?'atomicLocked':fee?'atomicReady':''}">${esc(state)}</span></div>
       <div class="atomicInfo"><span>Step 1 fee ${esc(lock.feeZec)} ZEC (3%)</span><span>Step 2 seller ${esc(lock.sellerZec)} ZEC (97%)</span><span>Total ${esc(lock.price)} ZEC + network fees</span><span>${Math.max(0,Math.floor(left/60))} min window</span></div>
-      <div class="notice" style="margin-top:8px"><b>2-step Noir checkout.</b> First pay the protocol treasury. After that transaction gets ${CFG.atomicFeeStepConfirmations} confirmation, the seller-payment button unlocks. The NFT transfers automatically only after <b>both</b> transactions reach ${CFG.atomicFinalConfirmations} confirmations. If Step 1 confirms, the completion window is extended automatically so you can safely finish Step 2.</div>
+      <div class="notice" style="margin-top:8px"><b>2-step Noir checkout.</b> First pay the protocol treasury. After that transaction gets ${CFG.atomicFeeStepConfirmations} confirmation, the seller-payment button unlocks. The NFT transfers automatically only after <b>both</b> transactions reach ${CFG.atomicFinalConfirmations} confirmations. <b>If you already approved Step 2 in Noir, do not click Pay Seller again.</b> Use Check Payments; V9.7 can recover an already-sent seller payment from chain.</div>
       <div class="controls atomicControls"></div>`;
 
     const ctl=item.querySelector('.atomicControls');
