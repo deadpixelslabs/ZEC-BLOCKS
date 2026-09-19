@@ -1,52 +1,59 @@
-ZEC BLOCKS MAIN V9.2 — PORTFOLIO OWNERSHIP RECOVERY FIX
+ZEC BLOCKS MAIN V9.3 — LIVE DISCOVERY + FINAL OWNERSHIP FIX
 
-BUG FIXED
-A ZEC BLOCK purchased through the working V9 marketplace could show SALE FINAL in
-Buyer Atomic Checkout, yet disappear from the buyer Portfolio after an update /
-refresh. The old seller could also see the original claimed NFT again.
+TWO PRODUCTION BUGS FIXED
 
-ROOT CAUSE
-The old portfolio renderer was claim-centric:
-- it only iterated CLAIM records when deciding what NFTs to display;
-- the buyer does not have the seller's old shielded CLAIM memo in Noir history;
-- if public relay discovery did not return that historical CLAIM on a refresh,
-  the buyer had a verified settlement but no CLAIM row to render;
-- the seller's wallet-history fallback could still render its old CLAIM without
-  considering that a later verified marketplace settlement changed ownership.
+1) PURCHASED NFT APPEARED, THEN DISAPPEARED
+V9.2 could correctly derive a completed marketplace settlement and show the NFT
+to the buyer. On the next atomic watcher pass, however, the watcher could prune
+the old seller lock because currentOwner() had already changed to the buyer.
+tokenState() still required that old lock to remain present in order to apply the
+verified settlement. Result: the NFT appeared briefly, then ownership reverted to
+the original claimant/seller in the UI.
 
-V9.2 FIX
-1. Ownership reconstruction now uses:
-   - discovered CLAIM,
-   - validated connected-wallet CLAIM history,
-   - chain-verified marketplace settlements as ownership checkpoints.
-2. Portfolio token IDs are the union of claims, wallet-history claims, and
-   verified settlements.
-3. The old seller is shown the NFT only when currentOwner(tokenId) still resolves
-   to that seller. An old claim alone is no longer enough.
-4. A buyer with a verified settlement can display/list/transfer the purchased NFT
-   even if the original seller's historical CLAIM is temporarily missing from
-   relay discovery.
-5. If source artwork metadata is missing on the buyer side, V9.2 reconstructs the
-   source height from Genesis - Token ID and fetches the exact source block hash.
-6. New V9.2 seller locks carry sourceHeight/sourceHash/claimTxid provenance hints,
-   and finalized settlement events carry them forward for future recovery.
-7. V9.1 two-step payment remains unchanged:
-   - 3% treasury
-   - 97% seller
-   - both final before ownership moves
-8. V9.1 Activity fix remains included.
+V9.3 rule:
+- S.verifiedAtomic contains only settlements derived after chain verification.
+- A verified settlement is itself the permanent ZB-1 ownership transition.
+- It no longer depends on the old lock remaining in confirmedLocks.
+- Settled locks are also retained as historical verification evidence.
+This means a completed sale cannot visually revert to the old seller merely
+because the lock watcher ran again.
+
+2) "CLAIMS SEEN" WAS FAR BEHIND
+The main website fetched relays on load / manual actions, but its 20-second
+background watcher only reconciled marketplace settlement. It did NOT fetch new
+relay events. Therefore newly mined claims could remain invisible until a reload
+or another action.
+
+V9.3:
+- refreshes discovery every 10 seconds while the page is open;
+- listens to the same 6 public relay endpoints as the mining client;
+- reads both ZB-1 kind 30078 and the miner's kind-1 fallback events;
+- prevents overlapping relay scans;
+- refreshes immediately when the browser tab becomes active again.
+
+Expected behavior:
+A successfully published mining claim should normally appear in "Claims Seen"
+within roughly one discovery cycle, subject to relay/network availability.
+
+2-STEP PAYMENT CONFIG HARDENING
+V9.1/V9.2 referenced several two-step constants that were accidentally absent
+from CFG. V9.3 explicitly defines:
+- protocol-fee step confirmation: 1
+- final settlement confirmation: 6
+- original pay cutoff: 15 minutes before lock expiry
+- funded completion grace: 1 hour
+- post-payment finality grace: 2 hours
+
+The existing marketplace split remains:
+- 3% -> ZEC BLOCKS treasury
+- 97% -> seller
+- ownership moves only after both required transactions reach finality.
 
 IMPORTANT
-The ownership checkpoint used here is S.verifiedAtomic: it is created only after
-the official client verifies the chain-anchored seller lock and the required
-payment transaction(s). Raw relay NOIR_SETTLED events are not blindly inserted
-into S.verifiedAtomic.
-
-LEGACY V9 SALE RECOVERY
-Completed V9 single-payment sales remain supported. This specifically covers
-already-completed purchases such as a token that showed SALE FINAL but vanished
-from the buyer's Portfolio after upgrading to V9.1.
+"Claims Seen" is a discovery count, not a claim of global shielded-chain
+enumeration. Public relays are the fast discovery layer. Canonical ZB-1 validity
+still depends on the Zcash transaction and protocol validation.
 
 DEPLOY
 Upload every file in this ZIP to the www.zecblocks.xyz Vercel project.
-Then reconnect the buyer Noir Wallet and click Recover & Sync Portfolio once.
+After deployment, reconnect the buyer wallet and use Recover & Sync Portfolio once.

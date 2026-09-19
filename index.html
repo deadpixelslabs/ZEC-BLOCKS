@@ -93,7 +93,7 @@
     <div class="mini"><div class="kicker">1 · CONNECT</div><h3>Noir Wallet</h3><p>The site requests a privacy-preserving <b>derived</b> Zcash signing identity. Your seed and private keys never leave the wallet.</p></div>
     <div class="mini"><div class="kicker">2 · MINE</div><h3>26 leading zero bits</h3><p>Your browser searches nonces locally. The proof binds Genesis, token ID, source block hash and your owner commitment.</p></div>
     <div class="mini"><div class="kicker">3 · CLAIM</div><h3>Broadcast to Zcash</h3><p>When a proof is found, Noir Wallet asks you to approve the Zcash claim transaction. The transaction ID becomes the durable anchor.</p></div>
-    <div class="mini"><div class="kicker">Discovery layer</div><h3>No private ownership database</h3><p>The website mirrors discovery events across multiple public relays and automatically rebuilds the order board after deploys. Relays are cache/discovery only; ZB-1 ownership remains defined by confirmed Zcash transactions and client validation.</p></div>
+    <div class="mini"><div class="kicker">Discovery layer</div><h3>No private ownership database</h3><p>The website mirrors discovery events across multiple public relays and continuously refreshes claim/market discovery while the page is open. Relays are cache/discovery only; ZB-1 ownership remains defined by confirmed Zcash transactions and client validation.</p></div>
   </div>
 </div>
 </section>
@@ -150,7 +150,7 @@
   <div class="mini"><div class="kicker">Source of truth</div><h3>The chain is the database.</h3><p>The relay/order board is only a convenience layer. Anyone can rebuild or replace it. ZB-1 event validity is anchored to Zcash.</p></div>
 </section>
 
-<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.2</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+<footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Noir Locked Settlement V9.3</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" target="_blank" rel="noreferrer">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" target="_blank" rel="noreferrer">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 
 <div id="listingModal" class="modal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select id="listingToken" class="select"></select></div><div class="field"><label>Asking price (ZEC)</label><input id="listingPrice" class="input" value="0.05" inputmode="decimal"></div><div class="field"><label>Expires in days</label><input id="listingDays" class="input" type="number" min="1" max="30" value="7"></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button id="publishListingBtn" class="btn gold">Sign & Publish Listing</button></div></div></div>
@@ -165,10 +165,10 @@ const CFG={
   treasury:'t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz',
   supply:5000,powBits:26,freeClaims:500,paidClaimFeeZat:130000,marketFeeBps:300,
   explorer:'/api/zcash',
-  relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band'],
-  nostrKind:30078,relayTag:'zb1-mainnet-v1',atomicLockSeconds:3600,atomicPayCutoffSeconds:300,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFinalConfirmations:6
+  relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band','wss://relay.snort.social','wss://nostr.mom'],
+  nostrKind:30078,relayTag:'zb1-mainnet-v1',atomicLockSeconds:3600,atomicPayCutoffSeconds:900,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFeeStepConfirmations:1,atomicFinalConfirmations:6,atomicFundedGraceSeconds:3600,atomicFinalityGraceSeconds:7200
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set()};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -633,7 +633,7 @@ async function publishRelay(obj,{quiet=false,onlyRelays=null}={}){
 }
 async function queryOneRelay(url){
   const evs=await withTimeout(
-    S.relay.querySync([url],{kinds:[CFG.nostrKind],'#t':[CFG.relayTag],limit:12000}),
+    S.relay.querySync([url],{kinds:[CFG.nostrKind,1],'#t':[CFG.relayTag],limit:12000}),
     7500,
     'query timeout'
   );
@@ -665,6 +665,10 @@ async function repairLocalDiscovery(seenByRelay){
   return repaired;
 }
 async function fetchRelay(){
+  if(S.relayFetchBusy)return;
+  S.relayFetchBusy=true;
+  try{
+
   let arr=localEvents();
   const seenByRelay=new Map();
   let relayOk=0,relayEvents=0;
@@ -703,6 +707,11 @@ async function fetchRelay(){
   let repaired=0;
   try{repaired=await repairLocalDiscovery(seenByRelay)}catch(e){console.warn('relay repair',e)}
   $('relayStatus').textContent=`Relays: ${relayOk}/${CFG.relays.length} · ${S.events.length} events${repaired?` · repaired ${repaired}`:''}`;
+
+    S.lastRelayFetch=Date.now();
+  }finally{
+    S.relayFetchBusy=false
+  }
 }
 function eventOrder(a,b){
   const ah=Number(a.blockHeight),bh=Number(b.blockHeight);
@@ -787,9 +796,18 @@ function tokenState(id){
       if(Number(e.expires||0)<=when)continue;
       lock=e
     }else if(e._atomicKind==='settle'){
-      if(!lock||e.lockId!==lock.lockId)continue;
-      if(String(e.buyerCommitment||'').toLowerCase()!==String(lock.buyerCommitment||'').toLowerCase())continue;
-      owner=String(lock.buyerCommitment||'').toLowerCase();settlement=e;lock=null
+      // Every entry in `settlements` comes from S.verifiedAtomic, meaning the
+      // client already verified the seller lock + required Zcash payment(s).
+      // Therefore the verified settlement is the ownership transition itself.
+      // Do NOT require confirmedLocks to still contain the old lock: the watcher
+      // may prune/expire that lock after settlement and ownership must stay final.
+      const seller=String(e.sellerCommitment||'').toLowerCase();
+      const buyer=String(e.buyerCommitment||'').toLowerCase();
+      if(!buyer)continue;
+      if(owner!==seller&&owner!==buyer)continue;
+      if(lock&&e.lockId!==lock.lockId&&owner===seller)continue;
+      owner=buyer;settlement=e;
+      if(lock?.lockId===e.lockId)lock=null
     }
   }
   if(lock&&now>lockEffectiveExpiry(lock))lock=null;
@@ -1218,6 +1236,9 @@ async function reconcileAtomicState(){
     const ordered=[...S.confirmedLocks.values()].sort(eventOrder),winner=new Map();
     for(const l of ordered){
       const id=Number(l.tokenId),existing=winner.get(id);
+      // Keep the lock that produced a verified settlement as historical
+      // verification evidence. Ownership is already final to the buyer.
+      if(S.verifiedAtomic.has(l.lockId)){winner.set(id,l);continue}
       if(existing&&Number(l.blockTime||0)<=lockEffectiveExpiry(existing))continue;
       if(currentOwner(id)!==String(l.sellerCommitment).toLowerCase()&&!existing)continue;
       winner.set(id,l)
@@ -1493,7 +1514,12 @@ async function refreshAll(){await fetchRelay();await reconcileAtomicState();rebu
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
 (async()=>{await initNostr();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();updateWalletUI();renderAtomicDesk();updateMarketMetrics();
-  if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{await reconcileAtomicState();rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity()}catch(e){console.warn('atomic watcher',e)}},20000)
+  if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{
+    await fetchRelay();
+    await reconcileAtomicState();
+    rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderActivity();updateMarketMetrics()
+  }catch(e){console.warn('live discovery watcher',e)}},10000)
 })();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAll().catch(e=>console.warn('visibility refresh',e))});
 </script>
 </body></html>
