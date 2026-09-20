@@ -175,14 +175,25 @@ async function indexFunction(name,body={}){
 }
 
 async function hydrateServerClaimStats(){
+  let snap=null,lastErr=null;
   try{
-    const snap=await indexRpc('zecblocks_claim_stats',{});
-    const n=Number(snap?.claims_seen||0);
-    if(Number.isFinite(n)&&n>=0)S.serverClaimCount=Math.max(S.serverClaimCount||0,n);
-    const local=S.claims?.size||0;
-    if($('claimCount'))$('claimCount').textContent=Math.max(local,S.serverClaimCount||0).toLocaleString();
-    return S.serverClaimCount||0
-  }catch(e){console.warn('server claim stats',e);return S.serverClaimCount||0}
+    const r=await fetch(`${INDEX_CFG.url}/functions/v1/zecblocks-live-stats`,{
+      method:'GET',headers:{'apikey':INDEX_CFG.key},cache:'no-store'
+    });
+    const j=await r.json().catch(()=>null);
+    if(r.ok&&j?.ok)snap=j;else lastErr=new Error(j?.error||('Live stats HTTP '+r.status))
+  }catch(e){lastErr=e}
+  if(!snap){
+    try{snap=await indexRpc('zecblocks_claim_stats',{})}
+    catch(e){lastErr=e}
+  }
+  const n=Number(snap?.claims_seen||0);
+  if(Number.isFinite(n)&&n>0)S.serverClaimCount=Math.max(Number(S.serverClaimCount||0),n);
+  const local=Number(S.claims?.size||0);
+  const shown=Number(S.serverClaimCount||0)>0?Number(S.serverClaimCount):local;
+  if($('claimCount'))$('claimCount').textContent=shown.toLocaleString();
+  if(!snap&&lastErr)console.warn('server claim stats',lastErr);
+  return shown
 }
 async function kickServerRelayIndexer(){
   if(S.serverRelayIndexing)return;S.serverRelayIndexing=true;
@@ -864,7 +875,7 @@ function rebuildState(){
   }
   for(const id of canceled)listings.delete(id);
   S.listings=listings;S.offers=offers;S.atomicLocks=locks;S.atomicSettlements=settled;
-  $('claimCount').textContent=Math.max(claims.size,Number(S.serverClaimCount||0)).toLocaleString();
+  $('claimCount').textContent=(Number(S.serverClaimCount||0)>0?Number(S.serverClaimCount):claims.size).toLocaleString();
   renderMarket();renderUsdcMarket();renderActivity();renderPortfolio();renderAtomicDesk();updateWalletUI();
 }
 function eventUnix(e){return Number(e?.blockTime||e?.block_time||e?.timestamp)||0}
@@ -2456,7 +2467,7 @@ function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d6
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
 hydrateUsdcCache();rebuildState();renderUsdcMarket();
 hydrateServerUsdc().then(()=>kickServerUsdcIndexer()).catch(()=>{});
-(async()=>{await hydrateServerClaimStats();kickServerRelayIndexer();await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}try{await connectEvmWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();try{await reconcileUsdcMarket()}catch(e){console.warn('USDC market init',e)}rebuildState();updateWalletUI();renderUsdcMarket();renderAtomicDesk();updateMarketMetrics();
+(async()=>{await hydrateServerClaimStats();if(!S.claimStatsTimer)S.claimStatsTimer=setInterval(()=>hydrateServerClaimStats().catch(()=>{}),10000);kickServerRelayIndexer();await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}try{await connectEvmWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();try{await reconcileUsdcMarket()}catch(e){console.warn('USDC market init',e)}rebuildState();updateWalletUI();renderUsdcMarket();renderAtomicDesk();updateMarketMetrics();
   if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{
     await hydrateServerUsdc();
     if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);
