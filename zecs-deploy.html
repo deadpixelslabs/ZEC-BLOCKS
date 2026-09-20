@@ -49,7 +49,7 @@
 const MAILBOX='u1qqjyaypzmvgfnc9uatk5t0f6hmge6htpfck3d366nhx94450crtznujwn8kql9u39uzdqcdg8flzk3tmf32j2p4u0xvx370xwcjjsrmd';
 const SUPABASE='https://tvwvenyomlwvjtwxasca.supabase.co';
 const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB...';
-const DEPLOY_MESSAGE='ZB20:DEPLOY:v1|T=ZECS|M=21000000|L=210|D=0|G=ZB1HOLDER|P=0';
+const DEPLOY_MESSAGE='{"p":"zb-20","op":"deploy","tick":"ZECS","max":"21000000","lim":"210"}';
 const FULL_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2d3ZlbnlvbWx3dmp0d3hhc2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MjIwMTcsImV4cCI6MjEwNDE5ODAxN30.RLGs8yTBd0JyRdHlv63YzLHJ7t8qPNHqZWN3WRu00VY';
 const $=id=>document.getElementById(id),enc=new TextEncoder();
 $('msg').textContent=DEPLOY_MESSAGE;
@@ -72,7 +72,7 @@ async function deploy(){
     const sig=String(signed?.signature||'').replace(/^0x/,'').toLowerCase();
     if(!(/^[0-9a-f]{66}$/.test(pub)||/^[0-9a-f]{130}$/.test(pub))||!/^[0-9a-f]{130}$/.test(sig))throw new Error('Noir Wallet returned an invalid deployment signature.');
 
-    const memo=JSON.stringify({p:'zb-20',op:'deploy',v:1,tick:'ZECS',max:'21000000',lim:'210',dec:0,gate:'zb1-holder',premine:'0',admin:'none',mint:'free',parent:'zb-1',pub,sig});
+    const memo=DEPLOY_MESSAGE;
     const bytes=enc.encode(memo).length;
     if(bytes>512)throw new Error('Deploy memo exceeds Zcash 512-byte memo limit: '+bytes+' bytes.');
 
@@ -93,7 +93,7 @@ async function deploy(){
     const j=await r.json().catch(()=>null);
     if(!r.ok||!j?.ok)throw new Error((j&&j.error)||('Deployment registry HTTP '+r.status));
 
-    setStatus('4/4 · ZECS DEPLOYMENT BROADCAST ✅\n\nTXID: '+txid+'\nStatus: pending Zcash confirmation\nTicker: ZECS\nMax: 21,000,000\nMint limit: 210\nPremine: 0\n\nKeep this TXID. It becomes the canonical ZECS deployment ID after confirmation.','good');
+    setStatus('4/4 · ZECS DEPLOYMENT BROADCAST ✅\n\nTXID: '+txid+'\nStatus: pending Zcash confirmation\nCanonical deploy payload: '+DEPLOY_MESSAGE+'\n\nKeep this TXID. It becomes the canonical ZECS deployment ID after confirmation.','good');
     $('deploy').textContent='ZECS Deploy Broadcast';
   }catch(e){
     setStatus('Deployment stopped: '+(e.message||String(e)),'bad');
