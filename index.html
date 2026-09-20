@@ -371,8 +371,8 @@ const INDEX_CFG={
   url:'https://tvwvenyomlwvjtwxasca.supabase.co',
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
-console.info('ZEC BLOCKS MAIN V10.7 · SERVER CLAIMS SYNC');
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverIndexing:false,serverPortfolioLoaded:new Set(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set()};
+console.info('ZEC BLOCKS MAIN V10.8 · CANONICAL PORTFOLIO');
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -664,22 +664,63 @@ async function hydrateServerPortfolio(owner=S.ownerCommitment){
   owner=dbCommitment(owner);if(!owner)return 0;
   try{
     const snap=await indexRpc('zecblocks_portfolio_snapshot',{p_owner_commitment:owner});
-    const rows=Array.isArray(snap?.tokens)?snap.tokens:[],ids=new Set(rows.map(x=>Number(x.token_id)));
+    const rows=Array.isArray(snap?.tokens)?snap.tokens:[];
+    const listingRows=Array.isArray(snap?.active_listings)?snap.active_listings:[];
+    const ids=new Set(rows.map(x=>Number(x.token_id)));
+
+    S.serverPortfolioOwner=owner;
+    S.serverPortfolioTokens.clear();
+    S.serverPortfolioActiveListings.clear();
+    S.serverPortfolioCount=Number(snap?.owned_count??snap?.count??rows.length)||0;
+    S.serverPortfolioListingCount=Number(snap?.active_listing_count??listingRows.length)||0;
+    S.serverPortfolioGeneratedAt=Number(snap?.generated_at||0);
+
     for(const [id,e] of [...S.walletRecoveredClaims.entries()]){
-      if(e?.source==='supabase-index'&&!ids.has(Number(id))){S.walletRecoveredClaims.delete(id);if(e.eventId)S.walletRecovered.delete(e.eventId)}
+      if(e?.source==='supabase-index'&&!ids.has(Number(id))){
+        S.walletRecoveredClaims.delete(id);
+        if(e.eventId)S.walletRecovered.delete(e.eventId)
+      }
     }
+
     for(const x of rows){
       const id=Number(x.token_id);if(!Number.isInteger(id)||id<1||id>CFG.supply)continue;
-      const e=normalizeEvent({protocol:'ZB1',v:1,type:'CLAIM',eventId:x.owner_event_id||x.last_event_id||x.claim_txid||`server:${id}:${owner}`,txid:x.claim_txid||'',tokenId:id,
-        ownerCommitment:owner,sourceHeight:Number(x.source_height)||null,sourceHash:String(x.source_hash||''),
-        blockHeight:Number(x.owner_block_height||x.last_zcash_height)||null,txIndex:Number(x.owner_tx_index)||null,
-        timestamp:Number(x.owner_event_timestamp)||Math.floor(new Date(x.updated_at||Date.now()).getTime()/1000),source:'supabase-index',
-        serverLastEventType:String(x.owner_source||x.last_event_type||'claim'),serverVerifiedLevel:String(x.owner_verified_level||'provisional')});
-      const k=eventKey(e)||e.eventId;S.walletRecovered.set(k,e);S.walletRecoveredClaims.set(id,e)
+      const e=normalizeEvent({
+        protocol:'ZB1',v:1,type:'CLAIM',
+        eventId:x.owner_event_id||x.last_event_id||x.claim_txid||`server:${id}:${owner}`,
+        txid:x.claim_txid||'',tokenId:id,ownerCommitment:owner,
+        sourceHeight:Number(x.source_height)||null,sourceHash:String(x.source_hash||''),
+        blockHeight:Number(x.owner_block_height||x.last_zcash_height)||null,
+        txIndex:Number(x.owner_tx_index)||null,
+        timestamp:Number(x.owner_event_timestamp)||Math.floor(new Date(x.updated_at||Date.now()).getTime()/1000),
+        source:'supabase-index',
+        serverLastEventType:String(x.owner_source||x.last_event_type||'claim'),
+        serverVerifiedLevel:String(x.owner_verified_level||'provisional')
+      });
+      S.serverPortfolioTokens.set(id,e);
+      S.serverOwners.set(id,{owner,level:String(x.owner_verified_level||'provisional'),source:String(x.owner_source||'portfolio-server')});
+      const k=eventKey(e)||e.eventId;
+      S.walletRecovered.set(k,e);
+      S.walletRecoveredClaims.set(id,e)
     }
-    S.serverPortfolioLoaded.add(owner);rebuildState();renderPortfolio();updateWalletUI();
-    return rows.length
-  }catch(e){console.warn('server portfolio snapshot',e);return 0}
+
+    for(const x of listingRows){
+      const id=Number(x.token_id);
+      if(!Number.isInteger(id)||id<1||id>CFG.supply)continue;
+      S.serverPortfolioActiveListings.set(id,{
+        listingId:String(x.listing_id||''),
+        tokenId:id,
+        sellerCommitment:dbCommitment(x.seller_commitment),
+        price:String(x.price||''),
+        expires:Number(x.expires_at||0),
+        timestamp:Number(x.event_timestamp||0),
+        rail:String(x.rail||'').toUpperCase()
+      })
+    }
+
+    S.serverPortfolioLoaded.add(owner);
+    rebuildState();renderPortfolio();updateWalletUI();
+    return S.serverPortfolioCount
+  }catch(e){console.warn('server portfolio snapshot',e);return Number(S.serverPortfolioCount||0)}
 }
 async function pushClaimsToServerIndex(){
   const claims=[...S.walletRecoveredClaims.values()].filter(e=>e?.type==='CLAIM'&&e.tokenId&&e.nonce&&e.pubkey&&e.signature&&e.txid);
@@ -790,6 +831,9 @@ async function connectWallet(silent=false){
     S.pubkey=k.pubkey;S.ownerCommitment=await sha256HexBytes(hexToBytes(k.pubkey));
     const cachedClaims=hydrateWalletCache();
     await hydrateServerPortfolio(S.ownerCommitment);
+    if(!S.serverPortfolioTimer)S.serverPortfolioTimer=setInterval(()=>{
+      if(S.ownerCommitment)hydrateServerPortfolio(S.ownerCommitment).catch(()=>{})
+    },15000);
     try{S.balance=await rpc('zcash_getBalance')}catch{}
     rebuildState();updateWalletUI();renderPortfolio();
     if(silent){
@@ -1343,7 +1387,27 @@ function tokenIsAtomicLocked(id){return !!activeAtomicLockForToken(id)}
 
 function ownedTokens(){
   if(!S.ownerCommitment)return[];
-  const mine=String(S.ownerCommitment).toLowerCase(),ids=new Set();
+  const mine=String(S.ownerCommitment).toLowerCase();
+
+  // Once the production portfolio snapshot is loaded, it is authoritative.
+  // Wallet history / relay discovery may enrich metadata, but cannot add/remove
+  // portfolio ownership cards on their own.
+  if(S.serverPortfolioOwner===mine&&S.serverPortfolioLoaded.has(mine)){
+    return [...S.serverPortfolioTokens.values()]
+      .map(base=>{
+        const id=Number(base.tokenId),cached=S.portfolioSourceCache.get(id);
+        return {
+          ...base,
+          tokenId:id,
+          sourceHeight:base?.sourceHeight||cached?.sourceHeight||(S.genesisHeight?S.genesisHeight-id:null),
+          sourceHash:base?.sourceHash||cached?.sourceHash||'',
+          txid:base?.txid||''
+        }
+      })
+      .sort((a,b)=>a.tokenId-b.tokenId)
+  }
+
+  const ids=new Set();
   for(const id of S.claims.keys())ids.add(Number(id));
   for(const id of S.walletRecoveredClaims.keys())ids.add(Number(id));
   for(const s of S.verifiedAtomic.values())if(Number.isInteger(Number(s.tokenId)))ids.add(Number(s.tokenId));
@@ -1356,10 +1420,8 @@ function ownedTokens(){
     const sale=[...S.verifiedAtomic.values(),...S.usdcVerifiedSettlements.values()].filter(x=>Number(x.tokenId)===id).sort(eventOrder).slice(-1)[0]||null;
     const cached=S.portfolioSourceCache.get(id);
     const base=canonical?mergeEvent(canonical,wc):wc||sale||{tokenId:id};
-
     out.push({
-      ...base,
-      tokenId:id,
+      ...base,tokenId:id,
       sourceHeight:base?.sourceHeight||sale?.sourceHeight||cached?.sourceHeight||(S.genesisHeight?S.genesisHeight-id:null),
       sourceHash:base?.sourceHash||sale?.sourceHash||cached?.sourceHash||'',
       txid:base?.txid||sale?.sellerPaymentTxid||sale?.paymentTxid||sale?.txid||'',
@@ -2863,10 +2925,16 @@ async function openUsdcListingForToken(tokenId){
 }
 function renderPortfolio(){
   const own=ownedTokens();
-  $('ownedCount').textContent=own.length;
-  const zecCount=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;
-  const usdcCount=S.ownerCommitment?[...S.usdcOnchain.values()].filter(x=>Number(x.status)===1&&Number(x.expiresAt)>Math.floor(Date.now()/1000)&&String(x.sellerCommitment||'').slice(2).toLowerCase()===String(S.ownerCommitment).toLowerCase()).length:0;
-  $('listingCount').textContent=zecCount+usdcCount;
+  const mine=String(S.ownerCommitment||'').toLowerCase();
+  const serverReady=!!mine&&S.serverPortfolioOwner===mine&&S.serverPortfolioLoaded.has(mine);
+  $('ownedCount').textContent=serverReady?Number(S.serverPortfolioCount||0):own.length;
+  if(serverReady){
+    $('listingCount').textContent=Number(S.serverPortfolioListingCount||0)
+  }else{
+    const zecCount=S.ownerCommitment?activeListings().filter(x=>x.sellerCommitment===S.ownerCommitment).length:0;
+    const usdcCount=S.ownerCommitment?canonicalActiveUsdcListings().filter(x=>String(x.sellerCommitment||'').slice(2).toLowerCase()===mine).length:0;
+    $('listingCount').textContent=zecCount+usdcCount
+  }
   $('offerCount').textContent=S.ownerCommitment?sellerOffers().length:0;
   const g=$('portfolioGrid');g.innerHTML='';if(!S.ownerCommitment){g.innerHTML='<div class="empty" style="grid-column:1/-1">Connect Noir Wallet to calculate your ZB-1 owner commitment and load your portfolio.</div>';renderAtomicDesk();return}if(!own.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No ZEC BLOCKS are currently resolved to this owner commitment. Recover & Sync checks wallet history, public discovery, and chain-verified marketplace settlements.</div>';renderAtomicDesk();return}
   for(const c of own){
@@ -2901,7 +2969,9 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   S.balance=await rpc('zcash_getBalance');
   const r=await loadWalletHistory();
   await fetchRelay();
-  await reconcileAtomicState();rebuildState();updateWalletUI();renderPortfolio();renderAtomicDesk();
+  await reconcileAtomicState();
+  await hydrateServerPortfolio(S.ownerCommitment);
+  rebuildState();updateWalletUI();renderPortfolio();renderAtomicDesk();
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
 $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT has a chain-verified atomic lock. Direct transfer is invalid under ZB-1 v2 until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
