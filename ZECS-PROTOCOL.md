@@ -21,17 +21,11 @@ Token layer: ZB-20
 
 ## Canonical deploy message
 
-`ZB20:DEPLOY:v1|T=ZECS|M=21000000|L=210|D=0|G=ZB1HOLDER|P=0`
+`{"p":"zb-20","op":"deploy","tick":"ZECS","max":"21000000","lim":"210"}`
 
-The deploy message is signed with the deployer's Noir Wallet derived Zcash identity.
+The exact JSON above is both the canonical deploy message and the Zcash memo payload.
 
-## Zcash deploy memo
-
-The deploy transaction carries a compact JSON memo with these fields:
-
-```json
-{"p":"zb-20","op":"deploy","v":1,"tick":"ZECS","max":"21000000","lim":"210","dec":0,"gate":"zb1-holder","premine":"0","admin":"none","mint":"free","parent":"zb-1","pub":"<derived pubkey>","sig":"<deploy signature>"}
-```
+The deployer signs that exact payload with the Noir Wallet derived Zcash identity. Signature material is registered separately with the ZB-20 deployment registry and is not added to the deploy memo.
 
 The deployment transaction sends 0.00000001 ZEC to the existing ZB-1 protocol mailbox. This is an anchor output, not a token sale or protocol mint fee.
 
