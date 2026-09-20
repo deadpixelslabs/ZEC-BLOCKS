@@ -1479,7 +1479,7 @@ async function buyUsdcListing(l){
     const buyerCommit='0x'+S.ownerCommitment;
 
     // Preferred UX: EIP-2612 typed-data permit -> one onchain Buy Now tx.
-    let permitWorked=false;
+    let permitWorked=false,settlementReceipt=null;
     try{
       const nonce=await usdc.nonces(owner);
       const name=await usdc.name();
@@ -1494,7 +1494,7 @@ async function buyUsdcListing(l){
       const sig=ethers.Signature.from(signature);
       const tx=await market.buyNowWithPermit(fresh.listingId,buyerCommit,deadline,sig.v,sig.r,sig.s);
       toast('USDC Buy Now submitted · waiting for Base confirmation…',7000);
-      await tx.wait();permitWorked=true
+      settlementReceipt=await tx.wait();permitWorked=true
     }catch(permitErr){
       console.warn('USDC permit path unavailable, falling back to allowance',permitErr)
     }
@@ -1508,7 +1508,22 @@ async function buyUsdcListing(l){
       }
       const tx=await market.buyNow(fresh.listingId,buyerCommit);
       toast('USDC Buy Now submitted · waiting for Base confirmation…',7000);
-      await tx.wait()
+      settlementReceipt=await tx.wait()
+    }
+
+    // Instant sold-state UX: hide the card immediately after Base confirms,
+    // then ask the server indexer to verify this exact receipt instead of waiting for cron.
+    const soldId=String(fresh.listingId).toLowerCase();
+    S.usdcOnchain.set(soldId,{...fresh,status:2,buyer:S.evmAddress,buyerCommitment:buyerCommit,settledAt:Math.floor(Date.now()/1000)});
+    renderUsdcMarket();
+    try{
+      if(settlementReceipt?.hash){
+        await indexFunction('zecblocks-index-usdc',{tx_hash:settlementReceipt.hash});
+        await hydrateServerUsdc()
+      }
+    }catch(indexErr){
+      console.warn('instant Base sale indexing',indexErr);
+      kickServerUsdcIndexer().catch(()=>{})
     }
 
     const settledEvent=normalizeEvent({
