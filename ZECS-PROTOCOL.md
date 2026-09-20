@@ -43,6 +43,12 @@ Each valid mint creates exactly 210 ZECS, subject to:
 
 Signature, holder-proof, indexing, and anti-duplicate verification data are maintained separately from the canonical mint memo.
 
+## Canonical ZECS deployment TXID
+
+`5bde45c224ae58a41bdd72ab0bfdfe36a23a4d3aa5335381842e19fdac02e5ed`
+
+This TXID is locked as the one and only canonical ZECS deployment transaction. Its current protocol state is pending Zcash confirmation. No later deploy transaction may replace it.
+
 ## Canonical deployment identity
 
 The deployment TXID becomes the immutable ZECS deployment identifier after it is confirmed and registered by the ZB-20 indexer. A second deployment transaction does not replace the canonical ZECS deployment.
