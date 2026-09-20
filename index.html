@@ -371,7 +371,7 @@ const INDEX_CFG={
   url:'https://tvwvenyomlwvjtwxasca.supabase.co',
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
-console.info('ZEC BLOCKS MAIN V10.12 · INSTANT VERIFIED MARKET');
+console.info('ZEC BLOCKS MAIN V10.13 · QUOTA SAFE MARKETPLACE');
 const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -851,7 +851,53 @@ async function pushClaimsToServerIndex(){
   const minimal=claims.map(e=>({tokenId:Number(e.tokenId),nonce:String(e.nonce),pubkey:String(e.pubkey),signature:String(e.signature),txid:String(e.txid)}));
   for(let i=0;i<minimal.length;i+=20){try{await indexFunction('zecblocks-cache-claims',{claims:minimal.slice(i,i+20)})}catch(e){console.warn('claim server cache',e);break}}
 }
-function localEvents(){try{return JSON.parse(localStorage.getItem('zb1_events_v1')||'[]')}catch{return[]}}
+function isStorageQuotaError(e){
+  return !!e&&(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22||e.code===1014)
+}
+function compactStoredEvent(e){
+  if(!e||typeof e!=='object')return e;
+  const keep=[
+    'protocol','v','type','eventId','txid','listingId','offerId','lockId','tokenId',
+    'nonce','price','priceUSDC','expires','expiresAt','listingNonce','zb1ListingHash',
+    'ownerCommitment','sellerCommitment','buyerCommitment','fromCommitment','toCommitment',
+    'sellerEvm','buyerEvm','paymentChain','paymentToken','settlementContract',
+    'pubkey','signature','message','memo','timestamp','settledAt','status','source',
+    'sourceHeight','sourceHash','proofHash','blockHeight','txIndex','anchorTxid',
+    'paymentTxid','sellerPayout','feeZat','sellerZat','paymentZat','step',
+    'baseTxid','verifiedIntent','serverIntentVerified'
+  ];
+  const out={};
+  for(const k of keep)if(e[k]!==undefined&&e[k]!==null&&e[k]!=='')out[k]=e[k];
+  return out
+}
+function pruneNonCriticalBrowserCaches(){
+  try{localStorage.removeItem('zb1_public_discovery_v2')}catch{}
+  try{sessionStorage.removeItem('zb1_public_discovery_v1')}catch{}
+  try{
+    const raw=localStorage.getItem('zb1_usdc_market_v3');
+    if(raw){
+      const c=JSON.parse(raw),rows=Array.isArray(c?.rows)?c.rows.slice(-350):[];
+      localStorage.setItem('zb1_usdc_market_v3',JSON.stringify({...c,rows}))
+    }
+  }catch{}
+}
+function safeLocalSet(key,value,{retryPrune=true}={}){
+  try{localStorage.setItem(key,value);return true}
+  catch(e){
+    if(retryPrune&&isStorageQuotaError(e)){
+      pruneNonCriticalBrowserCaches();
+      try{localStorage.setItem(key,value);return true}catch(e2){console.warn('local storage quota after prune',key,e2);return false}
+    }
+    console.warn('local storage write unavailable',key,e);
+    return false
+  }
+}
+function localEvents(){
+  try{
+    const a=JSON.parse(localStorage.getItem('zb1_events_v1')||'[]');
+    return Array.isArray(a)?a:[]
+  }catch{return[]}
+}
 function discoveryCache(){
   try{
     const raw=localStorage.getItem('zb1_public_discovery_v2')||sessionStorage.getItem('zb1_public_discovery_v1')||'[]';
@@ -877,7 +923,8 @@ function savePaymentRecovery(e){
     const k=`${e.lockId}:${e.step||e.type}:${e.paymentTxid||e.txid}`;
     const i=a.findIndex(x=>`${x.lockId}:${x.step||x.type}:${x.paymentTxid||x.txid}`===k);
     if(i>=0)a[i]=mergeEvent(a[i],e);else a.push(e);
-    localStorage.setItem('zb1_payment_recovery_v1',JSON.stringify(a.slice(-2000)))
+    const payload=JSON.stringify(a.slice(-300).map(compactStoredEvent));
+    safeLocalSet('zb1_payment_recovery_v1',payload)
   }catch(err){console.warn('payment recovery journal',err)}
 }
 function saveVerifiedSettlementJournal(e){
@@ -885,16 +932,21 @@ function saveVerifiedSettlementJournal(e){
     const a=verifiedSettlementJournal(),k=e.lockId||eventKey(e);
     const i=a.findIndex(x=>(x.lockId||eventKey(x))===k);
     if(i>=0)a[i]=mergeEvent(a[i],e);else a.push(e);
-    localStorage.setItem('zb1_verified_settlements_v1',JSON.stringify(a.slice(-1000)))
+    const payload=JSON.stringify(a.slice(-300).map(compactStoredEvent));
+    safeLocalSet('zb1_verified_settlements_v1',payload)
   }catch(err){console.warn('verified settlement journal',err)}
 }
 function saveDiscoveryCache(events){
   try{
     const a=[...events]
       .sort((x,y)=>(Number(x.timestamp)||0)-(Number(y.timestamp)||0))
-      .slice(-12000);
-    localStorage.setItem('zb1_public_discovery_v2',JSON.stringify(a));
-    try{sessionStorage.setItem('zb1_public_discovery_v1',JSON.stringify(a.slice(-8000)))}catch{}
+      .slice(-1200)
+      .map(compactStoredEvent);
+    const payload=JSON.stringify(a);
+    if(!safeLocalSet('zb1_public_discovery_v2',payload,{retryPrune:false})){
+      try{localStorage.removeItem('zb1_public_discovery_v2')}catch{}
+    }
+    try{sessionStorage.setItem('zb1_public_discovery_v1',JSON.stringify(a.slice(-600)))}catch{}
   }catch(e){console.warn('discovery cache full/unavailable',e)}
 }
 function walletCacheKey(){return S.ownerCommitment?'zb1_wallet_cache_v2_'+S.ownerCommitment:null}
@@ -915,7 +967,10 @@ function hydrateWalletCache(){
 }
 function saveWalletCache(){
   const key=walletCacheKey();if(!key)return;
-  try{localStorage.setItem(key,JSON.stringify([...S.walletRecovered.values()].slice(-5000)))}catch(e){console.warn('wallet cache save',e)}
+  try{
+    const rows=[...S.walletRecovered.values()].slice(-1200).map(compactStoredEvent);
+    safeLocalSet(key,JSON.stringify(rows))
+  }catch(e){console.warn('wallet cache save',e)}
 }
 function eventKey(e){return e?.txid||e?.eventId||e?.listingId||null}
 function mergeEvent(old,e){
@@ -928,10 +983,16 @@ function mergeEvent(old,e){
   return merged;
 }
 function saveLocalEvent(e){
-  const a=localEvents(),k=eventKey(e);
-  const i=k?a.findIndex(x=>eventKey(x)===k):-1;
-  if(i>=0)a[i]=mergeEvent(a[i],e); else a.push(e);
-  localStorage.setItem('zb1_events_v1',JSON.stringify(a.slice(-10000)));
+  try{
+    const a=localEvents(),k=eventKey(e);
+    const i=k?a.findIndex(x=>eventKey(x)===k):-1;
+    if(i>=0)a[i]=mergeEvent(a[i],e); else a.push(e);
+    const rows=a.slice(-600).map(compactStoredEvent);
+    return safeLocalSet('zb1_events_v1',JSON.stringify(rows))
+  }catch(err){
+    console.warn('local event journal unavailable; continuing without blocking transaction',err);
+    return false
+  }
 }
 function rememberRuntimeEvent(e){
   saveLocalEvent(e);
@@ -942,7 +1003,7 @@ function rememberRuntimeEvent(e){
   return e
 }
 function nostrSecretHex(){let h=localStorage.getItem('zb1_nostr_sk');return h||null}
-function setNostrSecretHex(h){localStorage.setItem('zb1_nostr_sk',h)}
+function setNostrSecretHex(h){if(!safeLocalSet('zb1_nostr_sk',h))throw new Error('Browser storage is unavailable for the relay signing key. Free a small amount of site storage and retry.')}
 function provider(){const w=window.noirwallet;return w&&w.isNoirWallet&&w.zcash?w.zcash:null}
 async function rpc(method,params){const p=provider();if(!p)throw new Error('Noir Wallet is not installed. Install the official mainnet extension first.');return p.request({method,...(params?{params}: {})})}
 async function connectWallet(silent=false){
@@ -3209,6 +3270,16 @@ $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToke
 async function refreshAll(){await Promise.all([hydrateServerUsdc(),hydrateServerActivity(),hydrateServerClaimStats()]);if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);kickServerRelayIndexer();kickServerUsdcIndexer();await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
+(function compactLegacyBrowserStorage(){
+  try{
+    const existing=localEvents();
+    if(existing.length>600){
+      safeLocalSet('zb1_events_v1',JSON.stringify(existing.slice(-600).map(compactStoredEvent)))
+    }
+    const d=localStorage.getItem('zb1_public_discovery_v2');
+    if(d&&d.length>900000)try{localStorage.removeItem('zb1_public_discovery_v2')}catch{}
+  }catch(e){console.warn('legacy storage compaction',e)}
+})();
 hydrateUsdcCache();rebuildState();renderUsdcMarket();
 hydrateUsdcFastListings().catch(()=>{});
 hydrateServerUsdc().then(()=>kickServerUsdcIndexer()).catch(()=>{});
