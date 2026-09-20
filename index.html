@@ -371,8 +371,8 @@ const INDEX_CFG={
   url:'https://tvwvenyomlwvjtwxasca.supabase.co',
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
-console.info('ZEC BLOCKS MAIN V10.11 · DIRECT CANONICAL MARKET FEED');
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set()};
+console.info('ZEC BLOCKS MAIN V10.12 · INSTANT VERIFIED MARKET');
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -577,10 +577,9 @@ async function hydrateUsdcFastListings(){
     const nowSec=Math.floor(Date.now()/1000);
     const headers={'apikey':INDEX_CFG.key,'Cache-Control':'no-cache','Pragma':'no-cache'};
     const q=new URLSearchParams({
-      select:'listing_id,token_id,seller_commitment,seller_evm,price_usdc,expires_at,listing_nonce,zb1_listing_hash,status,buyer_evm,buyer_commitment,created_block,updated_block,settled_at,intent_verified,updated_at',
+      select:'listing_id,token_id,seller_commitment,seller_evm,price_usdc,expires_at,listing_nonce,zb1_listing_hash,status,buyer_evm,buyer_commitment,created_block,updated_block,settled_at,intent_verified,intent_message,intent_pubkey,intent_signature,intent_event_key,updated_at',
       status:'eq.active',
       expires_at:`gt.${nowSec}`,
-      intent_verified:'eq.true',
       order:'created_block.desc',
       limit:'500'
     });
@@ -613,18 +612,31 @@ async function hydrateUsdcFastListings(){
       if(!['signature','chain','full'].includes(String(owner.level||'')))continue;
       if(owner.owner!==sellerCommit)continue;
 
+      const prev=S.usdcOnchain.get(id)||{};
+      const dbIntent={
+        listingId:id,tokenId,sellerCommitment:sellerCommit,sellerEvm:String(x.seller_evm||''),
+        priceUSDC:String(x.price_usdc||0),expires:Number(x.expires_at||0),
+        listingNonce:String(x.listing_nonce||''),zb1ListingHash:String(x.zb1_listing_hash||''),
+        message:String(x.intent_message||''),pubkey:String(x.intent_pubkey||''),signature:String(x.intent_signature||'')
+      };
       const row={
-        listingId:id,tokenId,seller:String(x.seller_evm||'').toLowerCase(),
+        ...prev,listingId:id,tokenId,seller:String(x.seller_evm||'').toLowerCase(),
         sellerCommitment:'0x'+sellerCommit,priceUSDC:String(x.price_usdc||0),
         expiresAt:Number(x.expires_at||0),listingNonce:String(x.listing_nonce||''),
         zb1ListingHash:String(x.zb1_listing_hash||''),status:1,
         buyer:String(x.buyer_evm||'0x0000000000000000000000000000000000000000'),
         buyerCommitment:dbBytes32(x.buyer_commitment),settledAt:Number(x.settled_at||0),
         createdBlock:Number(x.created_block||0),updatedBlock:Number(x.updated_block||x.created_block||0),
-        relay:S.usdcOnchain.get(id)?.relay||null,verifiedIntent:!!S.usdcOnchain.get(id)?.verifiedIntent,
-        serverIntentVerified:true,serverOwnerCommitment:owner.owner,
+        relay:prev.relay||null,verifiedIntent:!!prev.verifiedIntent,
+        serverIntentVerified:!!x.intent_verified,serverOwnerCommitment:owner.owner,
         serverOwnerVerifiedLevel:owner.level,serverIndexed:true,fastCanonical:true
       };
+      if(row.serverIntentVerified){
+        S.usdcVerifiedIntentIds.add(id)
+      }else if(dbIntent.message&&dbIntent.pubkey&&dbIntent.signature){
+        row.verifiedIntent=await verifyUsdcRelayListing(dbIntent,row);
+        if(row.verifiedIntent)S.usdcVerifiedIntentIds.add(id)
+      }
       const old=byToken.get(tokenId);
       if(!old||usdcListingFreshness(row)>usdcListingFreshness(old)||(usdcListingFreshness(row)===usdcListingFreshness(old)&&id>String(old.listingId||'')))byToken.set(tokenId,row)
     }
@@ -648,8 +660,16 @@ async function hydrateUsdcFastListings(){
       S.usdcLiveTombstones.set(id,{status:0,block:0,at:Date.now()})
     }
     S.usdcFastIds=nextIds;
+    const fingerprint=[...byToken.values()]
+      .sort((a,b)=>Number(a.tokenId)-Number(b.tokenId))
+      .map(x=>[x.listingId,x.tokenId,x.priceUSDC,x.updatedBlock,S.usdcVerifiedIntentIds.has(String(x.listingId).toLowerCase())?1:0].join(':'))
+      .join('|');
+    const changed=fingerprint!==S.usdcFastFingerprint;
+    S.usdcFastFingerprint=fingerprint;
 
-    renderUsdcMarket();updateUsdcMarketMetrics();renderPortfolio();
+    if(changed){
+      renderUsdcMarket();updateUsdcMarketMetrics();renderPortfolio();
+    }
     return nextIds.size
   }catch(e){
     console.warn('fast canonical market feed',e);
@@ -680,6 +700,7 @@ async function hydrateServerUsdc(){
     for(const x of hydrationRows){
       const id=String(x.listing_id||'').toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(id))continue;
       serverIds.add(id);
+      if(x.intent_verified===true)S.usdcVerifiedIntentIds.add(id);
       const owner=dbCommitment(x.indexed_owner_commitment);
       if(owner)S.serverOwners.set(Number(x.token_id),{owner,level:String(x.indexed_owner_verified_level||'provisional'),source:String(x.indexed_owner_source||'server')});
       const old=merged.get(id)||{};
@@ -1905,7 +1926,7 @@ async function syncUsdcLiveChain(){
     const rp=await baseReadProvider();
     const c=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,rp);
     const latest=await rp.getBlockNumber();
-    let from=S.usdcLiveBlock>0?S.usdcLiveBlock+1:Math.max(0,latest-5000);
+    let from=S.usdcLiveBlock>0?S.usdcLiveBlock+1:Math.max(0,latest-600);
     if(from>latest)return 0;
     const relayMap=new Map(usdcRelayListings().map(e=>[String(e.listingId||'').toLowerCase(),e]));
     let touchedN=0;
@@ -1930,6 +1951,7 @@ async function syncUsdcLiveChain(){
           const relay=relayMap.get(id)||prev.relay||null;
           const row={...prev,listingId:id,seller:oc.seller,sellerCommitment:oc.sellerCommitment,tokenId:Number(oc.tokenId),expiresAt:Number(oc.expiresAt),priceUSDC:String(oc.priceUSDC),listingNonce:oc.listingNonce,zb1ListingHash:oc.zb1ListingHash,status:Number(oc.status),buyer:oc.buyer,buyerCommitment:oc.buyerCommitment,settledAt:Number(oc.settledAt),createdBlock:Number(prev.createdBlock||eventBlock||0),updatedBlock:Number(eventBlock||prev.updatedBlock||0),relay,verifiedIntent:!!prev.verifiedIntent,serverIntentVerified:!!prev.serverIntentVerified,serverOwnerCommitment:prev.serverOwnerCommitment||'',serverOwnerVerifiedLevel:prev.serverOwnerVerifiedLevel||'',serverIndexed:!!prev.serverIndexed};
           if(relay&&!row.verifiedIntent)row.verifiedIntent=await verifyUsdcRelayListing(relay,row);
+          if(row.verifiedIntent||row.serverIntentVerified)S.usdcVerifiedIntentIds.add(String(id).toLowerCase());
           return row
         })).filter(Boolean);
         for(const row of rows){
@@ -1987,6 +2009,7 @@ async function reconcileUsdcMarket(){
       const relay=relayMap.get(String(id).toLowerCase())||prev.relay||null;
       const row={...prev,listingId:id,seller:oc.seller,sellerCommitment:oc.sellerCommitment,tokenId:Number(oc.tokenId),expiresAt:Number(oc.expiresAt),priceUSDC:String(oc.priceUSDC),listingNonce:oc.listingNonce,zb1ListingHash:oc.zb1ListingHash,status:Number(oc.status),buyer:oc.buyer,buyerCommitment:oc.buyerCommitment,settledAt:Number(oc.settledAt),relay,verifiedIntent:!!prev.verifiedIntent,serverIntentVerified:!!prev.serverIntentVerified,serverOwnerCommitment:prev.serverOwnerCommitment||'',serverOwnerVerifiedLevel:prev.serverOwnerVerifiedLevel||'',serverIndexed:!!prev.serverIndexed};
       if(relay)row.verifiedIntent=await verifyUsdcRelayListing(relay,row);
+      if(row.verifiedIntent||row.serverIntentVerified)S.usdcVerifiedIntentIds.add(String(id).toLowerCase());
       return row
     })).filter(Boolean);
     if(rows.length){const merged=new Map(S.usdcOnchain);for(const x of rows)merged.set(String(x.listingId).toLowerCase(),x);S.usdcOnchain=merged}
@@ -2044,7 +2067,7 @@ function renderUsdcMarket(){
       const serverOwner=String(l.serverOwnerCommitment||'').toLowerCase();
       const serverOwnerTrusted=['signature','chain','full'].includes(String(l.serverOwnerVerifiedLevel||''));
       const owner=serverOwnerTrusted&&serverOwner?serverOwner:effectiveOwner(l.tokenId);
-      const signedOk=!!l.verifiedIntent||!!l.serverIntentVerified;
+      const signedOk=!!l.verifiedIntent||!!l.serverIntentVerified||S.usdcVerifiedIntentIds.has(String(l.listingId||'').toLowerCase());
       if(!owner){b.textContent='Ownership syncing…';b.disabled=true}
       else if(owner!==sellerCommit){b.textContent='Ownership verifying…';b.disabled=true}
       else if(!signedOk){b.textContent='Signature syncing…';b.disabled=true}
@@ -3192,7 +3215,7 @@ hydrateServerUsdc().then(()=>kickServerUsdcIndexer()).catch(()=>{});
 hydrateServerActivity().catch(()=>{});
 (async()=>{await hydrateServerClaimStats();
 setInterval(()=>hydrateServerClaimStats().catch(e=>console.warn('claim stats poll',e)),10000);
-setInterval(()=>hydrateUsdcFastListings().catch(e=>console.warn('fast market poll',e)),3000);
+setInterval(()=>hydrateUsdcFastListings().catch(e=>console.warn('fast market poll',e)),2500);
 hydrateUsdcFastListings().catch(e=>console.warn('fast market init',e));
 setInterval(()=>syncUsdcLiveChain().catch(e=>console.warn('Base live market poll',e)),6000);
 syncUsdcLiveChain().catch(e=>console.warn('Base live market init',e));
