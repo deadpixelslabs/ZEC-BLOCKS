@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#070707">
+<title>ZECS — ZB-20 Canonical Deploy</title>
+<style>
+:root{--bg:#070707;--panel:#0d0d0d;--line:#272727;--text:#f4f4f4;--muted:#8c8c8c;--gold:#d5aa52;--gold2:#f1cc76;--green:#78d594;--red:#ff8989}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:44px 22px 80px}.top{display:flex;align-items:center;gap:12px;margin-bottom:34px}.mark{width:42px;height:42px;border:1px solid #42361f;border-radius:10px;display:grid;place-items:center;color:var(--gold2);font-weight:900;background:#0d0b08}.top b{letter-spacing:.11em}.tag{margin-left:auto;border:1px solid #31523d;color:#9ce6b1;padding:7px 10px;border-radius:999px;font-size:11px}
+.card{border:1px solid var(--line);background:linear-gradient(180deg,#101010,#0a0a0a);border-radius:16px;padding:30px}.k{font-size:11px;letter-spacing:.14em;color:var(--gold2);font-weight:900;text-transform:uppercase}.hero{font-size:56px;line-height:.95;letter-spacing:-.055em;margin:10px 0 14px}.sub{color:var(--muted);line-height:1.6;max-width:760px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:26px 0}.m{border:1px solid #202020;border-radius:12px;padding:16px;background:#0b0b0b}.m small{display:block;color:#707070;margin-bottom:7px;text-transform:uppercase;font-size:10px;letter-spacing:.1em}.m b{font-size:18px}
+.code{margin:20px 0;border:1px solid #2a2418;background:#0c0a07;border-radius:12px;padding:16px;color:#e3c982;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.btn{min-height:44px;padding:0 17px;border-radius:10px;border:1px solid #303030;background:#121212;color:#eee;font-weight:800;cursor:pointer}.btn.gold{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#17120a;border:0}.btn:disabled{opacity:.45;cursor:not-allowed}.status{margin-top:18px;border:1px solid #242424;border-radius:12px;padding:15px;color:#aaa;white-space:pre-wrap;line-height:1.55}.status.good{border-color:#31523d;color:#9ce6b1}.status.bad{border-color:#5c3030;color:#ffaaaa}
+.warn{margin-top:18px;border:1px solid #493b20;background:#100d07;border-radius:12px;padding:14px;color:#d8bd7a;font-size:13px;line-height:1.55}
+@media(max-width:720px){.hero{font-size:42px}.grid{grid-template-columns:1fr}.tag{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="mark">Z</div><div><b>ZEC BLOCKS</b><div style="color:#777;font-size:11px;margin-top:3px">ZB-20 protocol deployment console</div></div><div class="tag">ZCASH MAINNET</div></div>
+  <div class="card">
+    <div class="k">Canonical ZB-20 deployment</div>
+    <div class="hero">$ZECS</div>
+    <div class="sub">One-time canonical deployment for the first ZB-20 token in the ZEC BLOCKS ecosystem. Parameters are hard-locked in this page and cannot be edited.</div>
+
+    <div class="grid">
+      <div class="m"><small>Max Supply</small><b>21,000,000</b></div>
+      <div class="m"><small>Mint Limit</small><b>210 ZECS</b></div>
+      <div class="m"><small>Decimals</small><b>0</b></div>
+      <div class="m"><small>Premine</small><b>0</b></div>
+      <div class="m"><small>Mint</small><b>Free</b></div>
+      <div class="m"><small>Gate</small><b>ZB-1 Holder</b></div>
+    </div>
+
+    <div class="code" id="msg"></div>
+    <div class="warn">Deploy sends exactly 0.00000001 ZEC to the existing ZB-1 mailbox as the immutable transaction anchor. Noir Wallet will ask for a signature and then a Zcash transaction approval. There is no premine and this deploy does not mint ZECS.</div>
+
+    <div class="actions">
+      <button class="btn" id="connect">Connect Noir Wallet</button>
+      <button class="btn gold" id="deploy" disabled>Deploy ZECS on Zcash</button>
+    </div>
+    <div class="status" id="status">Not connected.</div>
+  </div>
+</div>
+<script>
+'use strict';
+const MAILBOX='u1qqjyaypzmvgfnc9uatk5t0f6hmge6htpfck3d366nhx94450crtznujwn8kql9u39uzdqcdg8flzk3tmf32j2p4u0xvx370xwcjjsrmd';
+const SUPABASE='https://tvwvenyomlwvjtwxasca.supabase.co';
+const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB...';
+const DEPLOY_MESSAGE='ZB20:DEPLOY:v1|T=ZECS|M=21000000|L=210|D=0|G=ZB1HOLDER|P=0';
+const FULL_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2d3ZlbnlvbWx3dmp0d3hhc2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MjIwMTcsImV4cCI6MjEwNDE5ODAxN30.RLGs8yTBd0JyRdHlv63YzLHJ7t8qPNHqZWN3WRu00VY';
+const $=id=>document.getElementById(id),enc=new TextEncoder();
+$('msg').textContent=DEPLOY_MESSAGE;
+function provider(){const w=window.noirwallet;return w&&w.isNoirWallet&&w.zcash?w.zcash:null}
+async function rpc(method,params){const p=provider();if(!p)throw new Error('Noir Wallet is not installed.');return p.request({method,...(params?{params}: {})})}
+function setStatus(t,k=''){$('status').textContent=t;$('status').className='status'+(k?' '+k:'')}
+async function connect(){
+  try{
+    await rpc('zcash_requestAccounts');
+    setStatus('Noir Wallet connected. ZECS deployment parameters are locked and ready.','good');
+    $('deploy').disabled=false;$('connect').textContent='Noir Wallet Connected'
+  }catch(e){setStatus(e.message||String(e),'bad')}
+}
+async function deploy(){
+  $('deploy').disabled=true;$('connect').disabled=true;
+  try{
+    setStatus('1/4 · Signing canonical ZECS deploy parameters…');
+    const signed=await rpc('zcash_signMessage',[DEPLOY_MESSAGE,{signingMode:'derived'}]);
+    const pub=String(signed?.pubkey||'').replace(/^0x/,'').toLowerCase();
+    const sig=String(signed?.signature||'').replace(/^0x/,'').toLowerCase();
+    if(!(/^[0-9a-f]{66}$/.test(pub)||/^[0-9a-f]{130}$/.test(pub))||!/^[0-9a-f]{130}$/.test(sig))throw new Error('Noir Wallet returned an invalid deployment signature.');
+
+    const memo=JSON.stringify({p:'zb-20',op:'deploy',v:1,tick:'ZECS',max:'21000000',lim:'210',dec:0,gate:'zb1-holder',premine:'0',admin:'none',mint:'free',parent:'zb-1',pub,sig});
+    const bytes=enc.encode(memo).length;
+    if(bytes>512)throw new Error('Deploy memo exceeds Zcash 512-byte memo limit: '+bytes+' bytes.');
+
+    setStatus('2/4 · Approve the 0.00000001 ZEC canonical deploy anchor in Noir Wallet…');
+    const txid=String(await rpc('zcash_sendTransaction',[{to:MAILBOX,amount:'0.00000001',memo,fundingSource:'shielded'}])).replace(/^0x/,'').toLowerCase();
+    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Noir Wallet did not return a valid deployment TXID.');
+
+    localStorage.setItem('zb20_zecs_deploy_txid',txid);
+    setStatus('3/4 · Anchor broadcast. Signing TXID registration…\nTXID: '+txid);
+    const anchorMessage='ZB20:DEPLOY_ANCHOR:v1|T=ZECS|X='+txid;
+    const anchor=await rpc('zcash_signMessage',[anchorMessage,{signingMode:'derived'}]);
+    const anchorSig=String(anchor?.signature||'').replace(/^0x/,'').toLowerCase();
+
+    const r=await fetch(SUPABASE+'/functions/v1/zecblocks-zb20-register-deploy',{
+      method:'POST',headers:{'content-type':'application/json','apikey':FULL_ANON},
+      body:JSON.stringify({txid,pubkey:pub,signature:sig,anchorSignature:anchorSig,message:DEPLOY_MESSAGE})
+    });
+    const j=await r.json().catch(()=>null);
+    if(!r.ok||!j?.ok)throw new Error((j&&j.error)||('Deployment registry HTTP '+r.status));
+
+    setStatus('4/4 · ZECS DEPLOYMENT BROADCAST ✅\n\nTXID: '+txid+'\nStatus: pending Zcash confirmation\nTicker: ZECS\nMax: 21,000,000\nMint limit: 210\nPremine: 0\n\nKeep this TXID. It becomes the canonical ZECS deployment ID after confirmation.','good');
+    $('deploy').textContent='ZECS Deploy Broadcast';
+  }catch(e){
+    setStatus('Deployment stopped: '+(e.message||String(e)),'bad');
+    $('deploy').disabled=false;$('connect').disabled=false
+  }
+}
+$('connect').onclick=connect;$('deploy').onclick=deploy;
+const saved=localStorage.getItem('zb20_zecs_deploy_txid');
+if(saved&&/^[0-9a-f]{64}$/i.test(saved))setStatus('A ZECS deployment TXID was already broadcast from this browser:\n'+saved+'\n\nDo not deploy a second time unless the first transaction is proven invalid.','good');
+</script>
+</body>
+</html>
