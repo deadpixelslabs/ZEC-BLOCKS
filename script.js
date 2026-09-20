@@ -21,7 +21,7 @@ const INDEX_CFG={
   url:'https://tvwvenyomlwvjtwxasca.supabase.co',
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverIndexing:false,serverPortfolioLoaded:new Set(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map()};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcScannedTo:0,serverIndexing:false,serverPortfolioLoaded:new Set(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -226,7 +226,9 @@ async function hydrateServerUsdc(){
     const health=snap?.indexer_health||{};
     S.serverIndexerHealth=health;
     const baseCaughtUp=health?.base_usdc?.status==='ok'&&health?.base_usdc?.details?.caught_up===true;
-    const merged=new Map(S.usdcOnchain),serverIds=new Set();
+    S.serverUsdcScannedTo=Number(health?.base_usdc?.details?.scanned_to||health?.base_usdc?.details?.latest||0);
+    // Once caught up, start from a clean server snapshot. Do not merge stale browser rows.
+    const merged=baseCaughtUp?new Map():new Map(S.usdcOnchain),serverIds=new Set();
     S.serverOwners.clear();
     for(const x of rows){
       const id=String(x.listing_id||'').toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(id))continue;
@@ -246,11 +248,13 @@ async function hydrateServerUsdc(){
       })
     }
     if(baseCaughtUp){
-      for(const [id,x] of merged){
-        if(x?.serverIndexed&&Number(x.status)===1&&!serverIds.has(id))merged.delete(id)
-      }
+      // The snapshot already contains every canonical active listing plus sold rows.
+      // Anything absent from it is intentionally hidden (stale owner, duplicate,
+      // cancelled/expired, or otherwise non-canonical) and must not survive locally.
+      S.usdcOnchain=merged;
+    }else if(rows.length){
+      S.usdcOnchain=merged;
     }
-    if(rows.length||baseCaughtUp)S.usdcOnchain=merged;
     S.serverUsdcMetrics=snap?.usdc_metrics||snap?.metrics||null;
     const claims=Number(snap?.claims_seen||0);if(Number.isFinite(claims))S.serverClaimCount=Math.max(S.serverClaimCount||0,claims);
 
@@ -1284,15 +1288,17 @@ function usdcCacheRead(){
   try{const x=JSON.parse(localStorage.getItem('zb1_usdc_market_v3')||'{}');return x&&typeof x==='object'?x:{}}catch{return{}}
 }
 function hydrateUsdcCache(){
-  const c=usdcCacheRead(),rows=Array.isArray(c.rows)?c.rows:[];
-  if(rows.length)S.usdcOnchain=new Map(rows.map(x=>[String(x.listingId).toLowerCase(),x]));
+  // Never hydrate marketplace cards from browser storage.
+  // The production index + verified Base state are authoritative across every browser.
+  const c=usdcCacheRead();
   S.usdcScanBlock=Number(c.lastBlock)||0;
-  return rows.length
+  return 0
 }
 function saveUsdcCache(lastBlock=S.usdcScanBlock){
   try{
-    const rows=[...S.usdcOnchain.values()].slice(-2000).map(x=>({...x,priceUSDC:String(x.priceUSDC),relay:x.relay||null}));
-    localStorage.setItem('zb1_usdc_market_v3',JSON.stringify({v:3,lastBlock:Number(lastBlock)||0,at:Date.now(),rows}))
+    // Keep only the scan cursor. Persisting listing rows can resurrect stale cards
+    // after ownership changes, sales, cancels, or canonical index corrections.
+    localStorage.setItem('zb1_usdc_market_v3',JSON.stringify({v:4,lastBlock:Number(lastBlock)||0,at:Date.now()}))
   }catch(e){console.warn('USDC cache save',e)}
 }
 async function discoverUsdcListingIds(contract,rp){
@@ -2483,7 +2489,7 @@ $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToke
 async function refreshAll(){await hydrateServerUsdc();await hydrateServerZecMetrics();if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);await hydrateServerClaimStats();kickServerRelayIndexer();kickServerUsdcIndexer();await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
-hydrateUsdcCache();rebuildState();renderUsdcMarket();
+hydrateUsdcCache();
 hydrateServerUsdc().then(()=>kickServerUsdcIndexer()).catch(()=>{});
 (async()=>{await hydrateServerZecMetrics();await hydrateServerClaimStats();if(!S.claimStatsTimer)S.claimStatsTimer=setInterval(()=>hydrateServerClaimStats().catch(()=>{}),10000);kickServerRelayIndexer();await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}try{await connectEvmWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();try{await reconcileUsdcMarket()}catch(e){console.warn('USDC market init',e)}rebuildState();updateWalletUI();renderUsdcMarket();renderAtomicDesk();updateMarketMetrics();
   if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{
