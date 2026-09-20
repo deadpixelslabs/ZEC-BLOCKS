@@ -29,6 +29,20 @@ The deployer signs that exact payload with the Noir Wallet derived Zcash identit
 
 The deployment transaction sends 0.00000001 ZEC to the existing ZB-1 protocol mailbox. This is an anchor output, not a token sale or protocol mint fee.
 
+## Canonical mint message — LOCKED
+
+`{"p":"zb-20","op":"mint","tick":"ZECS","amt":"210"}`
+
+The exact JSON above is the canonical ZECS mint payload and Zcash memo. No extra fields are added to the on-chain mint memo.
+
+Each valid mint creates exactly 210 ZECS, subject to:
+- the canonical ZECS deployment being confirmed,
+- the minter satisfying the ZB-1 / ZEC BLOCKS holder gate at validation time,
+- the mint event being valid and unique,
+- and total canonical supply not exceeding 21,000,000 ZECS.
+
+Signature, holder-proof, indexing, and anti-duplicate verification data are maintained separately from the canonical mint memo.
+
 ## Canonical deployment identity
 
 The deployment TXID becomes the immutable ZECS deployment identifier after it is confirmed and registered by the ZB-20 indexer. A second deployment transaction does not replace the canonical ZECS deployment.
