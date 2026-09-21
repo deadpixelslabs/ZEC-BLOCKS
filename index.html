@@ -2285,28 +2285,72 @@ async function ensureBaseNetwork(){
     }]})
   }
 }
-async function connectEvmWallet(silent=false){
+function clearEvmSession(){
+  S.evmProvider=null;S.evmSigner=null;S.evmAddress=null;updateEvmUI()
+}
+function bindEvmProviderEvents(){
+  const eth=window.ethereum;
+  if(!eth||S.evmEventsProvider===eth)return;
   try{
+    if(S.evmEventsProvider&&S.evmAccountsHandler)S.evmEventsProvider.removeListener?.('accountsChanged',S.evmAccountsHandler);
+    if(S.evmEventsProvider&&S.evmChainHandler)S.evmEventsProvider.removeListener?.('chainChanged',S.evmChainHandler)
+  }catch{}
+  S.evmAccountsHandler=async accounts=>{
+    if(!accounts?.length){clearEvmSession();return}
+    clearEvmSession();
+    await connectEvmWallet(true).catch(e=>console.warn('Base account refresh',e))
+  };
+  S.evmChainHandler=async chainId=>{
+    if(String(chainId||'').toLowerCase()!==CFG.baseChainHex){clearEvmSession();return}
+    clearEvmSession();
+    await connectEvmWallet(true).catch(e=>console.warn('Base chain refresh',e))
+  };
+  eth.on?.('accountsChanged',S.evmAccountsHandler);
+  eth.on?.('chainChanged',S.evmChainHandler);
+  S.evmEventsProvider=eth
+}
+async function connectEvmWallet(silent=false){
+  if(S.evmConnectPromise){
+    try{await S.evmConnectPromise}catch{}
+    if(S.evmAddress)return true;
+    if(silent)return false
+  }
+  const b=$('evmWalletBtn');
+  const job=(async()=>{
     if(!window.ethereum){
       if(!silent)toast('MetaMask/Rabby-compatible EVM wallet not detected.',7000);
       return false
     }
-    await ensureBaseNetwork();
+    if(!silent&&b){b.disabled=true;b.textContent='Connecting Base…'}
+
+    const chain=String(await window.ethereum.request({method:'eth_chainId'})).toLowerCase();
+    if(silent&&chain!==CFG.baseChainHex)return false;
+    if(!silent&&chain!==CFG.baseChainHex)await ensureBaseNetwork();
+
     const bp=new ethers.BrowserProvider(window.ethereum,'any');
     const accounts=await bp.send(silent?'eth_accounts':'eth_requestAccounts',[]);
     if(!accounts?.length)return false;
+
     S.evmProvider=bp;
     S.evmSigner=await bp.getSigner();
     S.evmAddress=ethers.getAddress(await S.evmSigner.getAddress());
+    bindEvmProviderEvents();
     updateEvmUI();
-    loadZecsMarketState({account:!!S.ownerCommitment}).catch(()=>{});
-    window.ethereum.on?.('accountsChanged',()=>connectEvmWallet(true).catch(()=>{}));
-    window.ethereum.on?.('chainChanged',()=>connectEvmWallet(true).catch(()=>{}));
+    loadZecsMarketState({account:!!S.ownerCommitment}).catch(e=>console.warn('Base account background sync',e));
+    if(!silent)toast('Base wallet connected.',3000);
     return true
-  }catch(e){
+  })();
+
+  S.evmConnectPromise=job;
+  try{return await job}
+  catch(e){
     if(!silent)toast(e?.shortMessage||e?.message||String(e),8000);
-    updateEvmUI();
+    else console.warn('silent Base connect',e);
+    clearEvmSession();
     return false
+  }finally{
+    if(S.evmConnectPromise===job)S.evmConnectPromise=null;
+    if(!silent&&b){b.disabled=false;updateEvmUI()}
   }
 }
 function updateEvmUI(){
