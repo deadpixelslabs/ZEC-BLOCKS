@@ -33,3 +33,18 @@ Scheduled workers:
 - ZEC settlement verifier: every 2 minutes
 
 No service-role credential is included in this deploy ZIP.
+
+ZECS / ZB-20 Base USDC Market V2:
+- Contract: 0xbf0677cd230b7835ee7e81fbe993f0389deaead8
+- Verifier EOA: 0xc6e64521c4fa7fcb86f66917e5507604e3f0dded
+- Edge: zecblocks-index-zb20-market
+- Edge: zecblocks-zb20-market
+- Tables: zecblocks_zb20_market_orders, zecblocks_zb20_market_settlements
+- Auth tables: zecblocks_zb20_market_challenges, zecblocks_zb20_market_authorizations
+- RPC: zecblocks_zb20_balance(text)
+- RPC: zecblocks_zb20_market_account(text)
+- RPC: zecblocks_zb20_market_snapshot(integer)
+- Settlement apply RPC is service-role only.
+- Market indexer scheduled every minute.
+- Verifier signing requires Supabase secret ZECS_MARKET_VERIFIER_PRIVATE_KEY.
+- Never commit or expose the verifier private key.
