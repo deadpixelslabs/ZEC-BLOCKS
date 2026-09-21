@@ -53,7 +53,7 @@ module.exports=async function handler(req,res){
   else if(req.method!=='GET')headers['content-type']='application/json';
 
   const ac=new AbortController();
-  const timer=setTimeout(()=>ac.abort(),12000);
+  const timer=setTimeout(()=>ac.abort(),path.startsWith('functions/v1/')?50000:12000);
   try{
     const upstream=await fetch(url,{
       method:req.method,
@@ -73,3 +73,4 @@ module.exports=async function handler(req,res){
     });
   }finally{clearTimeout(timer)}
 };
+

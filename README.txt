@@ -1,4 +1,18 @@
-ZEC BLOCKS MARKETPLACE V10.2 — PRODUCTION PERSISTENT INDEX
+ZEC BLOCKS MARKETPLACE V13.0
+
+CURRENT FRONTEND
+Modern charcoal/blue interface, light and dark themes, responsive item grids,
+search, sorting and pagination. Canonical snapshots preserve verified data on
+failed requests. Wallet actions are serialized and pending payments recover
+without automatically submitting a second payment.
+
+The active client is script.js, loaded by index.html with market-runtime.js,
+navigation.js and styles.css. Ethers 6.13.5 is served from vendor/ on demand.
+See MARKETPLACE-OPERATIONS.md for current architecture, recovery and test commands.
+Native ZEC purchases retain 0% protocol fee and one seller payment; Base USDC
+retains the existing 3% protocol fee. Production contracts and DB rules are unchanged.
+
+PERSISTENT INDEX ARCHITECTURE (original deployment notes)
 
 PURPOSE
 Production hardening for ZEC BLOCKS marketplace and portfolio. Browsers are no
