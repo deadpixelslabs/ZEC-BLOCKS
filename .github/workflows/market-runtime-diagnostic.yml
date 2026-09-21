@@ -9,42 +9,59 @@ concurrency:
   group: market-runtime-diagnostic
   cancel-in-progress: true
 jobs:
-  inspect:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 7
     steps:
-      - name: Isolate Supabase gateway versus PostgREST
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Install Chromium test harness
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium > /tmp/browser-install.log 2>&1
+      - name: Verify real production endpoints and fresh browser sessions
         run: |
           node <<'NODE'
-          const dns=require('node:dns/promises');
+          const {chromium}=require('playwright');
+          const base='https://www.zecblocks.xyz';
           (async()=>{
-            const r=await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/contents/api/index.js?ref=main`,{headers:{Authorization:`Bearer ${process.env.GH_TOKEN}`,Accept:'application/vnd.github+json'}});
-            const f=await r.json(),src=Buffer.from(f.content,'base64').toString();
-            const legacy=src.match(/SUPABASE_ANON\s*=\s*['"]([^'"]+)/)?.[1];
-            const modern='sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN';
-            const db='https://tvwvenyomlwvjtwxasca.supabase.co';
-            console.log('DNS '+JSON.stringify(await dns.lookup(new URL(db).hostname,{all:true})));
-            const tests=[
-              ['no_key','/rest/v1/',null,false],
-              ['modern_auth','/auth/v1/health',modern,false],
-              ['legacy_auth','/auth/v1/health',legacy,false],
-              ['modern_tiny_read','/rest/v1/zecblocks_tokens?select=token_id&limit=1',modern,false],
-              ['legacy_tiny_read','/rest/v1/zecblocks_tokens?select=token_id&limit=1',legacy,true],
-              ['modern_board','/rest/v1/rpc/zecblocks_usdc_market_board',modern,false],
-              ['legacy_board','/rest/v1/rpc/zecblocks_usdc_market_board',legacy,true],
-              ['modern_stats','/functions/v1/zecblocks-live-stats',modern,false]
-            ];
-            async function probe([name,path,key,bearer]){
-              const start=Date.now();
+            let failures=0;
+            for(const [name,path,method,body] of [
+              ['board','/index-api/rest/v1/rpc/zecblocks_usdc_market_board','POST',{}],
+              ['stats','/index-api/rest/v1/rpc/zecblocks_claim_stats','POST',{}],
+              ['live','/index-api/functions/v1/zecblocks-live-stats','GET',null]
+            ]){
+              const t=Date.now();
               try{
-                const post=path.includes('/rpc/');
-                const x=await fetch(db+path,{method:post?'POST':'GET',headers:{accept:'application/json',...(key?{apikey:key}:{}),...(bearer?{authorization:'Bearer '+key}:{}),...(post?{'content-type':'application/json'}:{})},...(post?{body:'{}'}:{}),signal:AbortSignal.timeout(10000)});
-                const text=await x.text();let j;try{j=JSON.parse(text)}catch{}
-                console.log('LAYER '+JSON.stringify({name,ms:Date.now()-start,status:x.status,type:x.headers.get('content-type'),rows:j?.usdc_listings?.length,metrics:j?.usdc_metrics,error:j?.error||j?.message,body:path.includes('/rpc/')?undefined:text.slice(0,300)}));
-              }catch(e){console.log('LAYER '+JSON.stringify({name,ms:Date.now()-start,error:e.message,cause:e.cause?.code}))}
+                const r=await fetch(base+path,{method,headers:{accept:'application/json','content-type':'application/json'},...(body===null?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(18000)});
+                const text=await r.text();let j;try{j=JSON.parse(text)}catch{}
+                const valid=r.ok&&j&&j.ok!==false&&(name!=='board'||Array.isArray(j.usdc_listings));
+                if(!valid)failures++;
+                console.log('LIVE_CHECK '+JSON.stringify({name,status:r.status,ms:Date.now()-t,valid,rows:j?.usdc_listings?.length,metrics:j?.usdc_metrics,claims_seen:j?.claims_seen,error:j?.error||j?.message}));
+              }catch(e){failures++;console.log('LIVE_CHECK '+JSON.stringify({name,ms:Date.now()-t,error:e.message}))}
             }
-            for(let i=0;i<tests.length;i+=2)await Promise.all(tests.slice(i,i+2).map(probe));
+            const browser=await chromium.launch({headless:true});
+            for(let n=1;n<=3;n++){
+              const ctx=await browser.newContext();const page=await ctx.newPage();const errors=[];const failedApi=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              page.on('response',r=>{if(r.url().includes('/index-api/')&&r.status()>=400)failedApi.push({path:new URL(r.url()).pathname,status:r.status()})});
+              await page.route('**/*',route=>{
+                const r=route.request(),u=r.url();
+                if(r.method()==='POST'&&u.includes('/functions/v1/')){
+                  let b;try{b=r.postDataJSON()}catch{}
+                  const readOnly=['snapshot','state','market','account','lookup'].includes(b?.action);
+                  if(!readOnly)return route.abort('blockedbyclient');
+                }
+                return route.continue();
+              });
+              const t=Date.now();
+              await page.goto(base+'/#market',{waitUntil:'domcontentloaded',timeout:45000});
+              try{await page.waitForFunction(()=>document.querySelectorAll('#usdcMarketGrid .nft').length>0,{},{timeout:25000})}catch{}
+              const result=await page.evaluate(()=>({cards:document.querySelectorAll('#usdcMarketGrid .nft').length,claimCount:document.getElementById('claimCount')?.innerText,status:document.getElementById('usdcMarketStatus')?.innerText,footer:document.querySelector('footer')?.innerText,metrics:typeof S==='object'?S.serverUsdcMetrics:null,connected:!!window.noirwallet}));
+              if(!result.cards||errors.length)failures++;
+              console.log('FRESH_BROWSER '+JSON.stringify({run:n,ms:Date.now()-t,...result,errors,failedApi}));
+              await ctx.close();
+            }
+            await browser.close();
+            console.log('REGRESSION_RESULT '+JSON.stringify({failures}));
+            if(failures)process.exitCode=1;
           })().catch(e=>{console.error(e);process.exitCode=1});
           NODE
