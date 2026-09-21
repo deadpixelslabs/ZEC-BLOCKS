@@ -168,12 +168,19 @@ Deno.serve(async(req:Request)=>{
       if(!receipt||!receipt.blockNumber)return jres({ok:false,error:"transaction not confirmed"},409);
       const logs=Array.isArray(receipt.logs)?receipt.logs.filter((x:any)=>lc(x?.address)===CONTRACT):[];
       for(const log of logs)rows+=await processLog(log,ownershipTokens);
+      let ownership:any[]=[];
       if(ownershipTokens.size){
-        const {error:re}=await supabase.rpc("zecblocks_rebuild_ownership_tokens",{p_token_ids:[...ownershipTokens]});
+        const ids=[...ownershipTokens];
+        const {error:re}=await supabase.rpc("zecblocks_rebuild_ownership_tokens",{p_token_ids:ids});
         if(re)throw re;
+        const {data:owners,error:oe}=await supabase.from("zecblocks_tokens")
+          .select("token_id,owner_commitment,owner_verified_level,owner_source,owner_event_id,owner_event_timestamp")
+          .in("token_id",ids);
+        if(oe)throw oe;
+        ownership=owners||[];
       }
       const intent=body?.intent?await attachIntent(body.intent,directTx):null;
-      return jres({ok:true,direct:true,tx_hash:directTx,contract_logs:logs.length,rows,ownership_tokens:ownershipTokens.size,intent});
+      return jres({ok:true,direct:true,tx_hash:directTx,contract_logs:logs.length,rows,ownership_tokens:ownershipTokens.size,ownership,intent});
     }catch(e){
       const msg=String(e?.message||e);console.error(e);return jres({ok:false,error:msg},500);
     }
