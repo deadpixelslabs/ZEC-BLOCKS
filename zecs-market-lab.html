@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZECS Market V2 Lab · ZEC BLOCKS</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+<style>
+:root{--bg:#070707;--panel:#0d0d0d;--line:#242424;--text:#f2f2f2;--muted:#8b8b8b;--gold:#d4aa50;--good:#8bd5a2;--bad:#ff9c9c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}main{max-width:1050px;margin:auto;padding:26px 18px 70px}
+header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:22px}.brand{font-weight:900;letter-spacing:.05em}a{color:var(--gold);text-decoration:none}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:20px;margin:14px 0}h1{font-size:30px;margin:0 0 8px}h2{font-size:18px;margin:0 0 14px}p{color:#b7b7b7;line-height:1.55}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.row{display:grid;grid-template-columns:190px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #191919}.row:last-child{border:0}
+.k{font-size:12px;color:var(--muted)}.v{font:12px ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
+input{width:100%;background:#090909;color:#eee;border:1px solid #303030;border-radius:9px;padding:11px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.btn{border:1px solid #393939;background:#151515;color:#fff;border-radius:9px;padding:11px 14px;font-weight:750;cursor:pointer}.btn.gold{background:var(--gold);border-color:var(--gold);color:#111}.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{padding:12px;border:1px solid #322b1a;background:#0d0a06;color:#d7c68e;border-radius:10px;font-size:12px;line-height:1.5}.note.good{border-color:#24422d;color:var(--good);background:#09110c}.note.bad{border-color:#4a2929;color:var(--bad);background:#120909}
+.orders{display:grid;gap:9px}.order{border:1px solid #252525;border-radius:10px;padding:12px}.order strong{color:var(--gold)}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<main>
+<header><div><div class="brand">ZEC BLOCKS · ZECS MARKET V2 LAB</div><div class="k">Private production-path test · not linked from public navigation</div></div><a href="/">← Marketplace</a></header>
+
+<section class="card">
+<h1>ZECS / USDC end-to-end lab</h1>
+<p>This page tests the real V2 contract, canonical ZECS balance, Noir identity challenge, verifier signature, Base reservation, USDC settlement and settlement indexer. Use small values first.</p>
+<div class="note">Contract: <b>0xbf0677cd230b7835ee7e81fbe993f0389deaead8</b> · Base Mainnet · 3% protocol fee. Creating an order and buying are real Base transactions.</div>
+<div class="actions">
+<button id="statusBtn" class="btn">Check Backend</button>
+<button id="noirBtn" class="btn gold">Connect Noir</button>
+<button id="baseBtn" class="btn">Connect Base Wallet</button>
+<button id="refreshBtn" class="btn">Refresh</button>
+</div>
+</section>
+
+<section class="card">
+<h2>Connection & canonical state</h2>
+<div class="row"><div class="k">Noir owner commitment</div><div id="owner" class="v">—</div></div>
+<div class="row"><div class="k">Base wallet</div><div id="evm" class="v">—</div></div>
+<div class="row"><div class="k">ZECS balance</div><div id="balance" class="v">—</div></div>
+<div class="row"><div class="k">On-chain reserved</div><div id="reserved" class="v">—</div></div>
+<div class="row"><div class="k">Backend / indexer</div><div id="backend" class="v">—</div></div>
+</section>
+
+<section class="card">
+<h2>1 · Seller: create canonical listing</h2>
+<div class="grid">
+<div class="field"><label>Amount ZECS</label><input id="amount" value="210" inputmode="numeric"></div>
+<div class="field"><label>Total price USDC</label><input id="price" value="1.00" inputmode="decimal"></div>
+<div class="field"><label>Listing lifetime (hours)</label><input id="hours" value="24" inputmode="numeric"></div>
+</div>
+<div class="actions">
+<button id="listBtn" class="btn gold">Authorize + Create Listing</button>
+</div>
+<div id="listResult" class="note" style="margin-top:12px">Connect the seller's Noir identity and Base wallet first.</div>
+</section>
+
+<section class="card">
+<h2>Active ZECS orders</h2>
+<div id="orders" class="orders"><div class="k">No active orders indexed.</div></div>
+</section>
+
+<section class="card">
+<h2>2 · Buyer: buy order</h2>
+<p>For a real end-to-end sale, switch to a different Noir identity and a different Base wallet from the seller, then reconnect both.</p>
+<div class="field"><label>Order ID</label><input id="buyOrder" placeholder="0x…"></div>
+<div class="actions">
+<button id="permitBuyBtn" class="btn gold">Permit + Buy · 1 Base TX</button>
+<button id="allowanceBuyBtn" class="btn">Approve if needed + Buy</button>
+</div>
+<div id="buyResult" class="note" style="margin-top:12px">No purchase submitted.</div>
+</section>
+</main>
+
+<script>
+'use strict';
+const SUPA='https://tvwvenyomlwvjtwxasca.supabase.co';
+const API=SUPA+'/functions/v1/zecblocks-zb20-market';
+const INDEXER=SUPA+'/functions/v1/zecblocks-index-zb20-market';
+const MARKET='0xbf0677cd230b7835ee7e81fbe993f0389deaead8';
+const USDC='0x833589fCD6EDb6E08f4c7C32D4f71b54bdA02913';
+const CHAIN=8453,CHAIN_HEX='0x2105',RPC='https://mainnet.base.org';
+const MARKET_ABI=[
+ 'function createOrder((bytes32 sellerCommitment,uint64 canonicalBalanceZECS,uint64 amountZECS,uint128 priceUSDC,uint64 expiresAt,bytes32 orderNonce,bytes32 zb20OrderHash,uint64 authDeadline,bytes32 authNonce) r,bytes verifierSignature) returns(bytes32)',
+ 'function cancelOrder(bytes32 orderId)',
+ 'function buyNow((bytes32 orderId,bytes32 buyerCommitment,uint64 sellerCanonicalBalanceZECS,uint64 authDeadline,bytes32 authNonce) a,bytes verifierSignature) returns(uint256,uint256)',
+ 'function buyNowWithPermit((bytes32 orderId,bytes32 buyerCommitment,uint64 sellerCanonicalBalanceZECS,uint64 authDeadline,bytes32 authNonce) a,bytes verifierSignature,uint256 permitDeadline,uint8 v,bytes32 r,bytes32 s) returns(uint256,uint256)',
+ 'function listingAuthorizationDigest(address seller,(bytes32 sellerCommitment,uint64 canonicalBalanceZECS,uint64 amountZECS,uint128 priceUSDC,uint64 expiresAt,bytes32 orderNonce,bytes32 zb20OrderHash,uint64 authDeadline,bytes32 authNonce) r) view returns(bytes32)',
+ 'function buyAuthorizationDigest((bytes32 orderId,bytes32 buyerCommitment,uint64 sellerCanonicalBalanceZECS,uint64 authDeadline,bytes32 authNonce) a,address buyer) view returns(bytes32)',
+ 'function orders(bytes32) view returns(address seller,bytes32 sellerCommitment,uint64 amountZECS,uint128 priceUSDC,uint64 expiresAt,bytes32 orderNonce,bytes32 zb20OrderHash,uint8 status,address buyer,bytes32 buyerCommitment,uint64 settledAt)'
+];
+const USDC_ABI=[
+ 'function allowance(address owner,address spender) view returns(uint256)',
+ 'function approve(address spender,uint256 value) returns(bool)',
+ 'function nonces(address owner) view returns(uint256)',
+ 'function name() view returns(string)',
+ 'function balanceOf(address owner) view returns(uint256)'
+];
+const S={connection:null,pubkey:'',owner:'',bp:null,signer:null,evm:'',account:null,snapshot:null,busy:false};
+const $=id=>document.getElementById(id);
+const short=(v,n=8)=>{v=String(v||'');return v.length>n*2+2?v.slice(0,n)+'…'+v.slice(-n):v};
+function setNote(id,msg,kind=''){const e=$(id);e.className='note'+(kind?' '+kind:'');e.textContent=msg}
+function hexBytes(h){h=String(h||'').replace(/^0x/,'');const a=new Uint8Array(h.length/2);for(let i=0;i<a.length;i++)a[i]=parseInt(h.slice(i*2,i*2+2),16);return a}
+async function sha256Hex(b){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',b))].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function noirProvider(){const w=window.noirwallet;return w&&w.isNoirWallet&&w.zcash?w.zcash:null}
+async function zrpc(method,params){const p=noirProvider();if(!p)throw new Error('Noir Wallet not detected.');return p.request({method,...(params?{params}: {})})}
+async function api(body){
+ const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+ const j=await r.json().catch(()=>null);if(!r.ok||!j?.ok)throw new Error(j?.error||('Backend HTTP '+r.status));return j
+}
+async function indexTx(txHash){
+ const r=await fetch(INDEXER,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({txHash})});
+ const j=await r.json().catch(()=>null);if(!r.ok||!j?.ok)throw new Error(j?.error||('Indexer HTTP '+r.status));return j
+}
+async function connectNoir(){
+ S.connection=await zrpc('zcash_requestAccounts');
+ const k=await zrpc('zcash_getPublicKey',[{signingMode:'derived'}]);
+ const pub=String(k?.pubkey||'').replace(/^0x/,'').toLowerCase();
+ if(!(/^[0-9a-f]{66}$/.test(pub)||/^[0-9a-f]{130}$/.test(pub)))throw new Error('Noir returned invalid derived public key.');
+ S.pubkey=pub;S.owner=await sha256Hex(hexBytes(pub));$('owner').textContent=S.owner;await refreshState()
+}
+async function signNoir(message){
+ const signed=await zrpc('zcash_signMessage',[message,{signingMode:'derived'}]);
+ const pub=String(signed?.pubkey||S.pubkey||'').replace(/^0x/,'').toLowerCase();
+ const sig=String(signed?.signature||'').replace(/^0x/,'').toLowerCase();
+ if(!(/^[0-9a-f]{66}$/.test(pub)||/^[0-9a-f]{130}$/.test(pub))||!/^[0-9a-f]{130}$/.test(sig))throw new Error('Invalid Noir signature response.');
+ const owner=await sha256Hex(hexBytes(pub));if(owner!==S.owner)throw new Error('Noir identity changed while signing.');
+ return {pubkey:pub,signature:sig}
+}
+async function ensureBase(){
+ if(!window.ethereum)throw new Error('MetaMask/Rabby-compatible wallet not detected.');
+ const c=String(await window.ethereum.request({method:'eth_chainId'})).toLowerCase();
+ if(c!==CHAIN_HEX){
+   try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN_HEX}]})}
+   catch(e){if(Number(e?.code)!==4902)throw e;await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CHAIN_HEX,chainName:'Base',nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18},rpcUrls:[RPC],blockExplorerUrls:['https://basescan.org']}]})}
+ }
+}
+async function connectBase(){
+ await ensureBase();S.bp=new ethers.BrowserProvider(window.ethereum,'any');const a=await S.bp.send('eth_requestAccounts',[]);if(!a?.length)throw new Error('No Base account selected.');
+ S.signer=await S.bp.getSigner();S.evm=ethers.getAddress(await S.signer.getAddress());$('evm').textContent=S.evm;await refreshState()
+}
+async function backendStatus(){
+ const j=await api({action:'status'});$('backend').textContent=(j.signer_configured?'Signer OK':'Signer missing')+' · '+(j.indexer?.status||'—')+' · caught_up '+String(j.indexer?.details?.caught_up===true);
+ if(!j.signer_configured)throw new Error(j.signer_error||'Verifier signer is not configured.');return j
+}
+async function refreshState(){
+ try{await backendStatus()}catch(e){$('backend').textContent=e.message}
+ if(S.owner){
+   const j=await api({action:'account',ownerCommitment:S.owner});S.account=j.account;$('balance').textContent=String(j.account?.balance??'—')+' ZECS';$('reserved').textContent=String(j.reserved_onchain??'—')+' ZECS'
+ }else{$('balance').textContent='—';$('reserved').textContent='—'}
+ const j=await api({action:'snapshot'});S.snapshot=j.snapshot;renderOrders()
+}
+function renderOrders(){
+ const root=$('orders'),rows=Array.isArray(S.snapshot?.orders)?S.snapshot.orders:[];
+ if(!rows.length){root.innerHTML='<div class="k">No active orders indexed.</div>';return}
+ root.innerHTML='';
+ for(const o of rows){
+   const d=document.createElement('div');d.className='order';
+   const unit=Number(o.price_usdc)/1e6/Number(o.amount_zecs);
+   d.innerHTML='<strong>'+Number(o.amount_zecs).toLocaleString()+' ZECS</strong> · '+(Number(o.price_usdc)/1e6).toLocaleString(undefined,{maximumFractionDigits:6})+' USDC total · '+unit.toLocaleString(undefined,{maximumFractionDigits:8})+' USDC/ZECS<br><span class="v">'+o.order_id+'</span><br><span class="k">seller '+short(o.seller_commitment,8)+'</span>';
+   d.onclick=()=>{$('buyOrder').value=o.order_id};root.appendChild(d)
+ }
+}
+function bytes32(v){v=String(v||'');return v.startsWith('0x')?v:'0x'+v}
+function usdcUnits(v){return ethers.parseUnits(String(v).trim(),6)}
+async function createListing(){
+ if(S.busy)return;S.busy=true;
+ try{
+   if(!S.owner)await connectNoir();if(!S.evm)await connectBase();
+   const amount=Number($('amount').value),price=usdcUnits($('price').value),hours=Number($('hours').value);
+   if(!Number.isInteger(amount)||amount<1)throw new Error('Invalid ZECS amount.');
+   if(!Number.isFinite(hours)||hours<=0||hours>720)throw new Error('Listing lifetime must be 1–720 hours.');
+   const expiresAt=Math.floor(Date.now()/1000+hours*3600);
+   setNote('listResult','Creating canonical Noir challenge…');
+   const ch=await api({action:'listing_challenge',ownerCommitment:S.owner,sellerEvm:S.evm,amountZECS:amount,priceUSDC:price.toString(),expiresAt});
+   const ns=await signNoir(ch.message);
+   setNote('listResult','Noir identity verified. Requesting short-lived verifier authorization…');
+   const auth=await api({action:'listing_authorize',challengeId:ch.challenge_id,pubkey:ns.pubkey,signature:ns.signature});
+   const r=auth.listing_request;
+   const req={sellerCommitment:bytes32(r.sellerCommitment),canonicalBalanceZECS:r.canonicalBalanceZECS,amountZECS:r.amountZECS,priceUSDC:r.priceUSDC,expiresAt:r.expiresAt,orderNonce:r.orderNonce,zb20OrderHash:r.zb20OrderHash,authDeadline:r.authDeadline,authNonce:r.authNonce};
+   const c=new ethers.Contract(MARKET,MARKET_ABI,S.signer);
+   const chainDigest=String(await c.listingAuthorizationDigest(S.evm,req)).toLowerCase();
+   if(chainDigest!==String(auth.digest).toLowerCase())throw new Error('LISTING_DIGEST_MISMATCH — stopped before transaction.');
+   setNote('listResult','Digest matched contract. Approve the real Base listing transaction…');
+   const tx=await c.createOrder(req,auth.verifier_signature);setNote('listResult','Listing broadcast '+tx.hash+' · waiting for confirmation…');
+   await tx.wait();await indexTx(tx.hash);$('buyOrder').value=auth.order_id;
+   await refreshState();setNote('listResult','SUCCESS · canonical ZECS order created and indexed: '+auth.order_id,'good')
+ }catch(e){setNote('listResult',e?.shortMessage||e?.message||String(e),'bad')}
+ finally{S.busy=false}
+}
+async function getBuyAuthorization(){
+ if(!S.owner)await connectNoir();if(!S.evm)await connectBase();
+ const orderId=String($('buyOrder').value||'').trim().toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(orderId))throw new Error('Paste a valid order ID.');
+ const ch=await api({action:'buy_challenge',orderId,buyerCommitment:S.owner,buyerEvm:S.evm});
+ const ns=await signNoir(ch.message);
+ const auth=await api({action:'buy_authorize',challengeId:ch.challenge_id,pubkey:ns.pubkey,signature:ns.signature});
+ const a=auth.buy_authorization;
+ const req={orderId:a.orderId,buyerCommitment:bytes32(a.buyerCommitment),sellerCanonicalBalanceZECS:a.sellerCanonicalBalanceZECS,authDeadline:a.authDeadline,authNonce:a.authNonce};
+ const c=new ethers.Contract(MARKET,MARKET_ABI,S.signer);
+ const chainDigest=String(await c.buyAuthorizationDigest(req,S.evm)).toLowerCase();
+ if(chainDigest!==String(auth.digest).toLowerCase())throw new Error('BUY_DIGEST_MISMATCH — stopped before payment.');
+ return {auth,req,c,order:auth.order}
+}
+async function buyPermit(){
+ if(S.busy)return;S.busy=true;
+ try{
+   setNote('buyResult','Creating buyer Noir challenge…');
+   const x=await getBuyAuthorization(),price=BigInt(x.order.priceUSDC);
+   const usdc=new ethers.Contract(USDC,USDC_ABI,S.signer);
+   const bal=BigInt(await usdc.balanceOf(S.evm));if(bal<price)throw new Error('Insufficient Base USDC balance.');
+   const nonce=await usdc.nonces(S.evm),name=await usdc.name(),deadline=Math.floor(Date.now()/1000)+300;
+   const domain={name,version:'2',chainId:CHAIN,verifyingContract:USDC};
+   const types={Permit:[{name:'owner',type:'address'},{name:'spender',type:'address'},{name:'value',type:'uint256'},{name:'nonce',type:'uint256'},{name:'deadline',type:'uint256'}]};
+   setNote('buyResult','Verifier digest matched contract. Sign the USDC Permit (no transaction yet)…');
+   const sig=ethers.Signature.from(await S.signer.signTypedData(domain,types,{owner:S.evm,spender:MARKET,value:price,nonce,deadline}));
+   setNote('buyResult','Permit signed. Approve one Base transaction to buy ZECS…');
+   const tx=await x.c.buyNowWithPermit(x.req,x.auth.verifier_signature,deadline,sig.v,sig.r,sig.s);
+   setNote('buyResult','Purchase broadcast '+tx.hash+' · waiting for confirmation…');
+   await tx.wait();await indexTx(tx.hash);await refreshState();
+   setNote('buyResult','SUCCESS · USDC settlement indexed and canonical ZECS balance updated. TX '+tx.hash,'good')
+ }catch(e){setNote('buyResult',e?.shortMessage||e?.message||String(e),'bad')}
+ finally{S.busy=false}
+}
+async function buyAllowance(){
+ if(S.busy)return;S.busy=true;
+ try{
+   setNote('buyResult','Creating buyer Noir challenge…');
+   const x=await getBuyAuthorization(),price=BigInt(x.order.priceUSDC),usdc=new ethers.Contract(USDC,USDC_ABI,S.signer);
+   const bal=BigInt(await usdc.balanceOf(S.evm));if(bal<price)throw new Error('Insufficient Base USDC balance.');
+   const allow=BigInt(await usdc.allowance(S.evm,MARKET));
+   if(allow<price){setNote('buyResult','USDC approval required. Approve the Base transaction…');const atx=await usdc.approve(MARKET,price);await atx.wait()}
+   setNote('buyResult','Verifier digest matched contract. Approve Buy Now…');
+   const tx=await x.c.buyNow(x.req,x.auth.verifier_signature);await tx.wait();await indexTx(tx.hash);await refreshState();
+   setNote('buyResult','SUCCESS · settlement indexed and canonical ZECS balance updated. TX '+tx.hash,'good')
+ }catch(e){setNote('buyResult',e?.shortMessage||e?.message||String(e),'bad')}
+ finally{S.busy=false}
+}
+$('statusBtn').onclick=()=>backendStatus().then(()=>setNote('listResult','Backend signer + indexer are ready.','good')).catch(e=>setNote('listResult',e.message,'bad'));
+$('noirBtn').onclick=()=>connectNoir().catch(e=>setNote('listResult',e.message,'bad'));
+$('baseBtn').onclick=()=>connectBase().catch(e=>setNote('listResult',e?.shortMessage||e.message,'bad'));
+$('refreshBtn').onclick=()=>refreshState().catch(e=>setNote('listResult',e.message,'bad'));
+$('listBtn').onclick=createListing;
+$('permitBuyBtn').onclick=buyPermit;
+$('allowanceBuyBtn').onclick=buyAllowance;
+(async()=>{try{await backendStatus();await refreshState()}catch(e){console.warn(e)}})();
+</script>
+</body>
+</html>
