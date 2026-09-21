@@ -174,6 +174,19 @@ main{max-width:1540px;padding-top:14px}
 .marketRailTab{min-width:220px;height:44px;padding:6px 14px;text-align:left;border:1px solid transparent;border-radius:10px;background:transparent;color:#888;cursor:pointer}
 .marketRailTab strong{display:block;font-size:11px}.marketRailTab small{display:block;margin-top:2px;font-size:8px;color:#666}.marketRailTab:hover{background:#121212;color:#fff}.marketRailTab.active{background:#131913;border-color:rgba(120,213,148,.25);color:#b9efc8}.marketRailTab[data-market-rail="zec"].active{background:#18140c;border-color:#4c3d1f;color:#f0cc79}.marketRailTab.active small{color:#999}
 .marketRailView{display:none}.marketRailView.active{display:block}
+.marketAssetBar{display:flex;gap:8px;margin:0 0 10px;padding:6px;border:1px solid #252525;border-radius:14px;background:#0a0a0a}
+.marketAssetTab{min-width:210px;height:48px;padding:7px 14px;text-align:left;border:1px solid transparent;border-radius:10px;background:transparent;color:#858585;cursor:pointer}
+.marketAssetTab strong{display:block;font-size:12px}.marketAssetTab small{display:block;margin-top:2px;font-size:8px;color:#666}.marketAssetTab:hover{background:#121212;color:#fff}.marketAssetTab.active{background:#18140c;border-color:#4c3d1f;color:#f0cc79}.marketAssetTab[data-market-asset="zecs"].active{background:#111712;border-color:#2d4c35;color:#aee9bd}.marketAssetTab.active small{color:#999}
+.marketAssetView{display:none}.marketAssetView.active{display:block}
+.nftMarketHead,.zecsMarketHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 9px;padding:0 2px}.nftMarketHead p,.zecsMarketHead p{margin:3px 0 0;color:#777;font-size:9px}.nftMarketHead h3,.zecsMarketHead h3{margin:0;font-size:15px}
+.zecsMarketSection{overflow:hidden}.zecsMarketHero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:14px 16px;border-bottom:1px solid #1d1d1d;background:linear-gradient(180deg,#0e120f,#0c0c0c)}.zecsTicker{font-size:28px;font-weight:900;letter-spacing:.02em}.zecsTicker span{color:var(--gold2)}.zecsSub{margin-top:4px;color:#818181;font-size:9px;line-height:1.5}.zecsMarketActions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.zecsMetrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:12px}.zecsMetric{border:1px solid #202020;border-radius:10px;padding:10px 11px;background:#0a0a0a}.zecsMetric small{display:block;color:#737373;font-size:8px;text-transform:uppercase;letter-spacing:.08em}.zecsMetric b{display:block;margin-top:5px;font-size:14px}
+.zecsStatusLine{margin:0 12px 10px;padding:9px 11px;border:1px solid #24291f;border-radius:9px;background:#0b0e0b;color:#9bc7a7;font-size:9px}
+.zecsOrderGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;max-height:calc(100vh - 440px);overflow:auto;padding:0 12px 12px;scrollbar-width:thin}.zecsOrder{border:1px solid #252525;background:#0b0b0b;border-radius:12px;padding:13px;min-width:0}.zecsOrderTop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.zecsAmount{font-size:17px;font-weight:900;color:#f1cc76}.zecsTotal{font-size:12px;font-weight:850;color:#9fe0b1}.zecsUnit{margin-top:5px;color:#8a8a8a;font-size:9px}.zecsOrderMeta{margin:12px 0 10px;padding-top:9px;border-top:1px solid #1d1d1d;color:#707070;font-size:8px;line-height:1.7}.zecsOrder .btn{width:100%;min-height:34px;font-size:9px}
+.zecsEmpty{grid-column:1/-1;padding:30px;text-align:center;color:#666;border:1px dashed #262626;border-radius:12px}
+@media(max-width:1200px){.zecsOrderGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.zecsMetrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.marketAssetBar{overflow:auto}.marketAssetTab{min-width:180px}.zecsOrderGrid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}.zecsMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.marketAssetTab{min-width:0;flex:1}.marketAssetTab small{display:none}.nftMarketHead,.zecsMarketHead,.zecsMarketHero{align-items:stretch;flex-direction:column}.zecsMarketActions{justify-content:flex-start}.zecsOrderGrid{grid-template-columns:1fr}.zecsMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .marketRailView>.sectionHead{margin:0 0 8px}.marketRailView>.sectionHead h2{font-size:15px}.marketRailView>.sectionHead p{font-size:9px}
 .usdcSection,.marketRailView>.card{border-radius:15px;overflow:hidden}
 .usdcToolbar{padding:12px 14px}.usdcToolbar .kicker{margin-bottom:4px}.usdcToolbar h3{font-size:16px!important}
@@ -229,45 +242,17 @@ main{max-width:1540px;padding-top:14px}
 
 
 
-<div class="appView" data-view="market" id="view-market"><div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>Two payment rails. Base USDC Buy Now now appears first for a faster fixed-price flow, while the original ZEC / Noir locked-sale marketplace remains available below.</p><div class="payrail" style="margin-top:9px"><span class="railBadge usdc">USDC · Base Buy Now</span><span class="railBadge">ZEC · Noir Locked Sale</span></div></div><div class="tabs"><button class="btn" id="refreshMarketBtn">Refresh</button><button class="btn usdc" disabled="" id="createUsdcListingTopBtn">List for USDC</button><button class="btn gold" disabled="" id="createListingBtn">List for ZEC</button></div></div><div class="marketRailBar"><button class="marketRailTab" data-market-rail="usdc" type="button"><strong>USDC · Base Buy Now</strong><small>Fast fixed-price settlement</small></button><button class="marketRailTab" data-market-rail="zec" type="button"><strong>ZEC · Noir Locked Sale</strong><small>Original Zcash settlement</small></button></div><div class="marketRailView" data-market-rail-view="usdc"><section class="card usdcSection" id="usdc-market">
-<div class="usdcToolbar">
-<div class="usdcToolbarLeft">
-<div>
-<div class="kicker">PRIMARY PAYMENT RAIL · BASE MAINNET</div>
-<h3 style="margin:5px 0 3px">USDC Buy Now</h3>
-<div class="usdcStatus" id="usdcMarketStatus">Production settlement contract configured · Base Mainnet</div>
+<div class="appView" data-view="market" id="view-market">
+<div class="sectionHead" id="market"><div><h2>Marketplace</h2><p>ZEC BLOCKS NFTs remain the primary market. The ZECS / USDC market is available beside it with canonical ZB-20 settlement.</p></div><div class="tabs"><button class="btn" id="refreshMarketBtn">Refresh</button></div></div>
+<div class="marketAssetBar"><button class="marketAssetTab" data-market-asset="nft" type="button"><strong>ZEC BLOCKS NFT</strong><small>Primary collectible marketplace</small></button><button class="marketAssetTab" data-market-asset="zecs" type="button"><strong>ZECS Market</strong><small>ZB-20 · Base USDC settlement</small></button></div>
+<div class="marketAssetView" data-market-asset-view="nft">
+<div class="nftMarketHead"><div><h3>ZEC BLOCKS NFT Market</h3><p>Choose Base USDC Buy Now or the original ZEC / Noir locked-sale rail.</p></div><div class="tabs"><button class="btn usdc" disabled id="createUsdcListingTopBtn">List for USDC</button><button class="btn gold" disabled id="createListingBtn">List for ZEC</button></div></div>
+<div class="marketRailBar"><button class="marketRailTab" data-market-rail="usdc" type="button"><strong>USDC · Base Buy Now</strong><small>Fast fixed-price settlement</small></button><button class="marketRailTab" data-market-rail="zec" type="button"><strong>ZEC · Noir Locked Sale</strong><small>Original Zcash settlement</small></button></div>
+<div class="marketRailView" data-market-rail-view="usdc"><section class="card usdcSection" id="usdc-market"><div class="usdcToolbar"><div class="usdcToolbarLeft"><div><div class="kicker">PRIMARY PAYMENT RAIL · BASE MAINNET</div><h3 style="margin:5px 0 3px">USDC Buy Now</h3><div class="usdcStatus" id="usdcMarketStatus">Production settlement contract configured · Base Mainnet</div></div></div><div class="usdcToolbarRight"><button class="btn" id="refreshUsdcBtn">Refresh USDC</button><button class="btn usdc" disabled id="createUsdcListingBtn">List for USDC</button></div></div><div class="marketBody" style="padding-top:0"><div class="marketMetrics"><div class="marketMetric"><small>USDC Floor</small><b id="usdcFloorPrice">—</b></div><div class="marketMetric"><small>USDC Total Volume</small><b id="usdcTotalVolume">0 USDC</b></div><div class="marketMetric"><small>USDC Sales</small><b id="usdcSalesCount">0</b></div><div class="marketMetric"><small>USDC Listed</small><b id="usdcListedCount">0</b></div></div></div><div class="notice" style="margin:14px 16px 0"><b>3% to protocol treasury.</b></div><div class="usdcGrid" id="usdcMarketGrid"><div class="empty" style="grid-column:1/-1">Loading verified Base USDC listings…</div></div></section></div>
+<div class="marketRailView" data-market-rail-view="zec"><div class="sectionHead" id="zec-market"><div><h2>ZEC Locked-Sale Market</h2><p>The original ZEC / Noir marketplace remains available.</p></div></div><section class="card"><div class="marketToolbar"><input class="input" id="marketSearch" placeholder="Search token ID or seller commitment"/><select class="select" id="marketSort"><option value="new">Newest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option></select><span class="pill" id="relayStatus">Relays: connecting…</span></div><div class="marketBody"><div class="marketMetrics"><div class="marketMetric"><small>ZEC Floor</small><b id="floorPrice">—</b></div><div class="marketMetric"><small>ZEC Total Volume</small><b id="totalVolume">0 ZEC</b></div><div class="marketMetric"><small>ZEC Sales</small><b id="salesCount">0</b></div><div class="marketMetric"><small>ZEC Listed</small><b id="listedCount">0</b></div></div><div class="grid" id="marketGrid"></div></div></section></div>
 </div>
-</div>
-<div class="usdcToolbarRight">
-<button class="btn" id="refreshUsdcBtn">Refresh USDC</button>
-<button class="btn usdc" disabled="" id="createUsdcListingBtn">List for USDC</button>
-</div>
-</div>
-<div class="marketBody" style="padding-top:0">
-<div class="marketMetrics">
-<div class="marketMetric"><small>USDC Floor</small><b id="usdcFloorPrice">—</b></div>
-<div class="marketMetric"><small>USDC Total Volume</small><b id="usdcTotalVolume">0 USDC</b></div>
-<div class="marketMetric"><small>USDC Sales</small><b id="usdcSalesCount">0</b></div>
-<div class="marketMetric"><small>USDC Listed</small><b id="usdcListedCount">0</b></div>
-</div>
-</div>
-<div class="notice" style="margin:14px 16px 0">
-<b>3% to protocol treasury.
-<div class="usdcGrid" id="usdcMarketGrid">
-<div class="empty" style="grid-column:1/-1">Loading verified Base USDC listings…</div>
-</div>
-</section></div><div class="marketRailView" data-market-rail-view="zec"><div class="sectionHead" id="zec-market"><div><h2>ZEC Locked-Sale Market</h2><p>The original ZEC / Noir marketplace stays available below the USDC market.</p></div></div><section class="card">
-<div class="marketToolbar"><input class="input" id="marketSearch" placeholder="Search token ID or seller commitment"/><select class="select" id="marketSort"><option value="new">Newest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option></select><span class="pill" id="relayStatus">Relays: connecting…</span></div>
-<div class="marketBody">
-<div class="marketMetrics">
-<div class="marketMetric"><small>ZEC Floor</small><b id="floorPrice">—</b></div>
-<div class="marketMetric"><small>ZEC Total Volume</small><b id="totalVolume">0 ZEC</b></div>
-<div class="marketMetric"><small>ZEC Sales</small><b id="salesCount">0</b></div>
-<div class="marketMetric"><small>ZEC Listed</small><b id="listedCount">0</b></div>
-</div>
-<div class="grid" id="marketGrid"></div>
-</div>
-</section></div></div><div class="appView" data-view="activity" id="view-activity"><div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Latest marketplace activity from the persistent production index. ZEC + Base USDC events refresh automatically every 20 seconds.</p></div><div class="tabs"><select class="select" id="activityFilter" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button class="btn" id="refreshActivityBtn">Refresh</button></div></div><section class="card panel">
+<div class="marketAssetView" data-market-asset-view="zecs"><div class="zecsMarketHead"><div><h3>ZECS Market</h3><p>ZECS stays ZB-20 on Zcash. Base is used only for USDC payment settlement.</p></div></div><section class="card zecsMarketSection"><div class="zecsMarketHero"><div><div class="kicker">ZB-20 · ZCASH ANCHORED · BASE USDC</div><div class="zecsTicker"><span>$</span>ZECS</div><div class="zecsSub">Canonical ZECS balances are verified before listing and again before purchase. Buyer payment settles 97% to seller and 3% to protocol treasury.</div></div><div class="zecsMarketActions"><button class="btn" id="zecsRefreshBtn">Refresh</button><button class="btn usdc" id="zecsListBtn" disabled>List ZECS</button></div></div><div class="zecsMetrics"><div class="zecsMetric"><small>Floor / ZECS</small><b id="zecsFloor">—</b></div><div class="zecsMetric"><small>Total Volume</small><b id="zecsVolume">0 USDC</b></div><div class="zecsMetric"><small>Sales</small><b id="zecsSales">0</b></div><div class="zecsMetric"><small>Active Orders</small><b id="zecsOrders">0</b></div><div class="zecsMetric"><small>My Balance</small><b id="zecsMyBalance">—</b></div></div><div class="zecsStatusLine" id="zecsMarketStatus">Canonical ZECS market backend connecting…</div><div class="zecsOrderGrid" id="zecsMarketGrid"><div class="zecsEmpty">Loading ZECS orders…</div></div></section></div>
+</div><div class="appView" data-view="activity" id="view-activity"><div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Latest marketplace activity from the persistent production index. ZEC + Base USDC events refresh automatically every 20 seconds.</p></div><div class="tabs"><select class="select" id="activityFilter" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button class="btn" id="refreshActivityBtn">Refresh</button></div></div><section class="card panel">
 <div class="activityWrap">
 <table class="activityTable">
 <thead><tr><th>Event</th><th>Item</th><th>Price</th><th>From</th><th>To</th><th>Time</th><th>TX</th></tr></thead>
@@ -335,7 +320,7 @@ main{max-width:1540px;padding-top:14px}
 <div class="mini"><div class="kicker">Discovery layer</div><h3>No private ownership database</h3><p>The website mirrors discovery events across multiple public relays and continuously refreshes claim/market discovery while the page is open. Relays are cache/discovery only; ZB-1 ownership remains defined by confirmed Zcash transactions and client validation.</p></div>
 </div>
 </div>
-</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · Dual ZEC + Base USDC Marketplace · V12.5 · Canonical Listings</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · NFT + ZECS Marketplace · V12.6 · Canonical Settlement</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 <div class="modal" id="listingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select class="select" id="listingToken"></select></div><div class="field"><label>Asking price (ZEC)</label><input class="input" id="listingPrice" inputmode="decimal" value="0.05"/></div><div class="field"><label>Expires in days</label><input class="input" id="listingDays" max="30" min="1" type="number" value="7"/></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button class="btn gold" id="publishListingBtn">Sign &amp; Publish Listing</button></div></div></div>
 <div class="modal" id="usdcListingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK for USDC</h3><button class="xbtn" data-close="usdcListingModal">×</button></div>
@@ -344,7 +329,7 @@ main{max-width:1540px;padding-top:14px}
 <div class="field"><label>Expires in days</label><input class="input" id="usdcListingDays" max="30" min="1" type="number" value="7"/></div>
 <div class="notice"><b>USDC rail only.</b> Your Noir identity signs the ZB-1 listing intent, while your connected Base wallet receives the seller payout. Listing requires one Base transaction. Existing ZEC listing/payment code is not replaced.</div>
 <div class="controls"><button class="btn usdc" id="publishUsdcListingBtn">Sign with Noir &amp; List on Base</button></div></div></div>
-<div class="modal" id="offerModal"><div class="modalCard"><div class="modalHead"><h3>Request Purchase</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input class="input" disabled="" id="offerToken"/></div><div class="field"><label>Fixed listing price (ZEC)</label><input class="input" disabled="" id="offerPrice"/></div><div class="notice"><b>Fixed-price request.</b> The buyer cannot change the seller's listing price. This request moves no ZEC. If the seller accepts, the NFT is locked to this buyer for the checkout window, then the selected buyer pays 3% protocol + 97% seller.</div><div class="controls"><button class="btn gold" id="publishOfferBtn">Request Purchase at List Price</button></div></div></div>
+<div class="modal" id="zecsListingModal"><div class="modalCard"><div class="modalHead"><h3>List ZECS for USDC</h3><button class="xbtn" data-close="zecsListingModal">×</button></div><div class="field"><label>Amount ZECS</label><input class="input" id="zecsListingAmount" inputmode="numeric" value="210"/></div><div class="field"><label>Total price (USDC on Base)</label><input class="input" id="zecsListingPrice" inputmode="decimal" value="1.00"/></div><div class="field"><label>Expires in hours</label><input class="input" id="zecsListingHours" max="720" min="1" type="number" value="24"/></div><div class="notice"><b>Canonical reservation.</b> Noir signs the ZECS identity challenge, the backend verifies available ZECS, and your Base wallet creates the order. ZECS remains on Zcash; only USDC payment settles on Base.</div><div class="controls"><button class="btn usdc" id="publishZecsListingBtn">Authorize &amp; List ZECS</button></div></div></div><div class="modal" id="offerModal"><div class="modalCard"><div class="modalHead"><h3>Request Purchase</h3><button class="xbtn" data-close="offerModal">×</button></div><div class="field"><label>Token</label><input class="input" disabled="" id="offerToken"/></div><div class="field"><label>Fixed listing price (ZEC)</label><input class="input" disabled="" id="offerPrice"/></div><div class="notice"><b>Fixed-price request.</b> The buyer cannot change the seller's listing price. This request moves no ZEC. If the seller accepts, the NFT is locked to this buyer for the checkout window, then the selected buyer pays 3% protocol + 97% seller.</div><div class="controls"><button class="btn gold" id="publishOfferBtn">Request Purchase at List Price</button></div></div></div>
 <div class="modal" id="transferModal"><div class="modalCard"><div class="modalHead"><h3>Transfer ZEC BLOCK</h3><button class="xbtn" data-close="transferModal">×</button></div><div class="field"><label>Token</label><input class="input" disabled="" id="transferToken"/></div><div class="field"><label>Recipient owner commitment (64 hex)</label><input class="input" id="recipientCommit" placeholder="SHA-256 owner commitment"/></div><div class="notice bad">Transfers are irreversible protocol events. Verify the recipient commitment carefully before approving the Zcash transaction.</div><div class="controls"><button class="btn red" id="submitTransferBtn">Sign &amp; Submit Transfer</button></div></div></div>
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
@@ -365,6 +350,8 @@ const CFG={
   usdcTreasury:'0x2505036508a68bacd86a4f48642fb7e9432e583d',
   // Production ZB1BaseUSDCBuyNow on Base Mainnet.
   usdcMarketContract:'0x7674a240004fa434bb1082de28e591abb1dc645d',
+  // Production ZECS / ZB-20 Base USDC Market V2.
+  zecsMarketContract:'0xbf0677cd230b7835ee7e81fbe993f0389deaead8',
   atomicLockSeconds:3600,atomicPayCutoffSeconds:900,atomicAnchorZat:10000,atomicMarkerZat:10000,atomicLockConfirmations:3,atomicFeeStepConfirmations:1,atomicFinalConfirmations:6,atomicFundedGraceSeconds:3600,atomicFinalityGraceSeconds:7200
 };
 const INDEX_CFG={
@@ -372,7 +359,7 @@ const INDEX_CFG={
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
 console.info('ZEC BLOCKS MAIN V10.14 · DETERMINISTIC MARKETPLACE');
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverUsdcScannedTo:0,serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set()};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverUsdcScannedTo:0,serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set(),zecsMarketSnapshot:null,zecsMarketAccount:null,zecsMarketBackend:null,zecsMarketBusy:false};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -1027,7 +1014,7 @@ async function connectWallet(silent=false){
       if(S.ownerCommitment)hydrateServerPortfolio(S.ownerCommitment).catch(()=>{})
     },15000);
     try{S.balance=await rpc('zcash_getBalance')}catch{}
-    rebuildState();updateWalletUI();renderPortfolio();
+    rebuildState();updateWalletUI();renderPortfolio();loadZecsMarketState({account:true}).catch(()=>{});
     if(silent){
       loadWalletHistory().then(async()=>{try{await fetchRelay();rebuildState();renderPortfolio();updateWalletUI()}catch(e){console.warn('wallet background recovery',e)}}).catch(()=>{});
     }else{
@@ -1044,7 +1031,7 @@ function updateWalletUI(){
   $('portfolioShielded').textContent=connected?(S.connection.shielded||'—'):'Private until you connect.';
   $('zecBalance').textContent=S.balance?.available!=null?String(S.balance.available)+' ZEC':'—';
   $('loadTargetBtn').disabled=!connected;$('startMineBtn').disabled=!connected||S.mining;$('syncPortfolioBtn').disabled=!connected;$('createListingBtn').disabled=!connected||ownedTokens().length===0;
-  updateEvmUI();
+  updateEvmUI();updateZecsMarketUI();
 }
 $('walletBtn').onclick=()=>connectWallet(false);
 async function loadWalletHistory(){
@@ -1807,8 +1794,85 @@ const BASE_USDC_ABI=[
   'function allowance(address owner,address spender) view returns(uint256)',
   'function approve(address spender,uint256 value) returns(bool)',
   'function nonces(address owner) view returns(uint256)',
-  'function name() view returns(string)'
+  'function name() view returns(string)',
+  'function balanceOf(address owner) view returns(uint256)'
 ];
+const ZECS_MARKET_ABI=[
+  'function createOrder((bytes32 sellerCommitment,uint64 canonicalBalanceZECS,uint64 amountZECS,uint128 priceUSDC,uint64 expiresAt,bytes32 orderNonce,bytes32 zb20OrderHash,uint64 authDeadline,bytes32 authNonce) r,bytes verifierSignature) returns(bytes32)',
+  'function cancelOrder(bytes32 orderId)',
+  'function buyNowWithPermit((bytes32 orderId,bytes32 buyerCommitment,uint64 sellerCanonicalBalanceZECS,uint64 authDeadline,bytes32 authNonce) a,bytes verifierSignature,uint256 permitDeadline,uint8 v,bytes32 r,bytes32 s) returns(uint256,uint256)',
+  'function listingAuthorizationDigest(address seller,(bytes32 sellerCommitment,uint64 canonicalBalanceZECS,uint64 amountZECS,uint128 priceUSDC,uint64 expiresAt,bytes32 orderNonce,bytes32 zb20OrderHash,uint64 authDeadline,bytes32 authNonce) r) view returns(bytes32)',
+  'function buyAuthorizationDigest((bytes32 orderId,bytes32 buyerCommitment,uint64 sellerCanonicalBalanceZECS,uint64 authDeadline,bytes32 authNonce) a,address buyer) view returns(bytes32)'
+];
+function zecsMarketConfigured(){return !!window.ethers&&/^0x[0-9a-f]{40}$/.test(String(CFG.zecsMarketContract||''))}
+async function zecsMarketApi(action,body={}){return indexFunction('zecblocks-zb20-market',{action,...body})}
+async function zecsMarketIndexTx(txHash){return indexFunction('zecblocks-index-zb20-market',{txHash})}
+function zecsUsdcUnits(v){const s=String(v||'').trim();if(!/^\d+(?:\.\d{1,6})?$/.test(s))throw new Error('USDC price supports up to 6 decimals.');const x=ethers.parseUnits(s,6);if(x<10000n)throw new Error('Minimum total price is 0.01 USDC.');return x}
+function zecsBytes32(v){const x=String(v||'').replace(/^0x/,'').toLowerCase();if(!/^[0-9a-f]{64}$/.test(x))throw new Error('Invalid ZB-20 commitment.');return '0x'+x}
+async function loadZecsMarketState({sync=false,account=false}={}){
+  try{
+    const out=await zecsMarketApi(sync?'sync':'snapshot',{});
+    S.zecsMarketSnapshot=out.snapshot||S.zecsMarketSnapshot||{};
+    if(!S.zecsMarketBackend||sync){try{S.zecsMarketBackend=await zecsMarketApi('status',{})}catch(e){console.warn('ZECS market status',e)}}
+    if(account&&S.ownerCommitment){try{const a=await zecsMarketApi('account',{ownerCommitment:S.ownerCommitment});S.zecsMarketAccount=a.account||null}catch(e){console.warn('ZECS market account',e);S.zecsMarketAccount=null}}
+    else if(!S.ownerCommitment)S.zecsMarketAccount=null;
+    renderZecsMarket();updateZecsMarketUI();return out
+  }catch(e){console.warn('ZECS market state',e);if($('zecsMarketStatus'))$('zecsMarketStatus').textContent='ZECS market temporarily unavailable · '+(e.message||String(e));throw e}
+}
+function updateZecsMarketUI(){
+  const list=$('zecsListBtn'),bal=Number(S.zecsMarketAccount?.balance||0);
+  if(list)list.disabled=!zecsMarketConfigured()||!S.ownerCommitment||!S.evmAddress||bal<=0||S.zecsMarketBusy;
+  if($('zecsMyBalance'))$('zecsMyBalance').textContent=S.ownerCommitment?(bal.toLocaleString()+' ZECS'):'Connect Noir';
+  const h=S.zecsMarketBackend?.indexer;if($('zecsMarketStatus')){const ok=S.zecsMarketBackend?.signer_configured===true&&h?.status==='ok'&&h?.details?.caught_up===true;$('zecsMarketStatus').textContent=ok?'Canonical verifier online · Base index caught up · contract '+short(CFG.zecsMarketContract,6):'Canonical verifier/indexer syncing · trading stays fail-closed until ready.'}
+}
+function renderZecsMarket(){
+  const snap=S.zecsMarketSnapshot||{},rows=Array.isArray(snap.orders)?snap.orders:[],now=Math.floor(Date.now()/1000),valid=rows.filter(o=>Number(o.amount_zecs)>0&&BigInt(String(o.price_usdc||0))>=10000n&&Number(o.expires_at)>now);
+  let floor=null;for(const o of valid){const u=Number(o.price_usdc)/1e6/Number(o.amount_zecs);if(Number.isFinite(u)&&(floor==null||u<floor))floor=u}
+  if($('zecsFloor'))$('zecsFloor').textContent=floor==null?'—':floor.toLocaleString(undefined,{maximumFractionDigits:8})+' USDC';
+  if($('zecsVolume'))$('zecsVolume').textContent=(Number(snap.volume_usdc_base_units||0)/1e6).toLocaleString(undefined,{maximumFractionDigits:6})+' USDC';
+  if($('zecsSales'))$('zecsSales').textContent=Number(snap.sales||0).toLocaleString();
+  if($('zecsOrders'))$('zecsOrders').textContent=valid.length.toLocaleString();
+  const g=$('zecsMarketGrid');if(!g)return;g.innerHTML='';if(!valid.length){g.innerHTML='<div class="zecsEmpty">No active ZECS orders. Connect Noir + Base Wallet to create the first listing.</div>';return}
+  valid.sort((a,b)=>(Number(a.price_usdc)/Number(a.amount_zecs))-(Number(b.price_usdc)/Number(b.amount_zecs)));
+  for(const o of valid){
+    const amount=Number(o.amount_zecs),total=Number(o.price_usdc)/1e6,unit=total/amount,own=String(S.ownerCommitment||'').toLowerCase()===String(o.seller_commitment||'').toLowerCase(),ownEvm=String(S.evmAddress||'').toLowerCase()===String(o.seller_evm||'').toLowerCase();
+    const card=document.createElement('article');card.className='zecsOrder';
+    const label=own?(ownEvm?'Cancel Order':'Seller Order · Connect Base'):'Buy Now · USDC',cls=own&&ownEvm?'red':(own?'':'usdc');
+    card.innerHTML=`<div class="zecsOrderTop"><div><div class="zecsAmount">${esc(amount.toLocaleString())} ZECS</div><div class="zecsUnit">${esc(unit.toLocaleString(undefined,{maximumFractionDigits:8}))} USDC / ZECS</div></div><div class="zecsTotal">${esc(total.toLocaleString(undefined,{maximumFractionDigits:6}))} USDC</div></div><div class="zecsOrderMeta">Seller ${esc(short(o.seller_commitment,7))}<br>Base ${esc(short(o.seller_evm,6))}<br>Expires ${esc(new Date(Number(o.expires_at)*1000).toLocaleString())}</div><button class="btn ${cls} zecsOrderAction">${label}</button>`;
+    const action=card.querySelector('.zecsOrderAction');action.onclick=()=>own?(ownEvm?cancelZecsOrder(o):connectEvmWallet(false).then(()=>renderZecsMarket())):buyZecsOrder(o);g.appendChild(card)
+  }
+}
+async function openZecsListing(){
+  try{if(!S.ownerCommitment){await connectWallet(false);if(!S.ownerCommitment)return}if(!S.evmAddress){await connectEvmWallet(false);if(!S.evmAddress)return}await loadZecsMarketState({sync:true,account:true});if(Number(S.zecsMarketAccount?.balance||0)<=0)throw new Error('This Noir identity has no available ZECS.');modal('zecsListingModal',true)}catch(e){toast(e.message||String(e),9000)}
+}
+async function publishZecsListing(){
+  if(S.zecsMarketBusy)return;S.zecsMarketBusy=true;updateZecsMarketUI();const btn=$('publishZecsListingBtn');if(btn)btn.disabled=true;
+  try{
+    if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');if(!S.evmAddress||!S.evmSigner)throw new Error('Connect Base Wallet first.');
+    const amount=Number($('zecsListingAmount').value),price=zecsUsdcUnits($('zecsListingPrice').value),hours=Number($('zecsListingHours').value);if(!Number.isSafeInteger(amount)||amount<1||amount>21000000)throw new Error('Enter a valid whole ZECS amount.');if(!Number.isFinite(hours)||hours<1||hours>720)throw new Error('Expiry must be 1–720 hours.');
+    const expiresAt=Math.floor(Date.now()/1000+hours*3600),ch=await zecsMarketApi('listing_challenge',{ownerCommitment:S.ownerCommitment,sellerEvm:S.evmAddress,amountZECS:amount,priceUSDC:price.toString(),expiresAt}),ns=await signDerived(ch.message),auth=await zecsMarketApi('listing_authorize',{challengeId:ch.challenge_id,pubkey:sigPub(ns),signature:sigVal(ns)});
+    const r=auth.listing_request,req={sellerCommitment:zecsBytes32(r.sellerCommitment),canonicalBalanceZECS:r.canonicalBalanceZECS,amountZECS:r.amountZECS,priceUSDC:r.priceUSDC,expiresAt:r.expiresAt,orderNonce:r.orderNonce,zb20OrderHash:r.zb20OrderHash,authDeadline:r.authDeadline,authNonce:r.authNonce},c=new ethers.Contract(CFG.zecsMarketContract,ZECS_MARKET_ABI,S.evmSigner),digest=String(await c.listingAuthorizationDigest(S.evmAddress,req)).toLowerCase();
+    if(digest!==String(auth.digest).toLowerCase())throw new Error('ZECS listing authorization mismatch. Transaction stopped.');
+    toast('Approve ZECS listing on Base…',7000);const tx=await c.createOrder(req,auth.verifier_signature);await tx.wait();await zecsMarketIndexTx(tx.hash);modal('zecsListingModal',false);await loadZecsMarketState({account:true});toast('ZECS listing live · '+short(auth.order_id,8),8000)
+  }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),10000)}finally{S.zecsMarketBusy=false;if(btn)btn.disabled=false;updateZecsMarketUI()}
+}
+async function cancelZecsOrder(o){
+  if(S.zecsMarketBusy)return;
+  try{if(!S.evmAddress)await connectEvmWallet(false);if(String(S.evmAddress||'').toLowerCase()!==String(o.seller_evm||'').toLowerCase())throw new Error('Connect the Base seller wallet to cancel this order.');if(!window.confirm('Cancel this ZECS order?'))return;S.zecsMarketBusy=true;updateZecsMarketUI();const c=new ethers.Contract(CFG.zecsMarketContract,ZECS_MARKET_ABI,S.evmSigner),tx=await c.cancelOrder(String(o.order_id));await tx.wait();await zecsMarketIndexTx(tx.hash);await loadZecsMarketState({account:true});toast('ZECS order cancelled.',7000)}catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),10000)}finally{S.zecsMarketBusy=false;updateZecsMarketUI()}
+}
+async function buyZecsOrder(o){
+  if(S.zecsMarketBusy)return;
+  try{
+    if(!S.ownerCommitment){await connectWallet(false);if(!S.ownerCommitment)return}if(!S.evmAddress){await connectEvmWallet(false);if(!S.evmAddress)return}
+    const amount=Number(o.amount_zecs),total=BigInt(String(o.price_usdc||0));if(!window.confirm(`Buy ${amount.toLocaleString()} ZECS for ${ethers.formatUnits(total,6)} USDC?\n\nUSDC settles on Base. ZECS canonical balance updates after settlement verification.`))return;
+    S.zecsMarketBusy=true;updateZecsMarketUI();const ch=await zecsMarketApi('buy_challenge',{orderId:String(o.order_id),buyerCommitment:S.ownerCommitment,buyerEvm:S.evmAddress}),ns=await signDerived(ch.message),auth=await zecsMarketApi('buy_authorize',{challengeId:ch.challenge_id,pubkey:sigPub(ns),signature:sigVal(ns)});
+    const a=auth.buy_authorization,req={orderId:a.orderId,buyerCommitment:zecsBytes32(a.buyerCommitment),sellerCanonicalBalanceZECS:a.sellerCanonicalBalanceZECS,authDeadline:a.authDeadline,authNonce:a.authNonce},c=new ethers.Contract(CFG.zecsMarketContract,ZECS_MARKET_ABI,S.evmSigner),digest=String(await c.buyAuthorizationDigest(req,S.evmAddress)).toLowerCase();
+    if(digest!==String(auth.digest).toLowerCase())throw new Error('ZECS buy authorization mismatch. Payment stopped.');
+    const usdc=new ethers.Contract(CFG.baseUsdc,BASE_USDC_ABI,S.evmSigner),bal=BigInt(await usdc.balanceOf(S.evmAddress));if(bal<total)throw new Error('Insufficient USDC balance on Base.');
+    const nonce=await usdc.nonces(S.evmAddress),name=await usdc.name(),deadline=Math.floor(Date.now()/1000)+300,domain={name,version:'2',chainId:CFG.baseChainId,verifyingContract:CFG.baseUsdc},types={Permit:[{name:'owner',type:'address'},{name:'spender',type:'address'},{name:'value',type:'uint256'},{name:'nonce',type:'uint256'},{name:'deadline',type:'uint256'}]};
+    toast('Sign USDC Permit, then approve one Base Buy transaction…',8000);const ps=ethers.Signature.from(await S.evmSigner.signTypedData(domain,types,{owner:S.evmAddress,spender:CFG.zecsMarketContract,value:total,nonce,deadline})),tx=await c.buyNowWithPermit(req,auth.verifier_signature,deadline,ps.v,ps.r,ps.s);await tx.wait();await zecsMarketIndexTx(tx.hash);await loadZecsMarketState({account:true});toast(`ZECS purchase complete · +${amount.toLocaleString()} ZECS`,9000)
+  }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),11000)}finally{S.zecsMarketBusy=false;updateZecsMarketUI()}
+}
 function usdcConfigured(){
   return !!window.ethers && /^0x[0-9a-fA-F]{40}$/.test(String(CFG.usdcMarketContract||''))
 }
@@ -1858,6 +1922,7 @@ async function connectEvmWallet(silent=false){
     S.evmSigner=await bp.getSigner();
     S.evmAddress=ethers.getAddress(await S.evmSigner.getAddress());
     updateEvmUI();
+    loadZecsMarketState({account:!!S.ownerCommitment}).catch(()=>{});
     window.ethereum.on?.('accountsChanged',()=>connectEvmWallet(true).catch(()=>{}));
     window.ethereum.on?.('chainChanged',()=>connectEvmWallet(true).catch(()=>{}));
     return true
@@ -2366,6 +2431,10 @@ async function buyUsdcListing(l){
   }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),10000)}
 }
 
+if($('zecsListBtn'))$('zecsListBtn').onclick=openZecsListing;
+if($('publishZecsListingBtn'))$('publishZecsListingBtn').onclick=publishZecsListing;
+if($('zecsRefreshBtn'))$('zecsRefreshBtn').onclick=()=>loadZecsMarketState({sync:true,account:!!S.ownerCommitment}).catch(e=>toast(e.message||String(e),9000));
+
 function renderMarket(){
   const q=$('marketSearch').value.trim().toLowerCase(),sort=$('marketSort').value;let a=visibleMarketListings().filter(x=>!q||String(x.tokenId).includes(q)||String(x.sellerCommitment).toLowerCase().includes(q));
   if(sort==='priceLow')a.sort((x,y)=>Number(x.price)-Number(y.price));else if(sort==='priceHigh')a.sort((x,y)=>Number(y.price)-Number(x.price));else a.sort((x,y)=>(y.timestamp||0)-(x.timestamp||0));
@@ -2384,7 +2453,7 @@ function renderMarket(){
     }else{action.textContent='Request Purchase';action.onclick=()=>openOffer(l)}
     g.appendChild(card)}
 }
-$('marketSearch').oninput=renderMarket;$('marketSort').onchange=renderMarket;$('refreshMarketBtn').onclick=()=>refreshAll().catch(e=>toast(e.message));
+$('marketSearch').oninput=renderMarket;$('marketSort').onchange=renderMarket;$('refreshMarketBtn').onclick=()=>Promise.allSettled([refreshAll(),loadZecsMarketState({sync:true,account:!!S.ownerCommitment})]).catch(e=>toast(e.message));
 $('activityFilter').onchange=renderActivity;$('refreshActivityBtn').onclick=()=>refreshAll().catch(e=>toast(e.message));
 function modal(id,on=true){$(id).classList.toggle('show',on)}document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>modal(b.dataset.close,false));
 function openListing(){
@@ -3295,6 +3364,7 @@ artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
   }catch(e){console.warn('legacy storage compaction',e)}
 })();
 hydrateUsdcCache();rebuildState();
+loadZecsMarketState({sync:false,account:false}).catch(()=>{});
 hydrateServerUsdc().then(()=>{renderUsdcMarket();updateUsdcMarketMetrics();return kickServerUsdcIndexer()}).catch(()=>{});
 hydrateUsdcFastListings().catch(()=>{});
 hydrateServerActivity().catch(()=>{});
@@ -3312,36 +3382,38 @@ kickServerRelayIndexer();await initNostr();startLiveDiscovery();try{await resolv
     await reconcileAtomicState();
     rebuildState();
     await reconcileUsdcMarket();
-    rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderUsdcMarket();renderActivity();updateMarketMetrics()
+    rebuildState();renderAtomicDesk();renderPortfolio();renderMarket();renderUsdcMarket();renderActivity();updateMarketMetrics();loadZecsMarketState({sync:false,account:false}).catch(()=>{})
   }catch(e){console.warn('live discovery backfill',e)}},8000)
 })();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAll().catch(e=>console.warn('visibility refresh',e))});
 </script>
 <script>
 (function(){
-  const viewMap={market:'market',activity:'activity',portfolio:'portfolio',protocol:'protocol',mining:'mining','usdc-market':'market','zec-market':'market'};
+  const viewMap={market:'market',activity:'activity',portfolio:'portfolio',protocol:'protocol',mining:'mining','usdc-market':'market','zec-market':'market','zecs-market':'market'};
   function currentView(){const h=(location.hash||'#market').slice(1);return viewMap[h]||'market'}
+  function currentAsset(){return location.hash==='#zecs-market'?'zecs':'nft'}
   function currentRail(){return location.hash==='#zec-market'?'zec':'usdc'}
   function showRail(rail){
     document.querySelectorAll('[data-market-rail]').forEach(b=>b.classList.toggle('active',b.dataset.marketRail===rail));
     document.querySelectorAll('[data-market-rail-view]').forEach(v=>v.classList.toggle('active',v.dataset.marketRailView===rail));
     try{localStorage.setItem('zb1_market_rail',rail)}catch{}
   }
+  function showAsset(asset){
+    document.querySelectorAll('[data-market-asset]').forEach(b=>b.classList.toggle('active',b.dataset.marketAsset===asset));
+    document.querySelectorAll('[data-market-asset-view]').forEach(v=>v.classList.toggle('active',v.dataset.marketAssetView===asset));
+    if(asset==='nft'){
+      let rail=currentRail();if(location.hash==='#market'){try{rail=localStorage.getItem('zb1_market_rail')||'usdc'}catch{rail='usdc'}}showRail(rail)
+    }else if(typeof window.loadZecsMarketState==='function')window.loadZecsMarketState({sync:true,account:true}).catch(()=>{});
+  }
   function showView(name,scroll=false){
     document.querySelectorAll('.appView').forEach(v=>v.classList.toggle('active',v.dataset.view===name));
     document.querySelectorAll('[data-app-tab]').forEach(a=>a.classList.toggle('active',a.dataset.appTab===name));
-    if(name==='market'){
-      let rail=currentRail();
-      if(location.hash==='#market'){try{rail=localStorage.getItem('zb1_market_rail')||'usdc'}catch{rail='usdc'}}
-      showRail(rail);
-    }
-    if(scroll) window.scrollTo({top:0,behavior:'smooth'});
+    if(name==='market')showAsset(currentAsset());if(scroll)window.scrollTo({top:0,behavior:'smooth'})
   }
   document.addEventListener('click',e=>{
-    const rb=e.target.closest('[data-market-rail]');
-    if(rb){e.preventDefault();const r=rb.dataset.marketRail;history.replaceState(null,'',r==='zec'?'#zec-market':'#market');showView('market');showRail(r);return}
-    const tab=e.target.closest('[data-app-tab]');
-    if(tab){setTimeout(()=>showView(tab.dataset.appTab,true),0)}
+    const ab=e.target.closest('[data-market-asset]');if(ab){e.preventDefault();const a=ab.dataset.marketAsset;history.replaceState(null,'',a==='zecs'?'#zecs-market':'#market');showView('market');showAsset(a);return}
+    const rb=e.target.closest('[data-market-rail]');if(rb){e.preventDefault();const r=rb.dataset.marketRail;history.replaceState(null,'',r==='zec'?'#zec-market':'#market');showView('market');showAsset('nft');showRail(r);return}
+    const tab=e.target.closest('[data-app-tab]');if(tab)setTimeout(()=>showView(tab.dataset.appTab,true),0)
   });
   window.addEventListener('hashchange',()=>showView(currentView(),true));
   document.addEventListener('DOMContentLoaded',()=>showView(currentView(),false));
