@@ -101,6 +101,11 @@ async function reservedZECS(commitment:string){
   const raw=await contractCall(data);
   return BigInt(iface.decodeFunctionResult("reservedZECS",raw)[0])
 }
+async function zecDirectReserved(commitment:string){
+  const {data,error}=await supabase.rpc("zecblocks_zb20_zec_reserved",{p_owner_commitment:commitment});
+  if(error)throw error;
+  return BigInt(String(data||0))
+}
 async function onchainOrder(orderId:string){
   const data=iface.encodeFunctionData("orders",[orderId]);
   const raw=await contractCall(data);
@@ -246,7 +251,7 @@ Deno.serve(async(req:Request)=>{
     if(action==="account"){
       const o=owner(b.ownerCommitment);if(!o)throw new Error("INVALID_OWNER_COMMITMENT");
       await forceSync();
-      return jres({ok:true,account:await account(o),reserved_onchain:(await reservedZECS(o)).toString()})
+      return jres({ok:true,account:await account(o),reserved_onchain:(await reservedZECS(o)).toString(),reserved_zec_direct:(await zecDirectReserved(o)).toString()})
     }
 
     if(action==="listing_challenge"){
@@ -265,7 +270,8 @@ Deno.serve(async(req:Request)=>{
       const ac=await account(o);
       const balance=Number(ac?.balance||0);
       const reserved=await reservedZECS(o);
-      if(BigInt(balance)<reserved+BigInt(amount))throw new Error("INSUFFICIENT_AVAILABLE_ZECS");
+      const zecReserved=await zecDirectReserved(o);
+      if(BigInt(balance)<reserved+zecReserved+BigInt(amount))throw new Error("INSUFFICIENT_AVAILABLE_ZECS");
 
       const orderNonce=random32(),authNonce=random32(),authDeadline=now+120;
       const base={sellerEvm:seller,ownerCommitment:o,amountZECS:amount,priceUSDC:price,expiresAt:expires,orderNonce,authNonce,authDeadline};
@@ -288,8 +294,9 @@ Deno.serve(async(req:Request)=>{
       const ac=await account(o);
       const balance=Number(ac?.balance||0);
       const reserved=await reservedZECS(o);
+      const zecReserved=await zecDirectReserved(o);
       const amount=Number(p.amountZECS);
-      if(BigInt(balance)<reserved+BigInt(amount))throw new Error("INSUFFICIENT_AVAILABLE_ZECS");
+      if(BigInt(balance)<reserved+zecReserved+BigInt(amount))throw new Error("INSUFFICIENT_AVAILABLE_ZECS");
 
       const request={
         sellerCommitment:o,canonicalBalanceZECS:balance,amountZECS:amount,
@@ -321,7 +328,8 @@ Deno.serve(async(req:Request)=>{
       const sellerAccount=await account(chain.sellerCommitment);
       const sellerBalance=Number(sellerAccount?.balance||0);
       const reserved=await reservedZECS(chain.sellerCommitment);
-      if(sellerBalance<chain.amountZECS||reserved>BigInt(sellerBalance))throw new Error("SELLER_BALANCE_NOT_FRESH");
+      const zecReserved=await zecDirectReserved(chain.sellerCommitment);
+      if(sellerBalance<chain.amountZECS||reserved+zecReserved>BigInt(sellerBalance))throw new Error("SELLER_BALANCE_NOT_FRESH");
 
       const now=Math.floor(Date.now()/1000),authNonce=random32(),authDeadline=now+60;
       const base={orderId,sellerEvm:chain.seller,sellerCommitment:chain.sellerCommitment,buyerEvm:buyer,ownerCommitment:buyerOwner,amountZECS:chain.amountZECS,priceUSDC:chain.priceUSDC,authNonce,authDeadline};
@@ -347,7 +355,8 @@ Deno.serve(async(req:Request)=>{
       const sellerAccount=await account(chain.sellerCommitment);
       const sellerBalance=Number(sellerAccount?.balance||0);
       const reserved=await reservedZECS(chain.sellerCommitment);
-      if(sellerBalance<chain.amountZECS||reserved>BigInt(sellerBalance))throw new Error("SELLER_BALANCE_NOT_FRESH");
+      const zecReserved=await zecDirectReserved(chain.sellerCommitment);
+      if(sellerBalance<chain.amountZECS||reserved+zecReserved>BigInt(sellerBalance))throw new Error("SELLER_BALANCE_NOT_FRESH");
 
       const auth={
         orderId,buyerCommitment:c.owner_commitment,sellerCanonicalBalanceZECS:sellerBalance,
