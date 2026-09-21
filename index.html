@@ -320,7 +320,7 @@ main{max-width:1540px;padding-top:14px}
 <div class="mini"><div class="kicker">Discovery layer</div><h3>No private ownership database</h3><p>The website mirrors discovery events across multiple public relays and continuously refreshes claim/market discovery while the page is open. Relays are cache/discovery only; ZB-1 ownership remains defined by confirmed Zcash transactions and client validation.</p></div>
 </div>
 </div>
-</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · NFT + ZECS Marketplace · V12.7.8 · Canonical Ownership Finality</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · NFT + ZECS Marketplace · V12.7.9 · Canonical Transaction Safety</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 <div class="modal" id="listingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select class="select" id="listingToken"></select></div><div class="field"><label>Asking price (ZEC)</label><input class="input" id="listingPrice" inputmode="decimal" value="0.05"/></div><div class="field"><label>Expires in days</label><input class="input" id="listingDays" max="30" min="1" type="number" value="7"/></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button class="btn gold" id="publishListingBtn">Sign &amp; Publish Listing</button></div></div></div>
 <div class="modal" id="usdcListingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK for USDC</h3><button class="xbtn" data-close="usdcListingModal">×</button></div>
@@ -359,7 +359,7 @@ const INDEX_CFG={
   url:'https://tvwvenyomlwvjtwxasca.supabase.co',
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
-console.info('ZEC BLOCKS MAIN V12.7.8 · CANONICAL OWNERSHIP FINALITY');
+console.info('ZEC BLOCKS MAIN V12.7.9 · CANONICAL TRANSACTION SAFETY');
 const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverZecOwners:new Map(),serverZecMarketReady:false,serverIndexerHealth:{},serverUsdcScannedTo:0,serverUsdcRequestSeq:0,serverUsdcAppliedSeq:0,serverUsdcGeneratedAt:0,serverUsdcFingerprint:'',serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set(),usdcBuyBusy:new Set(),zecsMarketSnapshot:null,zecsMarketAccount:null,zecsMarketBackend:null,zecsMarketBusy:false,zecsZecSnapshot:null,zecDirectBusy:false};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -1558,7 +1558,8 @@ async function submitClaim(){
     const memo=`ZB1|C|1|T=${S.target.token}|N=${S.proof.nonce}|K=${sigPub(sig)}|S=${sigVal(sig)}`;
     if(enc.encode(memo).length>512)throw new Error('Claim memo exceeds 512 bytes.');
     $('submitClaimBtn').disabled=true;$('mineStatus').textContent='Waiting for wallet approval…';
-    const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);
+    const claimRaw=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);
+    const txid=await zcashTxidOrHistory(claimRaw,{memo,label:'ZB-1 claim'});
     const ev=normalizeEvent({protocol:'ZB1',v:1,type:'CLAIM',txid,memo,tokenId:S.target.token,nonce:S.proof.nonce,pubkey:sig.pubkey,ownerCommitment:S.ownerCommitment,sourceHeight:S.target.sourceHeight,sourceHash:S.target.sourceHash,proofHash:S.proof.hash,timestamp:Math.floor(Date.now()/1000),status:'pending'});
     saveLocalEvent(ev);await publishRelay(ev);S.proof=null;$('mineStatus').textContent='Claim broadcast · '+short(txid,8);toast('Claim broadcast: '+txid,8000);await refreshAll();
   }catch(e){$('submitClaimBtn').disabled=false;$('mineStatus').textContent='Claim not submitted';toast(e.message||String(e),8000)}
@@ -2115,6 +2116,20 @@ function zcashTxidFromResult(v){
     v?.txid??v?.txId??v?.transactionId??v?.transaction_id??v?.hash??v?.id??
     v?.result?.txid??v?.result?.txId??v?.data?.txid??v?.data?.txId??'';
   return String(raw||'').replace(/^0x/,'').trim().toLowerCase()
+}
+async function zcashTxidOrHistory(raw,{memo='',label='Zcash transaction'}={}){
+  let txid=zcashTxidFromResult(raw);
+  if(/^[0-9a-f]{64}$/.test(txid))return txid;
+  if(memo){
+    try{
+      const hist=await rpc('zcash_getTransactionHistory');
+      const rows=(Array.isArray(hist)?hist:[]).filter(h=>String(h?.memo||'').trim()===String(memo).trim());
+      const hit=rows.sort((a,b)=>Number(b?.timestamp||0)-Number(a?.timestamp||0))[0];
+      txid=zcashTxidFromResult(hit);
+      if(/^[0-9a-f]{64}$/.test(txid))return txid
+    }catch(e){console.warn(label+' history recovery',e)}
+  }
+  throw new Error(label+' may already have been broadcast, but Noir did not return a recognizable TXID. Do NOT submit it again until wallet history is checked.')
 }
 function hideDirectListingLocally(asset,listingId){
   if(asset==='ZECS'&&Array.isArray(S.zecsZecSnapshot?.orders)){
@@ -3647,7 +3662,9 @@ async function atomicAcceptAndLock(o){
     base.anchorAddress=await atomicLockAnchorAddress(base);
 
     toast(`FIXED PRICE ${fixedPrice} ZEC · Locking ZEC BLOCK #${o.tokenId} to ${short(o.buyerCommitment,7)} for up to ${Math.floor(CFG.atomicLockSeconds/60)} min. Buyer has NOT paid yet. Approve the lock anchor to continue.`,13000);
-    const txid=await rpc('zcash_sendTransaction',[{to:base.anchorAddress,amount:zatToZec(BigInt(CFG.atomicAnchorZat)),fundingSource:'shielded'}]);
+    const lockRaw=await rpc('zcash_sendTransaction',[{to:base.anchorAddress,amount:zatToZec(BigInt(CFG.atomicAnchorZat)),fundingSource:'shielded'}]);
+    const txid=zcashTxidFromResult(lockRaw);
+    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Seller lock may already have been broadcast but Noir returned an unsupported TX result. Do not approve another lock until Noir history is checked.');
     const ev=normalizeEvent({...base,txid,anchorTxid:txid});
     rememberRuntimeEvent(ev);
     const pr=await publishRelay(ev);
@@ -3665,8 +3682,9 @@ async function payLegacyLockedSaleWithNoir(lock){
     if(now>Number(lock.expires)-CFG.atomicPayCutoffSeconds)throw new Error('Payment window is too close to expiry. Do not pay.');
 
     toast(`Legacy V9 lock: approve exactly ${lock.paymentZec} ZEC to the seller.`,9000);
-    const txid=String(await rpc('zcash_sendTransaction',[{to:lock.sellerPayout,amount:lock.paymentZec,fundingSource:'shielded'}])).toLowerCase();
-    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Noir Wallet did not return a valid payment TXID.');
+    const paymentRaw=await rpc('zcash_sendTransaction',[{to:lock.sellerPayout,amount:lock.paymentZec,fundingSource:'shielded'}]);
+    const txid=zcashTxidFromResult(paymentRaw);
+    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Legacy payment may already have been broadcast but Noir returned an unsupported TX result. Do not pay again; use Check Payments.');
     const msg=`ZB1:NOIR_PAYMENT:v1|L=${lock.lockId}|I=${lock.tokenId}|X=${txid}|A=${lock.paymentZec}|B=${S.ownerCommitment}`;
     const sig=await signDerived(msg);
     const e=normalizeEvent({protocol:'ZB1',v:1,type:'NOIR_PAYMENT',eventId:'noir-payment:'+lock.lockId+':'+txid,lockId:lock.lockId,tokenId:Number(lock.tokenId),paymentTxid:txid,txid,price:lock.price,paymentZec:lock.paymentZec,paymentZat:lock.paymentZat,buyerCommitment:S.ownerCommitment,sellerCommitment:lock.sellerCommitment,sellerPayout:lock.sellerPayout,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});
@@ -3692,8 +3710,9 @@ async function payProtocolFeeWithNoir(lock){
     const sig=await signDerived(paymentAuthMessage(lock,'fee'));
 
     toast(`STEP 1/2 · Approve exactly ${lock.feeZec} ZEC protocol fee to the ZEC BLOCKS treasury.`,10000);
-    const txid=String(await rpc('zcash_sendTransaction',[{to:CFG.treasury,amount:lock.feeZec,fundingSource:'shielded'}])).toLowerCase();
-    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Noir Wallet did not return a valid fee TXID.');
+    const feeRaw=await rpc('zcash_sendTransaction',[{to:CFG.treasury,amount:lock.feeZec,fundingSource:'shielded'}]);
+    const txid=zcashTxidFromResult(feeRaw);
+    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Protocol-fee payment may already have been broadcast but Noir returned an unsupported TX result. Do not pay again; use Check Payments.');
 
     const e=normalizeEvent({
       protocol:'ZB1',v:3,authVersion:3,type:'NOIR_FEE_PAYMENT',
@@ -3729,8 +3748,9 @@ async function paySellerWithNoir(lock){
     const sig=await signDerived(paymentAuthMessage(lock,'seller'));
 
     toast(`STEP 2/2 · Approve exactly ${lock.sellerZec} ZEC to the seller. After both payments reach finality, the NFT transfers automatically.`,11000);
-    const txid=String(await rpc('zcash_sendTransaction',[{to:lock.sellerPayout,amount:lock.sellerZec,fundingSource:'shielded'}])).toLowerCase();
-    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Noir Wallet did not return a valid seller-payment TXID.');
+    const sellerRaw=await rpc('zcash_sendTransaction',[{to:lock.sellerPayout,amount:lock.sellerZec,fundingSource:'shielded'}]);
+    const txid=zcashTxidFromResult(sellerRaw);
+    if(!/^[0-9a-f]{64}$/.test(txid))throw new Error('Seller payment may already have been broadcast but Noir returned an unsupported TX result. Do not pay again; use Check Payments.');
 
     const e=normalizeEvent({
       protocol:'ZB1',v:3,authVersion:3,type:'NOIR_SELLER_PAYMENT',
@@ -3898,7 +3918,33 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   rebuildState();updateWalletUI();renderPortfolio();renderAtomicDesk();
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
-$('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT has a chain-verified atomic lock. Direct transfer is invalid under ZB-1 v2 until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
+$('submitTransferBtn').onclick=async()=>{
+  try{
+    const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();
+    if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');
+    if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
+
+    // Canonical server preflight: a listed, reserved, sold, or stale token can never
+    // be transferred from a browser cache view.
+    await usdcListingRailGuard('transfer_check',tokenId,{ownerCommitment:S.ownerCommitment});
+    if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT has a chain-verified atomic lock. Transfer is blocked until it settles or expires.');
+
+    const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;
+    const sig=await signDerived(msg);
+    const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;
+    if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');
+
+    const raw=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);
+    const txid=await zcashTxidOrHistory(raw,{memo,label:'ZB-1 transfer'});
+    const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});
+    rememberRuntimeEvent(e);
+    await publishRelay(e);
+    modal('transferModal',false);$('recipientCommit').value='';
+    toast('Transfer broadcast · '+short(txid,8)+' · canonical ownership will update after chain verification.',9000);
+    await fetchRelay();
+    await hydrateServerPortfolio(S.ownerCommitment).catch(()=>{})
+  }catch(e){toast(e.message||String(e),10000)}
+};
 async function refreshAll(){await Promise.all([hydrateServerUsdc(),hydrateServerZecMarketStates(),hydrateServerZecMetrics(),hydrateServerActivity(),hydrateServerClaimStats()]);if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
