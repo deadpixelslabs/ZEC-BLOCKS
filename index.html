@@ -320,7 +320,7 @@ main{max-width:1540px;padding-top:14px}
 <div class="mini"><div class="kicker">Discovery layer</div><h3>No private ownership database</h3><p>The website mirrors discovery events across multiple public relays and continuously refreshes claim/market discovery while the page is open. Relays are cache/discovery only; ZB-1 ownership remains defined by confirmed Zcash transactions and client validation.</p></div>
 </div>
 </div>
-</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · NFT + ZECS Marketplace · V12.7.2 · Canonical Market Engine</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · NFT + ZECS Marketplace · V12.7.3 · Single-Rail Market Engine</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 <div class="modal" id="listingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select class="select" id="listingToken"></select></div><div class="field"><label>Asking price (ZEC)</label><input class="input" id="listingPrice" inputmode="decimal" value="0.05"/></div><div class="field"><label>Expires in days</label><input class="input" id="listingDays" max="30" min="1" type="number" value="7"/></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button class="btn gold" id="publishListingBtn">Sign &amp; Publish Listing</button></div></div></div>
 <div class="modal" id="usdcListingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK for USDC</h3><button class="xbtn" data-close="usdcListingModal">×</button></div>
@@ -525,6 +525,9 @@ async function indexUsdcReceipt(txHash,intent=null){
     }catch(e){last=e}
   }
   throw last||new Error('USDC canonical indexing failed.')
+}
+async function usdcListingRailGuard(action,tokenId,extra={}){
+  return indexFunction('zecblocks-usdc-buy-preflight',{action,tokenId,...extra})
 }
 
 async function hydrateServerClaimStats(){
@@ -2450,6 +2453,7 @@ async function publishUsdcListing(){
 
   const execute=async()=>{
     const oldText=btn?.textContent||'Sign with Noir & List on Base';
+    let listingGuardToken='',baseListingSubmitted=false,canonicalVerified=false;
     S.usdcListingBusy.add(tokenId);
     if(btn){btn.disabled=true;btn.textContent='Submitting listing…'}
     try{
@@ -2470,6 +2474,12 @@ async function publishUsdcListing(){
       if(existing)throw new Error(`ZEC BLOCK #${tokenId} already has an active USDC listing. Cancel it first.`);
       if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT is currently locked in a ZEC checkout.');
       if(!Number.isInteger(days)||days<1||days>30)throw new Error('Expiry must be 1–30 days.');
+
+      // Server-enforced single-rail lock. This is authoritative even if this browser
+      // has a stale ZEC/USDC snapshot or the user tries two tabs at once.
+      const railGuard=await usdcListingRailGuard('listing_acquire',tokenId,{sellerCommitment:S.ownerCommitment});
+      listingGuardToken=String(railGuard?.guard?.guard_token||'');
+      if(!listingGuardToken)throw new Error('Unable to lock this NFT for USDC listing.');
 
       const expires=Math.floor(Date.now()/1000)+days*86400;
       const listingNonce=ethers.hexlify(crypto.getRandomValues(new Uint8Array(32)));
@@ -2497,6 +2507,7 @@ async function publishUsdcListing(){
 
       // The in-memory + Web Lock guards make this operation one-shot per token.
       const tx=await contract.createListing(tokenId,sellerCommitment,priceUSDC,expires,listingNonce,listingHash);
+      baseListingSubmitted=true;
       toast('Base listing submitted · waiting for confirmation…',7000);
       const receipt=await tx.wait();
       relayEvent.baseTxid=receipt.hash;relayEvent.status='active';
@@ -2508,7 +2519,7 @@ async function publishUsdcListing(){
           message:msg,pubkey:sigPub(sig),signature:sigVal(sig)
         })
       }catch(indexErr){console.warn('USDC direct canonical index',indexErr)}
-      const canonicalVerified=canonicalIndex?.intent?.verified===true;
+      canonicalVerified=canonicalIndex?.intent?.verified===true;
       const localRow={listingId:String(listingId).toLowerCase(),seller:S.evmAddress,sellerCommitment,tokenId,expiresAt:expires,priceUSDC:String(priceUSDC),listingNonce,zb1ListingHash:listingHash,status:1,buyer:'0x0000000000000000000000000000000000000000',buyerCommitment:'0x'+'0'.repeat(64),settledAt:0,createdBlock:Number(receipt.blockNumber||0),updatedBlock:Number(receipt.blockNumber||0),relay:relayEvent,verifiedIntent:true,serverIntentVerified:canonicalVerified,serverOwnerCommitment:S.ownerCommitment,serverOwnerVerifiedLevel:'signature',serverIndexed:canonicalVerified};
       S.usdcOnchain.set(localRow.listingId,localRow);
       S.usdcLiveTombstones.delete(localRow.listingId);
@@ -2521,8 +2532,18 @@ async function publishUsdcListing(){
       toast(canonicalVerified?`USDC listing live · ${usdcFmt(priceUSDC)} USDC`:'Base confirmed · canonical listing verification is retrying in the background.',canonicalVerified?8000:10000);
       await hydrateServerUsdc().catch(()=>{});
       await reconcileUsdcMarket()
-    }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
+    }catch(e){
+      let m=e?.shortMessage||e?.reason||e?.message||String(e);
+      if(String(m).includes('TOKEN_ALREADY_LISTED_ZEC'))m='This NFT is already listed in the ZEC market. Cancel the ZEC listing before listing it for USDC.';
+      else if(String(m).includes('TOKEN_ALREADY_LISTED_USDC'))m='This NFT already has an active USDC listing. Cancel it before creating another listing.';
+      else if(String(m).includes('ZEC_PURCHASE_IN_PROGRESS'))m='A ZEC purchase is currently in progress for this NFT. USDC listing is temporarily locked.';
+      else if(String(m).includes('CROSS_RAIL_LISTING_IN_PROGRESS'))m='Another listing operation is already in progress for this NFT.';
+      toast(m,9000)
+    }
     finally{
+      if(listingGuardToken&&(!baseListingSubmitted||canonicalVerified)){
+        await usdcListingRailGuard('listing_release',tokenId,{guardToken:listingGuardToken}).catch(()=>{})
+      }
       S.usdcListingBusy.delete(tokenId);
       if(btn){btn.disabled=false;btn.textContent=oldText}
     }
