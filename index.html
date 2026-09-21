@@ -320,7 +320,7 @@ main{max-width:1540px;padding-top:14px}
 <div class="mini"><div class="kicker">Discovery layer</div><h3>No private ownership database</h3><p>The website mirrors discovery events across multiple public relays and continuously refreshes claim/market discovery while the page is open. Relays are cache/discovery only; ZB-1 ownership remains defined by confirmed Zcash transactions and client validation.</p></div>
 </div>
 </div>
-</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · NFT + ZECS Marketplace · V12.7.4 · Atomic Direct-ZEC Checkout</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
+</section></div><footer class="footer"><div>© 2026 ZEC BLOCKS · ZB-1 · MIT Licensed reference software · NFT + ZECS Marketplace · V12.7.5 · Final-State Direct-ZEC Engine</div><div class="footerlinks"><a href="https://x.com/ZEC_BLOCKS" rel="noreferrer" target="_blank">X / @ZEC_BLOCKS</a><a href="https://docs.zecblocks.xyz" rel="noreferrer" target="_blank">Docs</a><a href="https://mine.zecblocks.xyz">Mining ↗</a><a href="#market">Marketplace</a><a href="#activity">Activity</a><a href="#portfolio">Portfolio</a></div></footer>
 </main>
 <div class="modal" id="listingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK</h3><button class="xbtn" data-close="listingModal">×</button></div><div class="field"><label>Token ID</label><select class="select" id="listingToken"></select></div><div class="field"><label>Asking price (ZEC)</label><input class="input" id="listingPrice" inputmode="decimal" value="0.05"/></div><div class="field"><label>Expires in days</label><input class="input" id="listingDays" max="30" min="1" type="number" value="7"/></div><div class="notice">Listings are signed marketplace intents mirrored across multiple public relays. Website updates do not erase the listing; the client reconstructs it from relay events. Listing does not transfer the NFT or move ZEC.</div><div class="controls"><button class="btn gold" id="publishListingBtn">Sign &amp; Publish Listing</button></div></div></div>
 <div class="modal" id="usdcListingModal"><div class="modalCard"><div class="modalHead"><h3>List ZEC BLOCK for USDC</h3><button class="xbtn" data-close="usdcListingModal">×</button></div>
@@ -1939,8 +1939,13 @@ function hideDirectListingLocally(asset,listingId){
   if(asset==='ZECS'&&Array.isArray(S.zecsZecSnapshot?.orders)){
     S.zecsZecSnapshot={...S.zecsZecSnapshot,orders:S.zecsZecSnapshot.orders.filter(x=>String(x.order_id)!==String(listingId))};
     renderZecsZecMarket()
+  }else if(asset==='ZEC_BLOCK'){
+    S.serverMarketEvents.delete('sale:'+String(listingId));
+    renderMarket();updateMarketMetrics()
   }
 }
+function walletRejected(e){return /reject|denied|declined|cancelled|canceled|user rejected|4001/i.test(String(e?.message||e?.reason||e||''))}
+
 function directRecoveryRead(){try{const a=JSON.parse(localStorage.getItem(DIRECT_ZEC_RECOVERY_KEY)||'[]');return Array.isArray(a)?a:[]}catch{return[]}}
 function directRecoveryWrite(rows){try{localStorage.setItem(DIRECT_ZEC_RECOVERY_KEY,JSON.stringify(rows.slice(-24)))}catch{}}
 function saveDirectRecovery(row){const rows=directRecoveryRead().filter(x=>x.reservationId!==row.reservationId);rows.push({...row,updatedAt:Date.now()});directRecoveryWrite(rows)}
@@ -1977,29 +1982,64 @@ async function resumeDirectPayments(){
 }
 async function directZecBuy(asset,listingId,summary=''){
   if(S.zecDirectBusy)return;
+  let reservationId='',walletRequestStarted=false;
   try{
     if(!S.ownerCommitment){await connectWallet(false);if(!S.ownerCommitment)return}
     if(!window.confirm((summary?summary+'\n\n':'')+'0% protocol fee. You will approve ONE ZEC payment in Noir Wallet. Continue?'))return;
     S.zecDirectBusy=true;
+
     const ch=await zecDirectApi('buy_challenge',{asset,listingId,buyerCommitment:S.ownerCommitment});
     const sig=await signDerived(ch.message);
     const r=await zecDirectApi('reserve_buy',{challengeId:ch.challenge_id,pubkey:sigPub(sig),signature:sigVal(sig)});
-    const reservationId=String(r.reservation?.reservation_id||'');if(!reservationId)throw new Error('Reservation was not created.');
+    reservationId=String(r.reservation?.reservation_id||'');
+    if(!reservationId)throw new Error('Reservation was not created.');
+
     saveDirectRecovery({reservationId,asset,listingId});
     hideDirectListingLocally(asset,listingId);
-    loadZecsZecMarketState().catch(()=>{});
-    toast('Reserved for this wallet. This order is now locked globally. Approve one ZEC payment to the seller…',8000);
-    const walletResult=await rpc('zcash_sendTransaction',[{to:r.payment.to,amount:r.payment.amount_zec,fundingSource:'shielded'}]);
+    if(asset==='ZECS')loadZecsZecMarketState().catch(()=>{});
+    else hydrateServerZecMarketStates().catch(()=>{});
+    toast('Reserved for this wallet. This item is now locked globally. Approve one ZEC payment to the seller…',8000);
+
+    let walletResult;
+    try{
+      walletRequestStarted=true;
+      walletResult=await rpc('zcash_sendTransaction',[{to:r.payment.to,amount:r.payment.amount_zec,fundingSource:'shielded'}])
+    }catch(walletErr){
+      if(!walletRejected(walletErr)&&reservationId){
+        await zecDirectApi('payment_unknown',{reservationId}).catch(()=>{});
+        saveDirectRecovery({reservationId,asset,listingId,recoveryRequired:true});
+        hideDirectListingLocally(asset,listingId)
+      }
+      throw walletErr
+    }
+
     const txid=zcashTxidFromResult(walletResult);
     if(!/^[0-9a-f]{64}$/.test(txid)){
-      console.warn('Unexpected Noir zcash_sendTransaction result',walletResult);
-      throw new Error('Payment may have been broadcast, but Noir Wallet returned an unsupported TX result. Do NOT pay again. Refresh and use payment recovery.')
+      await zecDirectApi('payment_unknown',{reservationId}).catch(()=>{});
+      saveDirectRecovery({reservationId,asset,listingId,recoveryRequired:true});
+      hideDirectListingLocally(asset,listingId);
+      throw new Error('Payment may already have been broadcast, but Noir Wallet did not return a recognizable TXID. This item is locked for recovery. Do NOT pay again.')
     }
+
     saveDirectRecovery({reservationId,asset,listingId,txid});
     const out=await zecDirectApi('submit_payment',{reservationId,txid});
-    if(out?.settlement||out?.pending===false){dropDirectRecovery(reservationId);await refreshDirectMarketViews();toast('Purchase settled · '+short(txid,8),9000)}
-    else{hideDirectListingLocally(asset,listingId);toast('Payment broadcast · '+short(txid,8)+' · order locked while waiting for Zcash confirmation. Do not pay again.',11000);watchDirectReservation(reservationId,asset)}
-  }catch(e){toast(e?.message||String(e),11000)}finally{S.zecDirectBusy=false}
+    if(out?.settlement||out?.pending===false){
+      dropDirectRecovery(reservationId);
+      await refreshDirectMarketViews();
+      toast('Purchase settled · '+short(txid,8),9000)
+    }else{
+      hideDirectListingLocally(asset,listingId);
+      toast('Payment broadcast · '+short(txid,8)+' · item locked while waiting for Zcash confirmation. Do not pay again.',11000);
+      watchDirectReservation(reservationId,asset)
+    }
+  }catch(e){
+    if(walletRequestStarted&&!walletRejected(e)&&reservationId){
+      hideDirectListingLocally(asset,listingId)
+    }
+    toast(e?.message||String(e),11000)
+  }finally{
+    S.zecDirectBusy=false
+  }
 }
 async function upgradeZecListing(l){
   try{
