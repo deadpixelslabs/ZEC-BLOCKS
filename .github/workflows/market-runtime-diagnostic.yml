@@ -11,71 +11,40 @@ concurrency:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 4
     steps:
-      - name: Probe production API without sending transactions
+      - name: Isolate Supabase gateway versus PostgREST
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           node <<'NODE'
-          const fs=require('node:fs');
+          const dns=require('node:dns/promises');
           (async()=>{
-            const repo=process.env.GITHUB_REPOSITORY;
-            const r=await fetch(`https://api.github.com/repos/${repo}/contents/index.html?ref=main`,{headers:{Authorization:`Bearer ${process.env.GH_TOKEN}`,Accept:'application/vnd.github+json'}});
-            if(!r.ok)throw new Error('Cannot read source: '+r.status);
-            const file=await r.json(),source=Buffer.from(file.content,'base64').toString('utf8');
-            fs.writeFileSync('index.source.html',source);
-            const cfg=source.match(/const INDEX_CFG\s*=\s*\{([\s\S]*?)\};/);
-            const key=cfg?.[1].match(/key\s*:\s*['"]([^'"]+)['"]/)?.[1];
-            if(!key)throw new Error('Public API configuration missing');
-            const base='https://www.zecblocks.xyz',db='https://tvwvenyomlwvjtwxasca.supabase.co';
-            const probes=[
-              ['homepage','GET',base+'/',null,false],
-              ['rewritten_stats','GET',base+'/index-api/functions/v1/zecblocks-live-stats',null,false],
-              ['direct_proxy_stats','GET',base+'/api/index?path=functions/v1/zecblocks-live-stats',null,false],
-              ['rewritten_board','POST',base+'/index-api/rest/v1/rpc/zecblocks_usdc_market_board',{},false],
-              ['direct_proxy_board','POST',base+'/api/index?path=rest/v1/rpc/zecblocks_usdc_market_board',{},false],
-              ['upstream_board','POST',db+'/rest/v1/rpc/zecblocks_usdc_market_board',{},true]
+            const r=await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/contents/api/index.js?ref=main`,{headers:{Authorization:`Bearer ${process.env.GH_TOKEN}`,Accept:'application/vnd.github+json'}});
+            const f=await r.json(),src=Buffer.from(f.content,'base64').toString();
+            const legacy=src.match(/SUPABASE_ANON\s*=\s*['"]([^'"]+)/)?.[1];
+            const modern='sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN';
+            const db='https://tvwvenyomlwvjtwxasca.supabase.co';
+            console.log('DNS '+JSON.stringify(await dns.lookup(new URL(db).hostname,{all:true})));
+            const tests=[
+              ['no_key','/rest/v1/',null,false],
+              ['modern_auth','/auth/v1/health',modern,false],
+              ['legacy_auth','/auth/v1/health',legacy,false],
+              ['modern_tiny_read','/rest/v1/zecblocks_tokens?select=token_id&limit=1',modern,false],
+              ['legacy_tiny_read','/rest/v1/zecblocks_tokens?select=token_id&limit=1',legacy,true],
+              ['modern_board','/rest/v1/rpc/zecblocks_usdc_market_board',modern,false],
+              ['legacy_board','/rest/v1/rpc/zecblocks_usdc_market_board',legacy,true],
+              ['modern_stats','/functions/v1/zecblocks-live-stats',modern,false]
             ];
-            for(const [name,method,url,body,direct] of probes){
-              const started=Date.now();
+            async function probe([name,path,key,bearer]){
+              const start=Date.now();
               try{
-                const response=await fetch(url,{method,headers:{accept:'application/json','content-type':'application/json',...(direct?{apikey:key,authorization:'Bearer '+key}:{})},...(body===null?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(18000)});
-                const text=await response.text();let data;try{data=JSON.parse(text)}catch{}
-                const b=data?.data||data;
-                const out={name,status:response.status,ms:Date.now()-started,contentType:response.headers.get('content-type'),proxy:response.headers.get('x-zb1-canonical-proxy'),bytes:text.length,version:text.match(/V12\.7\.\d+/)?.[0],keys:b&&typeof b==='object'?Object.keys(b):[],rows:Array.isArray(b?.usdc_listings)?b.usdc_listings.length:undefined,metrics:b?.usdc_metrics,health:b?.indexer_health,error:b?.error||b?.message||(!response.ok?text.slice(0,350):undefined)};
-                console.log('PROBE '+JSON.stringify(out));
-              }catch(e){console.log('PROBE '+JSON.stringify({name,ms:Date.now()-started,error:e.message,cause:e.cause?.code}));}
+                const post=path.includes('/rpc/');
+                const x=await fetch(db+path,{method:post?'POST':'GET',headers:{accept:'application/json',...(key?{apikey:key}:{}),...(bearer?{authorization:'Bearer '+key}:{}),...(post?{'content-type':'application/json'}:{})},...(post?{body:'{}'}:{}),signal:AbortSignal.timeout(10000)});
+                const text=await x.text();let j;try{j=JSON.parse(text)}catch{}
+                console.log('LAYER '+JSON.stringify({name,ms:Date.now()-start,status:x.status,type:x.headers.get('content-type'),rows:j?.usdc_listings?.length,metrics:j?.usdc_metrics,error:j?.error||j?.message,body:path.includes('/rpc/')?undefined:text.slice(0,300)}));
+              }catch(e){console.log('LAYER '+JSON.stringify({name,ms:Date.now()-start,error:e.message,cause:e.cause?.code}))}
             }
-          })().catch(e=>{console.error(e);process.exitCode=1});
-          NODE
-      - name: Install browser test tooling
-        run: |
-          npm install --no-save playwright
-          npx playwright install --with-deps chromium
-      - name: Test clean-browser marketplace rendering
-        run: |
-          node <<'NODE'
-          const {chromium}=require('playwright');
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const context=await browser.newContext();
-            const page=await context.newPage();
-            let errors=0,apiRequests=0;
-            page.on('pageerror',e=>{errors++;console.log('PAGE_ERROR '+e.message)});
-            page.on('console',m=>{if(['error','warning'].includes(m.type()))console.log('CONSOLE '+m.type()+' '+m.text().slice(0,700))});
-            page.on('requestfailed',r=>console.log('REQUEST_FAILED '+JSON.stringify({url:r.url(),reason:r.failure()?.errorText})));
-            page.on('response',async r=>{if(r.url().includes('/index-api/')){apiRequests++;console.log('BROWSER_API '+JSON.stringify({url:r.url(),status:r.status(),type:r.headers()['content-type']}))}});
-            await page.route('**/*',route=>{
-              const r=route.request(),u=r.url();
-              if(r.method()==='POST'&&u.includes('/functions/v1/')&&!u.includes('/zecblocks-live-stats'))return route.abort('blockedbyclient');
-              return route.continue();
-            });
-            await page.goto('https://www.zecblocks.xyz/#market',{waitUntil:'domcontentloaded',timeout:45000});
-            await page.waitForTimeout(25000);
-            const state=await page.evaluate(()=>({title:document.title,footer:document.querySelector('footer')?.innerText,grid:document.getElementById('usdcMarketGrid')?.innerText?.slice(0,1500),cards:document.querySelectorAll('#usdcMarketGrid .nft').length,claimCount:document.getElementById('claimCount')?.innerText,status:document.getElementById('usdcMarketStatus')?.innerText,lexicalState:typeof S==='object'?{rows:S.serverUsdcCanonical?.size,snapshotAt:S.serverUsdcSnapshotAt,health:S.serverIndexerHealth}:null}));
-            console.log('BROWSER_RESULT '+JSON.stringify({...state,errors,apiRequests}));
-            await browser.close();
-            if(errors||state.cards===0)process.exitCode=1;
+            for(let i=0;i<tests.length;i+=2)await Promise.all(tests.slice(i,i+2).map(probe));
           })().catch(e=>{console.error(e);process.exitCode=1});
           NODE
