@@ -1,0 +1,38 @@
+name: Marketplace recovery verification
+on:
+  push:
+    branches: [fix/market-recovery-modern-ui]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe only public read endpoints
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          (async()=>{
+            const src=fs.readFileSync('api/index.js','utf8');
+            const db=src.match(/SUPABASE_URL\s*=\s*['"]([^'"]+)/)[1];
+            const key=src.match(/SUPABASE_ANON\s*=\s*['"]([^'"]+)/)[1];
+            const tests=[['proxy_board','https://www.zecblocks.xyz/index-api/rest/v1/rpc/zecblocks_usdc_market_board','POST',{},false],['upstream_board',db+'/rest/v1/rpc/zecblocks_usdc_market_board','POST',{},true],['proxy_stats','https://www.zecblocks.xyz/index-api/rest/v1/rpc/zecblocks_claim_stats','POST',{},false],['tiny_read',db+'/rest/v1/zecblocks_tokens?select=token_id&limit=1','GET',null,true]];
+            const results=[];
+            for(const [name,url,method,body,auth] of tests){const t=Date.now();try{const r=await fetch(url,{method,headers:{'Content-Type':'application/json',...(auth?{apikey:key,Authorization:'Bearer '+key}:{})},...(body===null?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(16000)});const txt=await r.text();let j;try{j=JSON.parse(txt)}catch{}const item={name,status:r.status,ms:Date.now()-t,rows:j?.usdc_listings?.length,metrics:j?.usdc_metrics,claims:j?.claims_seen,error:j?.error||j?.message};console.log(JSON.stringify(item));results.push(item);if(r.ok&&j?.usdc_listings)fs.writeFileSync('diagnostic-board.json',JSON.stringify(j));}catch(e){const item={name,ms:Date.now()-t,error:e.message};console.log(JSON.stringify(item));results.push(item)}}
+            fs.writeFileSync('diagnostics.json',JSON.stringify(results,null,2));
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: marketplace-source-and-diagnostics
+          path: |
+            index.html
+            api/
+            vercel.json
+            diagnostics.json
+            diagnostic-board.json
+          retention-days: 3
