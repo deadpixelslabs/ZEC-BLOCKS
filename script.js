@@ -340,85 +340,93 @@ async function hydrateUsdcFastListings(){
 async function hydrateServerUsdc(){
   const requestSeq=++S.serverUsdcRequestSeq;
   try{
-    const snap=await indexRpc('zecblocks_market_snapshot',{});
+    // Lean, canonical-only board. This endpoint returns only the deduplicated
+    // ACTIVE listings that already passed indexed ownership validation.
+    const snap=await indexRpc('zecblocks_usdc_market_board',{});
     const generatedAt=Number(snap?.generated_at||0);
-    // Never let a slower/older response overwrite a newer canonical board.
     if(requestSeq<S.serverUsdcAppliedSeq)return 0;
     if(generatedAt&&S.serverUsdcGeneratedAt&&generatedAt<S.serverUsdcGeneratedAt)return 0;
-    const rows=Array.isArray(snap?.usdc_listings)?snap.usdc_listings:(Array.isArray(snap?.listings)?snap.listings:[]);
-    const duplicateRows=Array.isArray(snap?.usdc_duplicate_listings)?snap.usdc_duplicate_listings:[];
-    const hydrationRows=[...rows,...duplicateRows];
-    const canonicalServer=new Map();
-    const nowSec=Math.floor(Date.now()/1000);
-    for(const x of rows){
-      const id=String(x.listing_id||'').toLowerCase();
-      if(!/^0x[0-9a-f]{64}$/.test(id))continue;
-      if(dbStatus(x.status)!==1||Number(x.expires_at||0)<=nowSec)continue;
-      if(x.ownership_valid===false)continue;
-      canonicalServer.set(Number(x.token_id),id)
-    }
+
+    const rows=Array.isArray(snap?.usdc_listings)?snap.usdc_listings:[];
     const health=snap?.indexer_health||{};
     const baseCaughtUp=health?.base_usdc?.status==='ok'&&health?.base_usdc?.details?.caught_up===true;
-    S.serverIndexerHealth=health;
+
+    S.serverIndexerHealth={...S.serverIndexerHealth,...health};
     S.serverUsdcScannedTo=Number(health?.base_usdc?.details?.scanned_to||health?.base_usdc?.details?.latest||0);
 
-    // Fail closed for public browsing: if the production Base index is behind,
-    // keep the last known-good board instead of replacing it with a partial view.
+    // Fail closed: never replace the current board with a partial index.
     if(!baseCaughtUp){
-      if($('usdcMarketStatus'))$('usdcMarketStatus').textContent='Canonical index syncing · last verified market state is being preserved.';
+      if($('usdcMarketStatus'))$('usdcMarketStatus').textContent='Canonical index syncing · preserving last verified listing board.';
       return 0
     }
-    const merged=new Map(S.usdcOnchain),serverIds=new Set();
+
+    const merged=new Map(S.usdcOnchain),serverIds=new Set(),nextCanonical=new Map();
     S.serverOwners.clear();
-    for(const x of hydrationRows){
-      const id=String(x.listing_id||'').toLowerCase();if(!/^0x[0-9a-f]{64}$/.test(id))continue;
+
+    for(const x of rows){
+      const id=String(x.listing_id||'').toLowerCase();
+      const tokenId=Number(x.token_id);
+      if(!/^0x[0-9a-f]{64}$/.test(id)||!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply)continue;
+      if(dbStatus(x.status)!==1||Number(x.expires_at||0)<=Math.floor(Date.now()/1000))continue;
+      if(x.ownership_valid===false)continue;
+
       serverIds.add(id);
       if(x.intent_verified===true)S.usdcVerifiedIntentIds.add(id);
       const owner=dbCommitment(x.indexed_owner_commitment);
-      if(owner)S.serverOwners.set(Number(x.token_id),{owner,level:String(x.indexed_owner_verified_level||'provisional'),source:String(x.indexed_owner_source||'server')});
+      if(owner)S.serverOwners.set(tokenId,{owner,level:String(x.indexed_owner_verified_level||'provisional'),source:String(x.indexed_owner_source||'server')});
+
       const old=merged.get(id)||{};
-      merged.set(id,{...old,
-        listingId:id,tokenId:Number(x.token_id),seller:String(x.seller_evm||'').toLowerCase(),
+      const row={...old,
+        listingId:id,tokenId,seller:String(x.seller_evm||'').toLowerCase(),
         sellerCommitment:dbBytes32(x.seller_commitment),priceUSDC:String(x.price_usdc||0),
         expiresAt:Number(x.expires_at||0),listingNonce:String(x.listing_nonce||old.listingNonce||''),
-        zb1ListingHash:String(x.zb1_listing_hash||old.zb1ListingHash||''),status:dbStatus(x.status),
+        zb1ListingHash:String(x.zb1_listing_hash||old.zb1ListingHash||''),status:1,
         buyer:String(x.buyer_evm||old.buyer||'0x0000000000000000000000000000000000000000'),
         buyerCommitment:dbBytes32(x.buyer_commitment),settledAt:Number(x.settled_at||0),
         createdBlock:Number(x.created_block||old.createdBlock||0),updatedBlock:Number(x.updated_block||old.updatedBlock||0),
         relay:old.relay||null,verifiedIntent:!!old.verifiedIntent,serverIntentVerified:!!x.intent_verified,
         serverOwnerCommitment:owner,serverOwnerVerifiedLevel:String(x.indexed_owner_verified_level||'provisional'),serverIndexed:true
-      })
+      };
+      merged.set(id,row);
+      nextCanonical.set(tokenId,row)
     }
-    if(baseCaughtUp){
-      for(const [id,x] of merged){
-        const active=Number(x?.status)===1&&Number(x?.expiresAt)>Math.floor(Date.now()/1000);
-        const stale=active&&usdcListingOwnershipState(x)===false;
-        if((x?.serverIndexed&&Number(x.status)===1&&!serverIds.has(id))||stale)merged.delete(id)
-      }
+
+    // Anything previously server-indexed as ACTIVE but absent from this caught-up
+    // canonical board is no longer allowed to remain a public listing.
+    for(const [id,x] of merged){
+      if(x?.serverIndexed&&Number(x.status)===1&&!serverIds.has(id))merged.delete(id)
     }
-    if(rows.length||baseCaughtUp)S.usdcOnchain=merged;
-    const nextCanonical=new Map();
-    for(const [tokenId,listingId] of canonicalServer){
-      const row=merged.get(listingId);
-      if(row)nextCanonical.set(Number(tokenId),row)
-    }
-    const nextMetrics=snap?.usdc_metrics||snap?.metrics||null;
+
+    const nextMetrics=snap?.usdc_metrics||null;
     const fingerprint=[...nextCanonical.values()]
       .sort((a,b)=>Number(a.tokenId)-Number(b.tokenId))
       .map(x=>[x.tokenId,String(x.listingId||''),String(x.priceUSDC||''),Number(x.expiresAt||0)].join(':'))
       .join('|')+'|'+JSON.stringify(nextMetrics||{});
 
-    // Apply listings + metrics atomically from one caught-up snapshot.
+    // Atomic board swap: listings and metrics always come from the same
+    // caught-up snapshot, so users cannot see a mixed/ghost state.
+    S.usdcOnchain=merged;
     S.serverUsdcCanonical=nextCanonical;
     S.serverUsdcMetrics=nextMetrics;
     S.serverUsdcFingerprint=fingerprint;
     S.serverUsdcAppliedSeq=requestSeq;
     S.serverUsdcGeneratedAt=generatedAt||S.serverUsdcGeneratedAt;
     S.serverUsdcSnapshotAt=Date.now();
-    const claims=Number(snap?.claims_seen||0);if(Number.isFinite(claims))S.serverClaimCount=Math.max(S.serverClaimCount||0,claims);
 
-    // Mirror persistent ZEC listing states into runtime events so sparse relay history
-    // cannot resurrect cancelled/sold/expired listings after refresh.
+    saveUsdcCache();
+    renderUsdcMarket();
+    updateUsdcMarketMetrics();
+    if($('usdcMarketStatus'))$('usdcMarketStatus').textContent=`Canonical market · ${nextCanonical.size} verified listings · index caught up.`;
+    return nextCanonical.size
+  }catch(e){
+    console.warn('canonical USDC market board',e);
+    if($('usdcMarketStatus')&&S.serverUsdcSnapshotAt<=0)$('usdcMarketStatus').textContent='Canonical market board unavailable · retrying without showing unverified listings.';
+    return 0
+  }
+}
+async function hydrateServerZecMarketStates(){
+  try{
+    const snap=await indexRpc('zecblocks_zec_market_states_snapshot',{});
     const zstates=Array.isArray(snap?.zec_listing_states)?snap.zec_listing_states:[];
     S.serverMarketEvents.clear();
     for(const x of zstates){
@@ -434,10 +442,9 @@ async function hydrateServerUsdc(){
     }
     S.events=S.events.filter(e=>e.source!=='supabase-index-market');
     for(const e of S.serverMarketEvents.values())S.events.push(e);
-    saveUsdcCache();rebuildState();renderUsdcMarket();updateUsdcMarketMetrics();
-    if($('usdcMarketStatus'))$('usdcMarketStatus').textContent='Canonical market · Base index verified and caught up.';
-    return rows.length
-  }catch(e){console.warn('server market snapshot',e);return 0}
+    rebuildState();renderMarket();updateMarketMetrics();
+    return zstates.length
+  }catch(e){console.warn('canonical ZEC market states',e);return S.serverMarketEvents.size}
 }
 async function kickServerUsdcIndexer(){
   if(S.serverIndexing)return;S.serverIndexing=true;
@@ -1666,16 +1673,13 @@ function activeUsdcListingsForToken(id){
 }
 function activeUsdcListingForToken(id){return activeUsdcListingsForToken(id)[0]||null}
 function canonicalActiveUsdcListings(){
-  // Browsing is server-canonical only. Raw Base rows, browser cache, fast feeds,
-  // and live overlays may help reconciliation but are never allowed to change
-  // the public order board. This prevents stale/duplicate cards from appearing
-  // and disappearing while the production index catches up.
+  // The server board already passed ownership validation and deduplication.
+  // Do not re-filter it using browser/local ownership state.
   if(S.serverUsdcSnapshotAt<=0)return [];
   const now=Math.floor(Date.now()/1000),rows=[];
   for(const x of S.serverUsdcCanonical.values()){
     if(!x)continue;
     if(Number(x.status)!==1||Number(x.expiresAt)<=now)continue;
-    if(usdcListingOwnershipState(x)===false)continue;
     rows.push(x)
   }
   return rows
@@ -3038,7 +3042,7 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
 $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT has a chain-verified atomic lock. Direct transfer is invalid under ZB-1 v2 until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
-async function refreshAll(){await Promise.all([hydrateServerUsdc(),hydrateServerActivity(),hydrateServerClaimStats()]);if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);kickServerRelayIndexer();kickServerUsdcIndexer();await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
+async function refreshAll(){await Promise.all([hydrateServerUsdc(),hydrateServerZecMarketStates(),hydrateServerActivity(),hydrateServerClaimStats()]);if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);kickServerRelayIndexer();kickServerUsdcIndexer();await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
 (function compactLegacyBrowserStorage(){
@@ -3054,6 +3058,7 @@ artSvg($('heroArt'),CFG.genesisTxid,'ZB #1');
 hydrateUsdcCache();rebuildState();
 loadZecsMarketState({sync:false,account:false}).catch(()=>{});
 hydrateServerUsdc().then(()=>{renderUsdcMarket();updateUsdcMarketMetrics();return kickServerUsdcIndexer()}).catch(()=>{});
+hydrateServerZecMarketStates().catch(()=>{});
 hydrateUsdcFastListings().catch(()=>{});
 hydrateServerActivity().catch(()=>{});
 (async()=>{await hydrateServerClaimStats();
@@ -3063,7 +3068,7 @@ setInterval(()=>syncUsdcLiveChain().catch(e=>console.warn('Base live market poll
 syncUsdcLiveChain().catch(e=>console.warn('Base live market init',e));
 kickServerRelayIndexer();await initNostr();startLiveDiscovery();try{await resolveGenesis()}catch(e){console.warn(e)}try{await connectWallet(true)}catch{}try{await connectEvmWallet(true)}catch{}await fetchRelay();await reconcileAtomicState();rebuildState();try{await reconcileUsdcMarket()}catch(e){console.warn('USDC market init',e)}rebuildState();updateWalletUI();renderUsdcMarket();renderAtomicDesk();updateMarketMetrics();
   if(!S.atomicWatchTimer)S.atomicWatchTimer=setInterval(async()=>{try{
-    await Promise.all([hydrateServerUsdc(),hydrateServerActivity(),hydrateServerClaimStats()]);
+    await Promise.all([hydrateServerUsdc(),hydrateServerZecMarketStates(),hydrateServerActivity(),hydrateServerClaimStats()]);
     if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);
     await fetchRelay();
     await reconcileAtomicState();
