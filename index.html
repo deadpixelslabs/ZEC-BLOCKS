@@ -252,14 +252,14 @@ main{max-width:1540px;padding-top:14px}
 <div class="marketRailView" data-market-rail-view="zec"><div class="sectionHead" id="zec-market"><div><h2>ZEC Locked-Sale Market</h2><p>The original ZEC / Noir marketplace remains available.</p></div></div><section class="card"><div class="marketToolbar"><input class="input" id="marketSearch" placeholder="Search token ID or seller commitment"/><select class="select" id="marketSort"><option value="new">Newest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option></select><span class="pill" id="relayStatus">Relays: connecting…</span></div><div class="marketBody"><div class="marketMetrics"><div class="marketMetric"><small>ZEC Floor</small><b id="floorPrice">—</b></div><div class="marketMetric"><small>ZEC Total Volume</small><b id="totalVolume">0 ZEC</b></div><div class="marketMetric"><small>ZEC Sales</small><b id="salesCount">0</b></div><div class="marketMetric"><small>ZEC Listed</small><b id="listedCount">0</b></div></div><div class="grid" id="marketGrid"></div></div></section></div>
 </div>
 <div class="marketAssetView" data-market-asset-view="zecs"><div class="zecsMarketHead"><div><h3>ZECS Market</h3><p>ZECS stays ZB-20 on Zcash. Base is used only for USDC payment settlement.</p></div></div><section class="card zecsMarketSection"><div class="zecsMarketHero"><div><div class="kicker">ZB-20 · ZCASH ANCHORED · BASE USDC</div><div class="zecsTicker"><span>$</span>ZECS</div><div class="zecsSub">Canonical ZECS balances are verified before listing and again before purchase. Buyer payment settles 97% to seller and 3% to protocol treasury.</div></div><div class="zecsMarketActions"><button class="btn" id="zecsRefreshBtn">Refresh</button><button class="btn usdc" id="zecsListBtn" disabled>List ZECS</button></div></div><div class="zecsMetrics"><div class="zecsMetric"><small>Floor / ZECS</small><b id="zecsFloor">—</b></div><div class="zecsMetric"><small>Total Volume</small><b id="zecsVolume">0 USDC</b></div><div class="zecsMetric"><small>Sales</small><b id="zecsSales">0</b></div><div class="zecsMetric"><small>Active Orders</small><b id="zecsOrders">0</b></div><div class="zecsMetric"><small>My Balance</small><b id="zecsMyBalance">—</b></div></div><div class="zecsStatusLine" id="zecsMarketStatus">Canonical ZECS market backend connecting…</div><div class="zecsOrderGrid" id="zecsMarketGrid"><div class="zecsEmpty">Loading ZECS orders…</div></div></section></div>
-</div><div class="appView" data-view="activity" id="view-activity"><div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Latest marketplace activity from the persistent production index. ZEC + Base USDC events refresh automatically every 20 seconds.</p></div><div class="tabs"><select class="select" id="activityFilter" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button class="btn" id="refreshActivityBtn">Refresh</button></div></div><section class="card panel">
+</div><div class="appView" data-view="activity" id="view-activity"><div class="sectionHead" id="activity"><div><h2>Activity</h2><p>Latest marketplace activity from the persistent production index. ZEC BLOCKS + ZECS events refresh automatically.</p></div><div class="tabs"><select class="select" id="activityFilter" style="width:auto"><option value="all">All activity</option><option value="sale">Sales</option><option value="list">Listings</option><option value="offer">Offers</option><option value="transfer">Transfers</option></select><button class="btn" id="refreshActivityBtn">Refresh</button></div></div><section class="card panel">
 <div class="activityWrap">
 <table class="activityTable">
 <thead><tr><th>Event</th><th>Item</th><th>Price</th><th>From</th><th>To</th><th>Time</th><th>TX</th></tr></thead>
 <tbody id="activityBody"></tbody>
 </table>
 </div>
-<div class="notice" style="margin-top:12px">ZEC volume below counts only completed locked-sale settlements where both the protocol-fee transaction and seller-payment transaction were chain-verified. USDC volume is shown in the USDC section above from verified Base settlements.</div>
+<div class="notice" style="margin-top:12px">Activity includes verified ZEC BLOCKS marketplace events and canonical ZECS / USDC listings, sales, and cancellations.</div>
 </section></div><div class="appView" data-view="portfolio" id="view-portfolio"><div class="sectionHead" id="portfolio"><div><h2>Portfolio</h2><p>Recovered from Noir Wallet history, validated proof data, and public ZB-1 discovery.</p></div><button class="btn" disabled="" id="syncPortfolioBtn">Recover &amp; Sync Portfolio</button></div><section class="card panel">
 <div class="portfolioTop"><div class="metric"><small>Owned</small><b id="ownedCount">0</b></div><div class="metric"><small>Active Listings</small><b id="listingCount">0</b></div><div class="metric"><small>Offers Received</small><b id="offerCount">0</b></div><div class="metric"><small>ZEC Available</small><b id="zecBalance">—</b></div></div>
 <div class="walletbox"><div class="copyline"><small>Derived owner identity</small><code id="portfolioCommit">Connect wallet to reveal your commitment.</code></div><div class="copyline"><small>Shielded account</small><code id="portfolioShielded">Private until you connect.</code></div></div>
@@ -762,9 +762,18 @@ async function hydrateServerActivity(){
     const rows=Array.isArray(snap?.events)?snap.events:[];
     const clean=[];
     for(const x of rows){
-      const tokenId=Number(x.tokenId);if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply)continue;
-      const type=String(x.type||'').toUpperCase();if(!['SALE','OFFER','SALE_CANCEL','TRANSFER','ATOMIC_SETTLED','NOIR_SETTLED'].includes(type))continue;
-      clean.push(normalizeEvent({protocol:'ZB1',v:1,type,eventId:String(x.eventId||''),tokenId,
+      const asset=String(x.asset||'ZEC_BLOCK').toUpperCase();
+      const type=String(x.type||'').toUpperCase();
+      const isZecs=asset==='ZECS';
+      const tokenId=Number(x.tokenId);
+      if(isZecs){
+        if(!['ZB20_LIST','ZB20_CANCEL','ZB20_SETTLED'].includes(type))continue;
+      }else{
+        if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply)continue;
+        if(!['SALE','OFFER','SALE_CANCEL','TRANSFER','ATOMIC_SETTLED','NOIR_SETTLED'].includes(type))continue;
+      }
+      clean.push(normalizeEvent({protocol:isZecs?'ZB20':'ZB1',v:1,type,eventId:String(x.eventId||''),
+        asset:isZecs?'ZECS':'ZEC_BLOCK',amount:isZecs?Number(x.amount||0):null,tokenId:isZecs?null:tokenId,
         price:x.price==null?'':String(x.price),currency:String(x.currency||'ZEC').toUpperCase(),
         sellerCommitment:dbCommitment(x.sellerCommitment),buyerCommitment:dbCommitment(x.buyerCommitment),
         fromCommitment:dbCommitment(x.fromCommitment),toCommitment:dbCommitment(x.toCommitment),
@@ -1680,20 +1689,19 @@ function updateMarketMetrics(){
 }
 function updateUsdcMarketMetrics(){
   const active=canonicalActiveUsdcListings();
-  const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
-  const floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
-  let volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0),salesN=sales.length;
-  const listedN=active.length;
+  let floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
+  let volume=0,salesN=0,listedN=active.length;
   if(S.serverUsdcMetrics){
+    const sf=Number(S.serverUsdcMetrics.floor_base_units||0)/1e6;
     const sv=Number(S.serverUsdcMetrics.volume_base_units||0)/1e6;
-    const authoritative=S.serverIndexerHealth?.base_usdc?.status==='ok'&&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
-    if(authoritative){
-      volume=Number.isFinite(sv)?sv:0;
-      salesN=Number(S.serverUsdcMetrics.sales)||0
-    }else{
-      if(Number.isFinite(sv))volume=Math.max(volume,sv);
-      salesN=Math.max(salesN,Number(S.serverUsdcMetrics.sales)||0)
-    }
+    floor=Number.isFinite(sf)?sf:floor;
+    volume=Number.isFinite(sv)?sv:0;
+    salesN=Number(S.serverUsdcMetrics.sales)||0;
+    listedN=Number(S.serverUsdcMetrics.listed)||0
+  }else{
+    const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
+    volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0);
+    salesN=sales.length
   }
   $('usdcFloorPrice').textContent=floor?`${floor.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`:'—';
   $('usdcTotalVolume').textContent=`${volume.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`;
@@ -1701,10 +1709,10 @@ function updateUsdcMarketMetrics(){
   $('usdcListedCount').textContent=listedN.toLocaleString();
 }
 function activityKind(e){
-  if(e.type==='ATOMIC_SETTLED'||e.type==='NOIR_SETTLED')return 'sale';
-  if(e.type==='SALE')return 'list';
+  if(e.type==='ATOMIC_SETTLED'||e.type==='NOIR_SETTLED'||e.type==='ZB20_SETTLED')return 'sale';
+  if(e.type==='SALE'||e.type==='ZB20_LIST')return 'list';
   if(e.type==='OFFER')return 'offer';
-  if(e.type==='SALE_CANCEL')return 'cancel';
+  if(e.type==='SALE_CANCEL'||e.type==='ZB20_CANCEL')return 'cancel';
   if(e.type==='TRANSFER')return 'transfer';
   return null;
 }
@@ -1767,8 +1775,11 @@ function renderActivity(){
     const tr=document.createElement('tr');
     const from=activityFrom(e,kind),to=activityTo(e,kind),price=activityPrice(e,kind);
     const tx=activityTx(e),currency=String(e.currency||'ZEC').toUpperCase();
-    tr.innerHTML=`<td><span class="eventBadge ${kind}">${activityLabel(kind)}</span></td>
-      <td class="item">ZEC BLOCK #${esc(e.tokenId||'—')}</td>
+    const isZecs=String(e.asset||'').toUpperCase()==='ZECS';
+    const item=isZecs?`${Number(e.amount||0).toLocaleString()} ZECS`:`ZEC BLOCK #${e.tokenId||'—'}`;
+    const label=isZecs?`ZECS ${activityLabel(kind)}`:activityLabel(kind);
+    tr.innerHTML=`<td><span class="eventBadge ${kind}">${esc(label)}</span></td>
+      <td class="item">${esc(item)}</td>
       <td class="${price?'activityPrice':''}">${price?`${esc(String(e.price))} ${esc(currency)}`:'—'}</td>
       <td>${from?esc(short(from,7)):'—'}</td>
       <td>${to?esc(short(to,7)):'—'}</td>
@@ -1965,34 +1976,19 @@ function activeUsdcListingsForToken(id){
 }
 function activeUsdcListingForToken(id){return activeUsdcListingsForToken(id)[0]||null}
 function canonicalActiveUsdcListings(){
-  const now=Math.floor(Date.now()/1000),byToken=new Map();
-  const consider=x=>{
-    if(!x)return;
-    const listingId=String(x.listingId||'').toLowerCase();
-    if(S.usdcLiveTombstones.has(listingId))return;
-    if(Number(x.status)!==1||Number(x.expiresAt)<=now)return;
-    if(!x.fastCanonical&&usdcListingOwnershipState(x)===false)return;
-    const id=Number(x.tokenId),old=byToken.get(id);
-    if(!old||usdcListingFreshness(x)>usdcListingFreshness(old)||(usdcListingFreshness(x)===usdcListingFreshness(old)&&String(x.listingId||'')>String(old.listingId||'')))byToken.set(id,x)
-  };
-
-  // Persistent production snapshot is the baseline.
-  if(S.serverUsdcSnapshotAt>0){
-    for(const x of S.serverUsdcCanonical.values())consider(x)
-  }else{
-    for(const x of S.usdcOnchain.values())consider(x)
+  // Browsing is server-canonical only. Raw Base rows, browser cache, fast feeds,
+  // and live overlays may help reconciliation but are never allowed to change
+  // the public order board. This prevents stale/duplicate cards from appearing
+  // and disappearing while the production index catches up.
+  if(S.serverUsdcSnapshotAt<=0)return [];
+  const now=Math.floor(Date.now()/1000),rows=[];
+  for(const x of S.serverUsdcCanonical.values()){
+    if(!x)continue;
+    if(Number(x.status)!==1||Number(x.expiresAt)<=now)continue;
+    if(usdcListingOwnershipState(x)===false)continue;
+    rows.push(x)
   }
-
-  // Direct Base overlay is used only for blocks newer than the production
-  // index cursor. Once the server has scanned a block, its canonical ownership
-  // decision wins on every browser and stale local rows cannot reappear.
-  const caughtUp=S.serverIndexerHealth?.base_usdc?.status==='ok'&&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
-  for(const x of S.usdcLiveOverlay.values()){
-    const b=Number(x?.updatedBlock||x?.createdBlock||0);
-    if(caughtUp&&S.serverUsdcScannedTo>0&&(!b||b<=S.serverUsdcScannedTo))continue;
-    consider(x)
-  }
-  return [...byToken.values()]
+  return rows
 }
 function usdcRelayListings(){
   const m=new Map();
@@ -2185,7 +2181,9 @@ function renderUsdcMarket(){
   const rows=canonicalActiveUsdcListings()
     .sort((a,b)=>{const ap=BigInt(a.priceUSDC||0),bp=BigInt(b.priceUSDC||0);if(ap<bp)return -1;if(ap>bp)return 1;return usdcListingFreshness(b)-usdcListingFreshness(a)});
   if(!rows.length){
-    g.innerHTML='<div class="empty" style="grid-column:1/-1">No active Base USDC listings in the production index yet.</div>';
+    g.innerHTML=S.serverUsdcSnapshotAt<=0
+      ?'<div class="empty" style="grid-column:1/-1">Loading canonical Base USDC listings…</div>'
+      :'<div class="empty" style="grid-column:1/-1">No active Base USDC listings in the production index.</div>';
     return
   }
   for(const l of rows){
