@@ -3900,7 +3900,7 @@ function renderPortfolio(){
     }else if(liveListing){
       zecBtn.textContent='Cancel ZEC Listing';zecBtn.onclick=()=>cancelListing(liveListing);
       usdcBtn.textContent='ZEC LISTED';usdcBtn.disabled=true;
-      transferBtn.onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)}
+      transferBtn.textContent='CANCEL ZEC FIRST';transferBtn.disabled=true
     }else{
       zecBtn.textContent='List ZEC';zecBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)};
       usdcBtn.textContent=S.evmAddress?'List USDC':'Connect Base → List USDC';usdcBtn.onclick=()=>openUsdcListingForToken(c.tokenId);
