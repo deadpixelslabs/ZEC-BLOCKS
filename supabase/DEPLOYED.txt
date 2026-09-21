@@ -64,3 +64,21 @@ Single-rail NFT marketplace lock (V12.7.3):
 - zecblocks-index-usdc production Edge: v13
 - zecblocks-usdc-buy-preflight production Edge: v5
 - zecblocks-zec-direct-market production Edge: v5
+
+Canonical Ownership Finality (V12.7.8 — 2026-09-21):
+- FULL marketplace settlements are irreversible ownership checkpoints for ZEC BLOCK NFTs.
+- Applies to both Base USDC settlement and native ZEC direct settlement.
+- Historical/delayed CLAIM discovery cannot roll a settled NFT back to an old owner.
+- Ownership CLAIM rows are canonicalized to one logical event per Zcash TXID: claim:<txid>.
+- Canonical mint winner selection uses Zcash chain order (block height / tx index), not relay arrival timestamp.
+- zecblocks_rebuild_ownership_tokens(integer[]) is the canonical projection engine.
+- Market settlement ownership-event trigger rebuilds the affected token immediately.
+- zecblocks_reconcile_recent_ownership() runs every minute as a projection watchdog.
+- zecblocks_retire_stale_market_inventory() removes stale-owner and legacy double-rail rows from canonical inventory.
+- Current invariant after global rebuild: 0 settled-owner mismatches, 0 stale active USDC listings, 0 stale active ZEC listings, 0 cross-rail duplicates, 0 duplicate claim TXIDs.
+- zecblocks-index-usdc production Edge: v14
+- zecblocks-usdc-buy-preflight production Edge: v6
+- zecblocks-zec-direct-market production Edge: v10
+- USDC checkout now requires a server-side purchase guard and canonical owner rebuild before payment.
+- A Base transaction is not reported as "Purchase complete" until the canonical owner projection equals the buyer.
+- Broadcast/confirmed-but-not-yet-indexed purchases are stored in browser recovery state and retried without a second payment.
