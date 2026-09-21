@@ -427,9 +427,18 @@ async function hydrateServerActivity(){
     const rows=Array.isArray(snap?.events)?snap.events:[];
     const clean=[];
     for(const x of rows){
-      const tokenId=Number(x.tokenId);if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply)continue;
-      const type=String(x.type||'').toUpperCase();if(!['SALE','OFFER','SALE_CANCEL','TRANSFER','ATOMIC_SETTLED','NOIR_SETTLED'].includes(type))continue;
-      clean.push(normalizeEvent({protocol:'ZB1',v:1,type,eventId:String(x.eventId||''),tokenId,
+      const asset=String(x.asset||'ZEC_BLOCK').toUpperCase();
+      const type=String(x.type||'').toUpperCase();
+      const isZecs=asset==='ZECS';
+      const tokenId=Number(x.tokenId);
+      if(isZecs){
+        if(!['ZB20_LIST','ZB20_CANCEL','ZB20_SETTLED'].includes(type))continue;
+      }else{
+        if(!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply)continue;
+        if(!['SALE','OFFER','SALE_CANCEL','TRANSFER','ATOMIC_SETTLED','NOIR_SETTLED'].includes(type))continue;
+      }
+      clean.push(normalizeEvent({protocol:isZecs?'ZB20':'ZB1',v:1,type,eventId:String(x.eventId||''),
+        asset:isZecs?'ZECS':'ZEC_BLOCK',amount:isZecs?Number(x.amount||0):null,tokenId:isZecs?null:tokenId,
         price:x.price==null?'':String(x.price),currency:String(x.currency||'ZEC').toUpperCase(),
         sellerCommitment:dbCommitment(x.sellerCommitment),buyerCommitment:dbCommitment(x.buyerCommitment),
         fromCommitment:dbCommitment(x.fromCommitment),toCommitment:dbCommitment(x.toCommitment),
@@ -1345,20 +1354,19 @@ function updateMarketMetrics(){
 }
 function updateUsdcMarketMetrics(){
   const active=canonicalActiveUsdcListings();
-  const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
-  const floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
-  let volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0),salesN=sales.length;
-  const listedN=active.length;
+  let floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
+  let volume=0,salesN=0,listedN=active.length;
   if(S.serverUsdcMetrics){
+    const sf=Number(S.serverUsdcMetrics.floor_base_units||0)/1e6;
     const sv=Number(S.serverUsdcMetrics.volume_base_units||0)/1e6;
-    const authoritative=S.serverIndexerHealth?.base_usdc?.status==='ok'&&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
-    if(authoritative){
-      volume=Number.isFinite(sv)?sv:0;
-      salesN=Number(S.serverUsdcMetrics.sales)||0
-    }else{
-      if(Number.isFinite(sv))volume=Math.max(volume,sv);
-      salesN=Math.max(salesN,Number(S.serverUsdcMetrics.sales)||0)
-    }
+    floor=Number.isFinite(sf)?sf:floor;
+    volume=Number.isFinite(sv)?sv:0;
+    salesN=Number(S.serverUsdcMetrics.sales)||0;
+    listedN=Number(S.serverUsdcMetrics.listed)||0
+  }else{
+    const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
+    volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0);
+    salesN=sales.length
   }
   $('usdcFloorPrice').textContent=floor?`${floor.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`:'—';
   $('usdcTotalVolume').textContent=`${volume.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})} USDC`;
@@ -1366,10 +1374,10 @@ function updateUsdcMarketMetrics(){
   $('usdcListedCount').textContent=listedN.toLocaleString();
 }
 function activityKind(e){
-  if(e.type==='ATOMIC_SETTLED'||e.type==='NOIR_SETTLED')return 'sale';
-  if(e.type==='SALE')return 'list';
+  if(e.type==='ATOMIC_SETTLED'||e.type==='NOIR_SETTLED'||e.type==='ZB20_SETTLED')return 'sale';
+  if(e.type==='SALE'||e.type==='ZB20_LIST')return 'list';
   if(e.type==='OFFER')return 'offer';
-  if(e.type==='SALE_CANCEL')return 'cancel';
+  if(e.type==='SALE_CANCEL'||e.type==='ZB20_CANCEL')return 'cancel';
   if(e.type==='TRANSFER')return 'transfer';
   return null;
 }
@@ -1432,8 +1440,11 @@ function renderActivity(){
     const tr=document.createElement('tr');
     const from=activityFrom(e,kind),to=activityTo(e,kind),price=activityPrice(e,kind);
     const tx=activityTx(e),currency=String(e.currency||'ZEC').toUpperCase();
-    tr.innerHTML=`<td><span class="eventBadge ${kind}">${activityLabel(kind)}</span></td>
-      <td class="item">ZEC BLOCK #${esc(e.tokenId||'—')}</td>
+    const isZecs=String(e.asset||'').toUpperCase()==='ZECS';
+    const item=isZecs?`${Number(e.amount||0).toLocaleString()} ZECS`:`ZEC BLOCK #${e.tokenId||'—'}`;
+    const label=isZecs?`ZECS ${activityLabel(kind)}`:activityLabel(kind);
+    tr.innerHTML=`<td><span class="eventBadge ${kind}">${esc(label)}</span></td>
+      <td class="item">${esc(item)}</td>
       <td class="${price?'activityPrice':''}">${price?`${esc(String(e.price))} ${esc(currency)}`:'—'}</td>
       <td>${from?esc(short(from,7)):'—'}</td>
       <td>${to?esc(short(to,7)):'—'}</td>
@@ -1630,34 +1641,19 @@ function activeUsdcListingsForToken(id){
 }
 function activeUsdcListingForToken(id){return activeUsdcListingsForToken(id)[0]||null}
 function canonicalActiveUsdcListings(){
-  const now=Math.floor(Date.now()/1000),byToken=new Map();
-  const consider=x=>{
-    if(!x)return;
-    const listingId=String(x.listingId||'').toLowerCase();
-    if(S.usdcLiveTombstones.has(listingId))return;
-    if(Number(x.status)!==1||Number(x.expiresAt)<=now)return;
-    if(!x.fastCanonical&&usdcListingOwnershipState(x)===false)return;
-    const id=Number(x.tokenId),old=byToken.get(id);
-    if(!old||usdcListingFreshness(x)>usdcListingFreshness(old)||(usdcListingFreshness(x)===usdcListingFreshness(old)&&String(x.listingId||'')>String(old.listingId||'')))byToken.set(id,x)
-  };
-
-  // Persistent production snapshot is the baseline.
-  if(S.serverUsdcSnapshotAt>0){
-    for(const x of S.serverUsdcCanonical.values())consider(x)
-  }else{
-    for(const x of S.usdcOnchain.values())consider(x)
+  // Browsing is server-canonical only. Raw Base rows, browser cache, fast feeds,
+  // and live overlays may help reconciliation but are never allowed to change
+  // the public order board. This prevents stale/duplicate cards from appearing
+  // and disappearing while the production index catches up.
+  if(S.serverUsdcSnapshotAt<=0)return [];
+  const now=Math.floor(Date.now()/1000),rows=[];
+  for(const x of S.serverUsdcCanonical.values()){
+    if(!x)continue;
+    if(Number(x.status)!==1||Number(x.expiresAt)<=now)continue;
+    if(usdcListingOwnershipState(x)===false)continue;
+    rows.push(x)
   }
-
-  // Direct Base overlay is used only for blocks newer than the production
-  // index cursor. Once the server has scanned a block, its canonical ownership
-  // decision wins on every browser and stale local rows cannot reappear.
-  const caughtUp=S.serverIndexerHealth?.base_usdc?.status==='ok'&&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
-  for(const x of S.usdcLiveOverlay.values()){
-    const b=Number(x?.updatedBlock||x?.createdBlock||0);
-    if(caughtUp&&S.serverUsdcScannedTo>0&&(!b||b<=S.serverUsdcScannedTo))continue;
-    consider(x)
-  }
-  return [...byToken.values()]
+  return rows
 }
 function usdcRelayListings(){
   const m=new Map();
@@ -1850,7 +1846,9 @@ function renderUsdcMarket(){
   const rows=canonicalActiveUsdcListings()
     .sort((a,b)=>{const ap=BigInt(a.priceUSDC||0),bp=BigInt(b.priceUSDC||0);if(ap<bp)return -1;if(ap>bp)return 1;return usdcListingFreshness(b)-usdcListingFreshness(a)});
   if(!rows.length){
-    g.innerHTML='<div class="empty" style="grid-column:1/-1">No active Base USDC listings in the production index yet.</div>';
+    g.innerHTML=S.serverUsdcSnapshotAt<=0
+      ?'<div class="empty" style="grid-column:1/-1">Loading canonical Base USDC listings…</div>'
+      :'<div class="empty" style="grid-column:1/-1">No active Base USDC listings in the production index.</div>';
     return
   }
   for(const l of rows){
