@@ -21,7 +21,7 @@ const INDEX_CFG={
   url:'https://tvwvenyomlwvjtwxasca.supabase.co',
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcScannedTo:0,serverIndexing:false,serverPortfolioLoaded:new Set(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map()};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcScannedTo:0,serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -291,6 +291,11 @@ async function hydrateServerPortfolio(owner=S.ownerCommitment){
   try{
     const snap=await indexRpc('zecblocks_portfolio_snapshot',{p_owner_commitment:owner});
     const rows=Array.isArray(snap?.tokens)?snap.tokens:[],ids=new Set(rows.map(x=>Number(x.token_id)));
+    // A successful server snapshot is the canonical portfolio checkpoint for
+    // this connected owner. Keep it separate from wallet/relay recovery so a
+    // later local-history refresh can never wipe or resurrect portfolio cards.
+    S.serverPortfolioOwner=owner;
+    S.serverPortfolioTokens.clear();
     for(const [id,e] of [...S.walletRecoveredClaims.entries()]){
       if(e?.source==='supabase-index'&&!ids.has(Number(id))){S.walletRecoveredClaims.delete(id);if(e.eventId)S.walletRecovered.delete(e.eventId)}
     }
@@ -301,7 +306,9 @@ async function hydrateServerPortfolio(owner=S.ownerCommitment){
         blockHeight:Number(x.owner_block_height||x.last_zcash_height)||null,txIndex:Number(x.owner_tx_index)||null,
         timestamp:Number(x.owner_event_timestamp)||Math.floor(new Date(x.updated_at||Date.now()).getTime()/1000),source:'supabase-index',
         serverLastEventType:String(x.owner_source||x.last_event_type||'claim'),serverVerifiedLevel:String(x.owner_verified_level||'provisional')});
-      const k=eventKey(e)||e.eventId;S.walletRecovered.set(k,e);S.walletRecoveredClaims.set(id,e)
+      const k=eventKey(e)||e.eventId;
+      S.serverPortfolioTokens.set(id,e);
+      S.walletRecovered.set(k,e);S.walletRecoveredClaims.set(id,e)
     }
     S.serverPortfolioLoaded.add(owner);rebuildState();renderPortfolio();updateWalletUI();
     return rows.length
@@ -969,7 +976,28 @@ function tokenIsAtomicLocked(id){return !!activeAtomicLockForToken(id)}
 
 function ownedTokens(){
   if(!S.ownerCommitment)return[];
-  const mine=String(S.ownerCommitment).toLowerCase(),ids=new Set();
+  const mine=String(S.ownerCommitment).toLowerCase();
+
+  // Once the canonical portfolio RPC has loaded for this wallet, render exactly
+  // that ownership set. Local wallet history and relay discovery remain recovery
+  // inputs, but they may not override a successful canonical server snapshot.
+  if(S.serverPortfolioOwner===mine&&S.serverPortfolioLoaded.has(mine)){
+    const out=[];
+    for(const [id,checkpoint] of S.serverPortfolioTokens.entries()){
+      const cached=S.portfolioSourceCache.get(Number(id));
+      out.push({
+        ...checkpoint,
+        tokenId:Number(id),
+        sourceHeight:checkpoint?.sourceHeight||cached?.sourceHeight||(S.genesisHeight?S.genesisHeight-Number(id):null),
+        sourceHash:checkpoint?.sourceHash||cached?.sourceHash||'',
+        txid:checkpoint?.txid||'',
+        acquiredViaSale:String(checkpoint?.serverLastEventType||'').toLowerCase()!=='claim'
+      })
+    }
+    return out.sort((a,b)=>a.tokenId-b.tokenId)
+  }
+
+  const ids=new Set();
   for(const id of S.claims.keys())ids.add(Number(id));
   for(const id of S.walletRecoveredClaims.keys())ids.add(Number(id));
   for(const s of S.verifiedAtomic.values())if(Number.isInteger(Number(s.tokenId)))ids.add(Number(s.tokenId));
@@ -2525,8 +2553,13 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   S.balance=await rpc('zcash_getBalance');
   const r=await loadWalletHistory();
   await fetchRelay();
-  await reconcileAtomicState();rebuildState();updateWalletUI();renderPortfolio();renderAtomicDesk();
-  toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
+  await reconcileAtomicState();rebuildState();
+  // Finish on the canonical server snapshot so wallet-history/relay ordering
+  // cannot leave a seller with an empty local portfolio after one sale.
+  await hydrateServerPortfolio(S.ownerCommitment);
+  updateWalletUI();renderPortfolio();renderAtomicDesk();
+  const canonicalOwned=ownedTokens().length;
+  toast(`Portfolio synced · ${canonicalOwned} canonical ZEC BLOCK${canonicalOwned===1?'':'S'} owned.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
 $('submitTransferBtn').onclick=async()=>{try{const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');if(currentOwner(tokenId)!==S.ownerCommitment)throw new Error('This wallet is not the current owner in the discovery state.');if(tokenIsAtomicLocked(tokenId))throw new Error('This NFT has a chain-verified atomic lock. Direct transfer is invalid under ZB-1 v2 until the lock settles or expires.');const msg=`ZB1:TRANSFER:v1|G=${CFG.genesisTxid}|T=${tokenId}|F=${S.ownerCommitment}|O=${to}`;const sig=await signDerived(msg);const memo=`ZB1|T|1|I=${tokenId}|O=${to}|K=${sigPub(sig)}|S=${sigVal(sig)}`;if(enc.encode(memo).length>512)throw new Error('Transfer memo exceeds 512 bytes.');const txid=await rpc('zcash_sendTransaction',[{to:CFG.mailbox,amount:'0.00000001',memo,fundingSource:'shielded'}]);const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});await publishRelay(e);modal('transferModal',false);$('recipientCommit').value='';toast('Transfer broadcast: '+txid,8000);await fetchRelay()}catch(e){toast(e.message||String(e),8000)}};
 async function refreshAll(){await hydrateServerUsdc();await hydrateServerZecMetrics();if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment);await hydrateServerClaimStats();kickServerRelayIndexer();kickServerUsdcIndexer();await fetchRelay();await reconcileAtomicState();rebuildState();await reconcileUsdcMarket();rebuildState();renderMarket();renderUsdcMarket();renderPortfolio();renderAtomicDesk();renderActivity();updateMarketMetrics()}
