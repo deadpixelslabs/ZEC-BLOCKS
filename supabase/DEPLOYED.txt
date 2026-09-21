@@ -48,3 +48,19 @@ ZECS / ZB-20 Base USDC Market V2:
 - Market indexer scheduled every minute.
 - Verifier signing requires Supabase secret ZECS_MARKET_VERIFIER_PRIVATE_KEY.
 - Never commit or expose the verifier private key.
+
+
+Single-rail NFT marketplace lock (V12.7.3):
+- Rule: one ZEC BLOCK may be publicly active on only one payment rail at a time: ZEC or Base USDC.
+- Table: zecblocks_cross_rail_listing_guards
+- RPC: zecblocks_usdc_listing_guard_acquire(integer,text)
+- RPC: zecblocks_usdc_listing_guard_release(integer,uuid)
+- RPC: zecblocks_create_zec_listing_locked(...)
+- USDC listing creation uses a 5-minute server lock before Base transaction submission.
+- ZEC listing creation uses the same PostgreSQL advisory-lock namespace, so two-tab ZEC/USDC listing races cannot both succeed through the website.
+- Canonical USDC board hides any token with an active direct-ZEC listing.
+- Canonical ZEC snapshot hides legacy/non-direct ZEC listings when a verified USDC listing is the active rail.
+- Raw historical rows are retained for audit; public inventory is resolved canonically.
+- zecblocks-index-usdc production Edge: v13
+- zecblocks-usdc-buy-preflight production Edge: v5
+- zecblocks-zec-direct-market production Edge: v5
