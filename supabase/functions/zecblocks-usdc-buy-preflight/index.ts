@@ -39,6 +39,9 @@ async function rpc(name:string,args:any){
   if(error)throw error;
   return data;
 }
+async function rebuildCanonicalOwner(tokenId:number){
+  await rpc("zecblocks_rebuild_ownership_tokens",{p_token_ids:[tokenId]});
+}
 
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});
@@ -55,6 +58,7 @@ Deno.serve(async(req:Request)=>{
       const seller=commitment(b.sellerCommitment);
       if(!/^[0-9a-f]{64}$/.test(seller))throw new Error("INVALID_SELLER_COMMITMENT");
       const sync=await forceBaseCatchup();
+      await rebuildCanonicalOwner(tokenId);
       const guard=await rpc("zecblocks_usdc_listing_guard_acquire",{
         p_token_id:tokenId,
         p_seller_commitment:seller
@@ -81,6 +85,7 @@ Deno.serve(async(req:Request)=>{
       if(!/^[0-9a-f]{64}$/.test(buyer))throw new Error("INVALID_BUYER_COMMITMENT");
 
       const sync=await forceBaseCatchup();
+      await rebuildCanonicalOwner(tokenId);
       const {data:directListing,error:dle}=await supabase
         .from("zecblocks_zec_listings")
         .select("listing_id")
@@ -113,6 +118,7 @@ Deno.serve(async(req:Request)=>{
       const guardToken=String(b.guardToken||"");
       if(!/^[0-9a-f-]{36}$/i.test(guardToken))throw new Error("INVALID_GUARD_TOKEN");
       const sync=await forceBaseCatchup();
+      await rebuildCanonicalOwner(tokenId);
       const guard=await rpc("zecblocks_usdc_buy_guard_validate",{
         p_token_id:tokenId,
         p_guard_token:guardToken
