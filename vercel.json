@@ -32,5 +32,15 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/index-api/rest/v1/:path*",
+      "destination": "https://tvwvenyomlwvjtwxasca.supabase.co/rest/v1/:path*"
+    },
+    {
+      "source": "/index-api/functions/v1/:path*",
+      "destination": "https://tvwvenyomlwvjtwxasca.supabase.co/functions/v1/:path*"
+    }
   ]
 }
