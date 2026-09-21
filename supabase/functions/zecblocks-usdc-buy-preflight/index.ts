@@ -51,6 +51,27 @@ Deno.serve(async(req:Request)=>{
 
     if(!Number.isInteger(tokenId)||tokenId<1||tokenId>5000)throw new Error("INVALID_TOKEN_ID");
 
+    if(action==="listing_acquire"){
+      const seller=commitment(b.sellerCommitment);
+      if(!/^[0-9a-f]{64}$/.test(seller))throw new Error("INVALID_SELLER_COMMITMENT");
+      const sync=await forceBaseCatchup();
+      const guard=await rpc("zecblocks_usdc_listing_guard_acquire",{
+        p_token_id:tokenId,
+        p_seller_commitment:seller
+      });
+      return jres({ok:true,action,sync,guard})
+    }
+
+    if(action==="listing_release"){
+      const guardToken=String(b.guardToken||"");
+      if(!/^[0-9a-f-]{36}$/i.test(guardToken))throw new Error("INVALID_GUARD_TOKEN");
+      const guard=await rpc("zecblocks_usdc_listing_guard_release",{
+        p_token_id:tokenId,
+        p_guard_token:guardToken
+      });
+      return jres({ok:true,action,guard})
+    }
+
     if(action==="acquire"){
       const listingId=clean(b.listingId);
       const seller=commitment(b.sellerCommitment);
@@ -125,7 +146,7 @@ Deno.serve(async(req:Request)=>{
     throw new Error("UNSUPPORTED_ACTION");
   }catch(e){
     const msg=String((e as any)?.message||e);
-    const conflict=/NOT_ACTIVE|NO_LONGER|ALREADY_IN_PROGRESS|ZEC_DIRECT_BUY_IN_PROGRESS|ZEC_DIRECT_LISTING_ACTIVE|NOT_FRESH|NOT_CAUGHT_UP|EXPIRED|CANONICAL_OWNER|SELF_PURCHASE|MISMATCH|NOT_CANONICAL|GUARD/.test(msg);
+    const conflict=/NOT_ACTIVE|NO_LONGER|ALREADY_IN_PROGRESS|ALREADY_LISTED|LISTING_IN_PROGRESS|PURCHASE_IN_PROGRESS|ZEC_DIRECT_BUY_IN_PROGRESS|ZEC_DIRECT_LISTING_ACTIVE|NOT_FRESH|NOT_CAUGHT_UP|EXPIRED|CANONICAL_OWNER|SELF_PURCHASE|MISMATCH|NOT_CANONICAL|GUARD/.test(msg);
     return jres({ok:false,error:msg},conflict?409:400)
   }
 });
