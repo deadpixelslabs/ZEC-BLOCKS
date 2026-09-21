@@ -119,7 +119,10 @@ async function processLog(log:any,ownershipTokens:Set<number>){
       created_block:block,updated_block:block,created_tx_hash:tx,updated_at:new Date().toISOString()
     };
     const {error}=await supabase.from("zecblocks_usdc_listings").upsert(row,{onConflict:"listing_id"});
-    if(error)throw error; return 1;
+    if(error)throw error;
+    await supabase.from("zecblocks_cross_rail_listing_guards").delete()
+      .eq("token_id",Number(a.tokenId)).eq("rail","USDC").eq("seller_commitment",commitment(a.sellerCommitment));
+    return 1;
   }
   if(d.eventName==="ListingCancelled"){
     const {error}=await supabase.from("zecblocks_usdc_listings").update({
