@@ -1493,6 +1493,10 @@ async function cancelUsdcListing(l){
   }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),9000)}
 }
 async function buyUsdcListing(l){
+  let guard=null,guardBroadcast=false,settlementReceipt=null,fresh=null;
+  const guardCall=(action,extra={})=>indexFunction('zecblocks-usdc-buy-preflight',{
+    action,tokenId:Number(fresh?.tokenId||l?.tokenId),guardToken:guard?.guard_token,...extra
+  });
   try{
     if(!usdcConfigured())throw new Error('USDC market contract is not configured.');
     if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first so the purchase can resolve to your ZB-1 identity.');
@@ -1501,11 +1505,31 @@ async function buyUsdcListing(l){
     }
     await ensureBaseNetwork();
     await reconcileUsdcMarket();
-    const fresh=S.usdcOnchain.get(String(l.listingId).toLowerCase());
+    fresh=S.usdcOnchain.get(String(l.listingId).toLowerCase());
     if(!fresh||fresh.status!==1||fresh.expiresAt<=Math.floor(Date.now()/1000))throw new Error('This USDC listing is no longer active.');
     const sellerCommit=String(fresh.sellerCommitment).slice(2).toLowerCase();
     if(effectiveOwner(fresh.tokenId)!==sellerCommit)throw new Error('Seller is no longer the indexed ZB-1 owner. Purchase blocked.');
     if(activeListingForToken(fresh.tokenId)||tokenIsAtomicLocked(fresh.tokenId))throw new Error('A ZEC listing/checkout is active for this NFT. Purchase blocked to prevent cross-rail double sale.');
+
+    // Fail-closed server preflight. This forces the Base indexer to the current
+    // chain tip, re-checks canonical ZB-1 ownership, and atomically reserves
+    // this token so two official buyers cannot race different stale listings.
+    toast('Verifying canonical ownership before payment…',5000);
+    const pre=await indexFunction('zecblocks-usdc-buy-preflight',{
+      action:'acquire',
+      listingId:String(fresh.listingId).toLowerCase(),
+      tokenId:Number(fresh.tokenId),
+      sellerCommitment:sellerCommit,
+      buyerCommitment:S.ownerCommitment
+    });
+    guard=pre?.guard||null;
+    if(!guard?.guard_token)throw new Error('Canonical purchase guard was not issued. Purchase blocked.');
+    if(String(guard.listing_id||'').toLowerCase()!==String(fresh.listingId).toLowerCase()
+      ||Number(guard.token_id)!==Number(fresh.tokenId)
+      ||String(guard.seller_commitment||'').toLowerCase()!==sellerCommit
+      ||String(guard.price_usdc||'')!==String(fresh.priceUSDC)){
+      throw new Error('Canonical listing changed during preflight. Refresh and try again.')
+    }
 
     const market=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,S.evmSigner);
     const usdc=new ethers.Contract(CFG.baseUsdc,BASE_USDC_ABI,S.evmSigner);
@@ -1514,34 +1538,45 @@ async function buyUsdcListing(l){
     const buyerCommit='0x'+S.ownerCommitment;
 
     // Preferred UX: EIP-2612 typed-data permit -> one onchain Buy Now tx.
-    let permitWorked=false,settlementReceipt=null;
+    // Only the permit signature itself may fall back. Canonical validation
+    // errors must never fall through to an allowance-based purchase.
+    let permitSig=null,permitDeadline=null;
     try{
       const nonce=await usdc.nonces(owner);
       const name=await usdc.name();
-      const deadline=BigInt(Math.floor(Date.now()/1000)+20*60);
+      permitDeadline=BigInt(Math.floor(Date.now()/1000)+20*60);
       const domain={name,version:'2',chainId:CFG.baseChainId,verifyingContract:CFG.baseUsdc};
       const types={Permit:[
         {name:'owner',type:'address'},{name:'spender',type:'address'},
         {name:'value',type:'uint256'},{name:'nonce',type:'uint256'},{name:'deadline',type:'uint256'}
       ]};
-      const value={owner,spender:CFG.usdcMarketContract,value:amount,nonce,deadline};
+      const value={owner,spender:CFG.usdcMarketContract,value:amount,nonce,deadline:permitDeadline};
       const signature=await S.evmSigner.signTypedData(domain,types,value);
-      const sig=ethers.Signature.from(signature);
-      const tx=await market.buyNowWithPermit(fresh.listingId,buyerCommit,deadline,sig.v,sig.r,sig.s);
-      toast('USDC Buy Now submitted · waiting for Base confirmation…',7000);
-      settlementReceipt=await tx.wait();permitWorked=true
+      permitSig=ethers.Signature.from(signature)
     }catch(permitErr){
-      console.warn('USDC permit path unavailable, falling back to allowance',permitErr)
+      console.warn('USDC permit signature unavailable, falling back to allowance',permitErr)
     }
 
-    if(!permitWorked){
+    if(permitSig){
+      // Revalidate AFTER the wallet approval, immediately before payment.
+      await guardCall('validate');
+      const tx=await market.buyNowWithPermit(fresh.listingId,buyerCommit,permitDeadline,permitSig.v,permitSig.r,permitSig.s);
+      guardBroadcast=true;
+      await guardCall('broadcast',{txHash:tx.hash}).catch(e=>console.warn('USDC guard broadcast mark',e));
+      toast('USDC Buy Now submitted · waiting for Base confirmation…',7000);
+      settlementReceipt=await tx.wait()
+    }else{
       const allowance=await usdc.allowance(owner,CFG.usdcMarketContract);
       if(allowance<amount){
         const approveTx=await usdc.approve(CFG.usdcMarketContract,amount);
         toast('Approve USDC first · waiting for confirmation…',7000);
         await approveTx.wait()
       }
+      // Approval can take time, so force a second canonical tip-sync here.
+      await guardCall('validate');
       const tx=await market.buyNow(fresh.listingId,buyerCommit);
+      guardBroadcast=true;
+      await guardCall('broadcast',{txHash:tx.hash}).catch(e=>console.warn('USDC guard broadcast mark',e));
       toast('USDC Buy Now submitted · waiting for Base confirmation…',7000);
       settlementReceipt=await tx.wait()
     }
@@ -1575,8 +1610,16 @@ async function buyUsdcListing(l){
     kickServerUsdcIndexer().catch(()=>{});
     await reconcileUsdcMarket();
     rebuildState();renderPortfolio();renderUsdcMarket();
+    if(guard)await guardCall('release').catch(()=>{});
+    guard=null;
     toast(`Purchase complete · ZEC BLOCK #${fresh.tokenId} · ${usdcFmt(amount)} USDC`,9000)
-  }catch(e){toast(e?.shortMessage||e?.reason||e?.message||String(e),10000)}
+  }catch(e){
+    // If no Base buy tx was broadcast, release immediately. If a tx was
+    // broadcast but confirmation became uncertain, keep the server guard
+    // until its TTL so a second buyer cannot race the pending transaction.
+    if(guard&&!guardBroadcast)await guardCall('release').catch(()=>{});
+    toast(e?.shortMessage||e?.reason||e?.message||String(e),10000)
+  }
 }
 
 function renderMarket(){
