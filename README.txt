@@ -1,4 +1,4 @@
-ZEC BLOCKS MARKETPLACE V13.0
+ZEC BLOCKS MARKETPLACE V13.0.1
 
 CURRENT FRONTEND
 Modern charcoal/blue interface, light and dark themes, responsive item grids,

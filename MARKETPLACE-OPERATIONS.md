@@ -6,6 +6,8 @@
 
 NFT inventory uses the existing canonical Supabase RPCs through the same-origin API. The USDC board and statistics update atomically. Invalid/failed responses preserve the last verified snapshot and show a delayed-connection status. Portfolio and ZECS account responses are scoped to the requesting wallet.
 
+Both public ZECS boards read the existing `zecblocks_zb20_market_snapshot` and `zecblocks_zecs_zec_market_snapshot` RPCs. Their existing anonymous EXECUTE grants are preserved. Public order rendering does not wait for the transaction-authorizer edge function or its status response. Signed challenges, reservations and transaction verification still use their original edge-function endpoints.
+
 Polling runs every 20 seconds after the previous job completes, pauses in hidden tabs, and refreshes the active view. Claims refresh once a minute. Manual Refresh updates both rails and activity. Snapshot reads are coalesced and have deadlines. Browsing does not require relay connections or browser `eth_getLogs` scans; existing server workers continue ingestion and settlement.
 
 Grids show 24 NFTs per page. Artwork uses indexed source hashes and the unchanged deterministic algorithm, rendered as cached lazy images. Missing metadata displays a placeholder. Optimized WebP copies preserve the original collection banner and logo.

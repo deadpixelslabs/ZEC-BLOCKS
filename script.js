@@ -26,7 +26,7 @@ const INDEX_CFG={
   url:'/index-api',
   key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2d3ZlbnlvbWx3dmp0d3hhc2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MjIwMTcsImV4cCI6MjEwNDE5ODAxN30.RLGs8yTBd0JyRdHlv63YzLHJ7t8qPNHqZWN3WRu00VY'
 };
-console.info('ZEC BLOCKS MARKETPLACE V13.0 · VERIFIED MARKET DATA');
+console.info('ZEC BLOCKS MARKETPLACE V13.0.1 · VERIFIED MARKET DATA');
 const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverZecOwners:new Map(),serverZecMarketReady:false,serverIndexerHealth:{},serverUsdcScannedTo:0,serverUsdcRequestSeq:0,serverUsdcAppliedSeq:0,serverUsdcGeneratedAt:0,serverUsdcFingerprint:'',serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set(),usdcBuyBusy:new Set(),zecsMarketSnapshot:null,zecsMarketAccount:null,zecsMarketBackend:null,zecsMarketBusy:false,zecsZecSnapshot:null,zecDirectBusy:false};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -1914,7 +1914,7 @@ async function upgradeZecListing(l){
   }catch(e){toast(e?.message||String(e),10000)}
 }
 async function loadZecsZecMarketState(){
-  try{const x=await zecDirectApi('snapshot',{});if(!MarketRuntime.validSnapshot(x.snapshot,['orders']))throw new Error('Incomplete ZECS / ZEC snapshot');S.zecsZecSnapshot=x.snapshot;markFeed('zecs-zec',true);renderZecsZecMarket();updateZecsMarketUI();return x}catch(e){markFeed('zecs-zec',false);console.warn('ZECS/ZEC market',e);return null}
+  try{const snapshot=await indexRpc('zecblocks_zecs_zec_market_snapshot',{});if(!MarketRuntime.validSnapshot(snapshot,['orders']))throw new Error('Incomplete ZECS / ZEC snapshot');S.zecsZecSnapshot=snapshot;markFeed('zecs-zec',true);renderZecsZecMarket();updateZecsMarketUI();return {ok:true,snapshot}}catch(e){markFeed('zecs-zec',false);console.warn('ZECS/ZEC market',e);return null}
 }
 function renderZecsZecMarket(){
   const s=S.zecsZecSnapshot||{},rows=Array.isArray(s.orders)?s.orders:[],now=Math.floor(Date.now()/1000),valid=rows.filter(o=>Number(o.amount_zecs)>0&&Number(o.expires_at)>now);
@@ -1966,10 +1966,12 @@ function zecsBytes32(v){const x=String(v||'').replace(/^0x/,'').toLowerCase();if
 async function loadZecsMarketState({sync=false,account=false}={}){
   const owner=S.ownerCommitment,epoch=S.walletEpoch||0;
   try{
-    const out=await zecsMarketApi(sync?'sync':'snapshot',{});
+    const out=sync?await zecsMarketApi('sync',{}):{ok:true,snapshot:await indexRpc('zecblocks_zb20_market_snapshot',{})};
     if(!MarketRuntime.validSnapshot(out.snapshot,['orders']))throw new Error('Incomplete ZECS market snapshot');
     S.zecsMarketSnapshot=out.snapshot||S.zecsMarketSnapshot||{};
-    if(!S.zecsMarketBackend||sync){try{S.zecsMarketBackend=await zecsMarketApi('status',{})}catch(e){console.warn('ZECS market status',e)}}
+    markFeed('zecs',true);renderZecsMarket();updateZecsMarketUI();
+    // Public orders must not wait for a cold transaction-authorizer edge function.
+    if(!S.zecsMarketBackend||sync)zecsMarketApi('status',{}).then(value=>{S.zecsMarketBackend=value;updateZecsMarketUI()}).catch(e=>console.warn('ZECS market status',e));
     if(account&&owner){try{const a=await zecsMarketApi('account',{ownerCommitment:owner});if(owner===S.ownerCommitment&&epoch===(S.walletEpoch||0)&&a.account)S.zecsMarketAccount=a.account}catch(e){console.warn('ZECS market account',e)}}
     else if(!S.ownerCommitment)S.zecsMarketAccount=null;
     markFeed('zecs',true);renderZecsMarket();updateZecsMarketUI();return out

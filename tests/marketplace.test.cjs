@@ -24,6 +24,8 @@ async function pageFixture(){
     else if(u.pathname.includes('zecblocks_zec_market_metrics'))data={sales:3,volume_base_units:'1100000',generated_at:now()};
     else if(u.pathname.includes('zecblocks_activity_snapshot'))data={events:[],generated_at:now()};
     else if(u.pathname.includes('zecblocks_portfolio_snapshot'))data={tokens:[],active_listings:[],owned_count:0,generated_at:now()};
+    else if(u.pathname.includes('zecblocks_zb20_market_snapshot'))data={orders:[{order_id:'0x'+'9'.repeat(64),amount_zecs:210,price_usdc:1000000,expires_at:now()+86400,seller_commitment:other,seller_evm:evm}],sales:1,volume_usdc_base_units:500000,generated_at:now()};
+    else if(u.pathname.includes('zecblocks_zecs_zec_market_snapshot'))data={orders:[{order_id:'zecs-zec:fixture',amount_zecs:210,price_zat:1000000,expires_at:now()+86400,seller_commitment:other}],sales:0,volume_zat:0,generated_at:now()};
     else if(u.pathname.includes('/zecblocks_tokens')){const ids=(u.searchParams.get('token_id')||'').match(/\d+/g)||[];data=ids.map(id=>({token_id:Number(id),source_hash:Number(id).toString(16).padStart(64,'f'),source_height:3000000+Number(id),owner_commitment:other,owner_verified_level:'full'}))}
     else if(u.pathname.includes('/functions/'))data=body.action==='account'?{ok:true,account:{balance:210}}:body.action==='status'?{ok:true,signer_configured:true,indexer:{status:'ok',details:{caught_up:true}}}:{ok:true,snapshot:{orders:[],sales:1,volume_usdc_base_units:500000,volume_zat:0}};
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
@@ -157,4 +159,17 @@ test('USDC NFT checkout completes only after receipt and canonical buyer ownersh
 });
 test('an ambiguous USDC buy never falls back to a second allowance payment',async()=>{
   const {page}=await pageFixture();try{const result=await simulatedBaseBuy(page,true);assert.equal(result.payments,1);assert.equal(result.allowanceBuys,0);assert.equal(result.pending.length,1);assert.equal(result.pending[0].owner,owner);assert.equal(result.pending[0].txHash,undefined)}finally{await page.close()}
+});
+
+test('both ZECS order boards load from public RPCs while edge functions are unavailable',async()=>{
+  const {page}=await pageFixture();try{
+    await page.route('**/functions/v1/**',r=>r.fulfill({status:503,contentType:'application/json',body:'{"error":"Authorizer warming up"}'}));
+    await page.getByRole('button',{name:'Browse ZECS orders',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelectorAll('#zecsMarketGrid .zecsOrder').length===1);
+    assert.match(await page.locator('#zecsMarketGrid').innerText(),/210 ZECS/);
+    await page.getByRole('button',{name:'ZEC on Zcash 0% marketplace fee',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelectorAll('#zecsZecMarketGrid .zecsOrder').length===1);
+    assert.match(await page.locator('#zecsZecMarketGrid').innerText(),/0.01 ZEC/);
+    assert.match(await page.locator('#marketHealth').innerText(),/Live market data/);
+  }finally{await page.close()}
 });
