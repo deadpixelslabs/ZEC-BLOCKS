@@ -43,11 +43,21 @@ Each valid mint creates exactly 210 ZECS, subject to:
 
 Signature, holder-proof, indexing, and anti-duplicate verification data are maintained separately from the canonical mint memo.
 
+### Mint registration identity — v1
+
+After the Zcash mint transaction is broadcast, the minter signs this external registration message with the same Noir Wallet derived Zcash identity:
+
+`ZB20:MINT_ANCHOR:v1|T=ZECS|X=<mint_txid>|M={"p":"zb-20","op":"mint","tick":"ZECS","amt":"210"}`
+
+The registration signature is **not** added to the Zcash memo. The indexer derives the owner commitment from the signing public key, checks that commitment against current fully verified ZB-1 ownership, rejects duplicate TXIDs, and only credits supply after the Zcash anchor transaction is mined after the canonical deployment.
+
+One canonical mint event always creates exactly **210 ZECS**. There is no batch amount or `amt=2100` shortcut.
+
 ## Canonical ZECS deployment TXID
 
 `5bde45c224ae58a41bdd72ab0bfdfe36a23a4d3aa5335381842e19fdac02e5ed`
 
-This TXID is locked as the one and only canonical ZECS deployment transaction. Its current protocol state is pending Zcash confirmation. No later deploy transaction may replace it.
+This TXID is locked as the one and only canonical ZECS deployment transaction. It is confirmed on Zcash at block height **3,490,444**. No later deploy transaction may replace it.
 
 ## Canonical deployment identity
 
