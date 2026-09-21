@@ -514,7 +514,7 @@ async function indexFunction(name,body={}){
 }
 async function indexUsdcReceipt(txHash,intent=null){
   let last=null;
-  for(const delay of [0,700,1600,3200,5200]){
+  for(const delay of [0,500,1200]){
     if(delay)await new Promise(r=>setTimeout(r,delay));
     try{
       const body={tx_hash:String(txHash||'').toLowerCase()};
@@ -549,23 +549,20 @@ async function finalizeUsdcCanonicalOwnership(entry,{quiet=false}={}){
   const txHash=String(entry?.txHash||'').toLowerCase(),tokenId=Number(entry?.tokenId),buyer=dbCommitment(entry?.buyerCommitment);
   if(!/^0x[0-9a-f]{64}$/.test(txHash)||!Number.isInteger(tokenId)||tokenId<1||tokenId>CFG.supply||!buyer)return false;
   let last=null;
-  for(const delay of [0,1000,2200,4500]){
-    if(delay)await new Promise(r=>setTimeout(r,delay));
-    try{
-      const idx=await indexUsdcReceipt(txHash);
-      const row=(Array.isArray(idx?.ownership)?idx.ownership:[]).find(x=>Number(x.token_id)===tokenId);
-      const canonical=dbCommitment(row?.owner_commitment);
-      if(canonical===buyer&&String(row?.owner_verified_level||'')==='full'){
-        dropUsdcPurchaseRecovery(txHash);
-        if(S.ownerCommitment===buyer)await hydrateServerPortfolio(buyer).catch(()=>{});
-        await hydrateServerUsdc().catch(()=>{});
-        rebuildState();renderPortfolio();renderUsdcMarket();updateUsdcMarketMetrics();
-        if(!quiet)toast(`Purchase complete · ZEC BLOCK #${tokenId} is now in the canonical buyer portfolio.`,9000);
-        return true
-      }
-      last=new Error('Canonical ownership is still finalizing.')
-    }catch(e){last=e}
-  }
+  try{
+    const idx=await indexUsdcReceipt(txHash);
+    const row=(Array.isArray(idx?.ownership)?idx.ownership:[]).find(x=>Number(x.token_id)===tokenId);
+    const canonical=dbCommitment(row?.owner_commitment);
+    if(canonical===buyer&&String(row?.owner_verified_level||'')==='full'){
+      dropUsdcPurchaseRecovery(txHash);
+      if(S.ownerCommitment===buyer)await hydrateServerPortfolio(buyer).catch(()=>{});
+      await hydrateServerUsdc().catch(()=>{});
+      rebuildState();renderPortfolio();renderUsdcMarket();updateUsdcMarketMetrics();
+      if(!quiet)toast(`Purchase complete · ZEC BLOCK #${tokenId} is now in the canonical buyer portfolio.`,9000);
+      return true
+    }
+    last=new Error('Canonical ownership is still finalizing.')
+  }catch(e){last=e}
   if(!quiet)toast('Base payment is confirmed, but canonical ownership is still finalizing. Do not buy this NFT again; recovery is automatic.',12000);
   console.warn('USDC purchase ownership finalization pending',entry,last);
   return false
@@ -2113,8 +2110,9 @@ const DIRECT_ZEC_RECOVERY_KEY='zecblocks_direct_zec_recovery_v1';
 async function zecDirectApi(action,body={}){return indexFunction('zecblocks-zec-direct-market',{action,...body})}
 function zcashTxidFromResult(v){
   const raw=typeof v==='string'?v:
-    v?.txid??v?.txId??v?.transactionId??v?.transaction_id??v?.hash??v?.id??
-    v?.result?.txid??v?.result?.txId??v?.data?.txid??v?.data?.txId??'';
+    v?.txid??v?.txId??v?.tx_hash??v?.transactionId??v?.transaction_id??v?.transactionHash??v?.transaction_hash??v?.hash??v?.id??
+    (typeof v?.result==='string'?v.result:null)??v?.result?.txid??v?.result?.txId??v?.result?.transactionHash??
+    (typeof v?.data==='string'?v.data:null)??v?.data?.txid??v?.data?.txId??v?.data?.transactionHash??'';
   return String(raw||'').replace(/^0x/,'').trim().toLowerCase()
 }
 async function zcashTxidOrHistory(raw,{memo='',label='Zcash transaction'}={}){
@@ -2902,7 +2900,7 @@ async function cancelUsdcListing(l){
 async function buyUsdcListing(l){
   const tokenId=Number(l?.tokenId);
   if(S.usdcBuyBusy.has(tokenId))return toast(`Purchase for ZEC BLOCK #${tokenId} is already in progress.`,7000);
-  let guardToken='',txHash='',broadcasted=false;
+  let guardToken='',txHash='',broadcasted=false,walletBuyPromptStarted=false;
   S.usdcBuyBusy.add(tokenId);
   try{
     if(!usdcConfigured())throw new Error('USDC market contract is not configured.');
@@ -2912,7 +2910,6 @@ async function buyUsdcListing(l){
 
     // Refresh both chain inventory and canonical ownership immediately before taking money.
     await hydrateServerUsdc();
-    await reconcileUsdcMarket();
     const fresh=S.usdcOnchain.get(String(l.listingId).toLowerCase());
     if(!fresh||fresh.status!==1||fresh.expiresAt<=Math.floor(Date.now()/1000))throw new Error('This USDC listing is no longer active.');
 
@@ -2958,6 +2955,7 @@ async function buyUsdcListing(l){
     let tx;
     if(permit){
       await usdcListingRailGuard('validate',fresh.tokenId,{guardToken});
+      walletBuyPromptStarted=true;
       tx=await market.buyNowWithPermit(fresh.listingId,buyerCommit,permit.deadline,permit.v,permit.r,permit.s)
     }else{
       const allowance=await usdc.allowance(owner,CFG.usdcMarketContract);
@@ -2968,6 +2966,7 @@ async function buyUsdcListing(l){
       }
       // Approval may take long enough for the guard to expire. Revalidate owner/listing now.
       await usdcListingRailGuard('validate',fresh.tokenId,{guardToken});
+      walletBuyPromptStarted=true;
       tx=await market.buyNow(fresh.listingId,buyerCommit)
     }
 
@@ -3010,11 +3009,17 @@ async function buyUsdcListing(l){
       saveUsdcPurchaseRecovery({txHash,listingId:soldId,tokenId:fresh.tokenId,buyerCommitment:S.ownerCommitment,buyerEvm:S.evmAddress,amountUSDC:String(amount),status:'canonical_pending'})
     }
   }catch(e){
-    if(!broadcasted&&guardToken){
+    const msg=e?.shortMessage||e?.reason||e?.message||String(e);
+    const rejected=/reject|denied|declined|cancel|4001/i.test(String(msg));
+    // Once a buy submission prompt started, an ambiguous provider error must not
+    // reopen inventory immediately. Keep the server guard until it expires unless
+    // the user explicitly rejected the wallet request.
+    if(!broadcasted&&guardToken&&(!walletBuyPromptStarted||rejected)){
       await usdcListingRailGuard('release',tokenId,{guardToken}).catch(()=>{})
     }
-    const msg=e?.shortMessage||e?.reason||e?.message||String(e);
-    if(broadcasted&&txHash){
+    if(!broadcasted&&walletBuyPromptStarted&&!rejected){
+      toast('The Base wallet response is ambiguous. Do not submit another purchase yet; the server purchase guard remains locked while chain state is checked.',12000)
+    }else if(broadcasted&&txHash){
       saveUsdcPurchaseRecovery({txHash,listingId:String(l?.listingId||''),tokenId,buyerCommitment:S.ownerCommitment,buyerEvm:S.evmAddress,status:'recovery'});
       toast(`Purchase TX ${short(txHash,8)} was already submitted. Do not pay again; canonical recovery is automatic.`,12000)
     }else toast(msg,10000)
