@@ -24,7 +24,7 @@ const INDEX_CFG={
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
 console.info('ZEC BLOCKS MAIN V10.14 · DETERMINISTIC MARKETPLACE');
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverUsdcScannedTo:0,serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set(),zecsMarketSnapshot:null,zecsMarketAccount:null,zecsMarketBackend:null,zecsMarketBusy:false};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverUsdcScannedTo:0,serverUsdcRequestSeq:0,serverUsdcAppliedSeq:0,serverUsdcGeneratedAt:0,serverUsdcFingerprint:'',serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set(),zecsMarketSnapshot:null,zecsMarketAccount:null,zecsMarketBackend:null,zecsMarketBusy:false};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -327,7 +327,8 @@ async function hydrateUsdcFastListings(){
     S.usdcFastFingerprint=fingerprint;
 
     if(changed){
-      renderUsdcMarket();updateUsdcMarketMetrics();renderPortfolio();
+      // Reconciliation cache only. Public marketplace rendering is server-canonical.
+      renderPortfolio();
     }
     return nextIds.size
   }catch(e){
@@ -337,8 +338,13 @@ async function hydrateUsdcFastListings(){
 }
 
 async function hydrateServerUsdc(){
+  const requestSeq=++S.serverUsdcRequestSeq;
   try{
     const snap=await indexRpc('zecblocks_market_snapshot',{});
+    const generatedAt=Number(snap?.generated_at||0);
+    // Never let a slower/older response overwrite a newer canonical board.
+    if(requestSeq<S.serverUsdcAppliedSeq)return 0;
+    if(generatedAt&&S.serverUsdcGeneratedAt&&generatedAt<S.serverUsdcGeneratedAt)return 0;
     const rows=Array.isArray(snap?.usdc_listings)?snap.usdc_listings:(Array.isArray(snap?.listings)?snap.listings:[]);
     const duplicateRows=Array.isArray(snap?.usdc_duplicate_listings)?snap.usdc_duplicate_listings:[];
     const hydrationRows=[...rows,...duplicateRows];
@@ -352,9 +358,16 @@ async function hydrateServerUsdc(){
       canonicalServer.set(Number(x.token_id),id)
     }
     const health=snap?.indexer_health||{};
+    const baseCaughtUp=health?.base_usdc?.status==='ok'&&health?.base_usdc?.details?.caught_up===true;
     S.serverIndexerHealth=health;
     S.serverUsdcScannedTo=Number(health?.base_usdc?.details?.scanned_to||health?.base_usdc?.details?.latest||0);
-    const baseCaughtUp=health?.base_usdc?.status==='ok'&&health?.base_usdc?.details?.caught_up===true;
+
+    // Fail closed for public browsing: if the production Base index is behind,
+    // keep the last known-good board instead of replacing it with a partial view.
+    if(!baseCaughtUp){
+      if($('usdcMarketStatus'))$('usdcMarketStatus').textContent='Canonical index syncing · last verified market state is being preserved.';
+      return 0
+    }
     const merged=new Map(S.usdcOnchain),serverIds=new Set();
     S.serverOwners.clear();
     for(const x of hydrationRows){
@@ -384,13 +397,24 @@ async function hydrateServerUsdc(){
       }
     }
     if(rows.length||baseCaughtUp)S.usdcOnchain=merged;
-    S.serverUsdcCanonical.clear();
+    const nextCanonical=new Map();
     for(const [tokenId,listingId] of canonicalServer){
       const row=merged.get(listingId);
-      if(row)S.serverUsdcCanonical.set(Number(tokenId),row)
+      if(row)nextCanonical.set(Number(tokenId),row)
     }
+    const nextMetrics=snap?.usdc_metrics||snap?.metrics||null;
+    const fingerprint=[...nextCanonical.values()]
+      .sort((a,b)=>Number(a.tokenId)-Number(b.tokenId))
+      .map(x=>[x.tokenId,String(x.listingId||''),String(x.priceUSDC||''),Number(x.expiresAt||0)].join(':'))
+      .join('|')+'|'+JSON.stringify(nextMetrics||{});
+
+    // Apply listings + metrics atomically from one caught-up snapshot.
+    S.serverUsdcCanonical=nextCanonical;
+    S.serverUsdcMetrics=nextMetrics;
+    S.serverUsdcFingerprint=fingerprint;
+    S.serverUsdcAppliedSeq=requestSeq;
+    S.serverUsdcGeneratedAt=generatedAt||S.serverUsdcGeneratedAt;
     S.serverUsdcSnapshotAt=Date.now();
-    S.serverUsdcMetrics=snap?.usdc_metrics||snap?.metrics||null;
     const claims=Number(snap?.claims_seen||0);if(Number.isFinite(claims))S.serverClaimCount=Math.max(S.serverClaimCount||0,claims);
 
     // Mirror persistent ZEC listing states into runtime events so sparse relay history
@@ -411,6 +435,7 @@ async function hydrateServerUsdc(){
     S.events=S.events.filter(e=>e.source!=='supabase-index-market');
     for(const e of S.serverMarketEvents.values())S.events.push(e);
     saveUsdcCache();rebuildState();renderUsdcMarket();updateUsdcMarketMetrics();
+    if($('usdcMarketStatus'))$('usdcMarketStatus').textContent='Canonical market · Base index verified and caught up.';
     return rows.length
   }catch(e){console.warn('server market snapshot',e);return 0}
 }
@@ -3033,7 +3058,6 @@ hydrateUsdcFastListings().catch(()=>{});
 hydrateServerActivity().catch(()=>{});
 (async()=>{await hydrateServerClaimStats();
 setInterval(()=>hydrateServerClaimStats().catch(e=>console.warn('claim stats poll',e)),10000);
-setInterval(()=>hydrateUsdcFastListings().catch(e=>console.warn('fast market poll',e)),2500);
 hydrateUsdcFastListings().catch(e=>console.warn('fast market init',e));
 setInterval(()=>syncUsdcLiveChain().catch(e=>console.warn('Base live market poll',e)),6000);
 syncUsdcLiveChain().catch(e=>console.warn('Base live market init',e));
