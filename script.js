@@ -21,7 +21,7 @@ const INDEX_CFG={
   url:'https://tvwvenyomlwvjtwxasca.supabase.co',
   key:'sb_publishable_LoJpIG8DU4ulRJtQOTY8QA_4AWXNeVN'
 };
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcScannedTo:0,serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map()};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcScannedTo:0,serverUsdcSnapshotReady:false,serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverIndexerHealth:{},serverMarketEvents:new Map()};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -226,6 +226,7 @@ async function hydrateServerUsdc(){
     const health=snap?.indexer_health||{};
     S.serverIndexerHealth=health;
     const baseCaughtUp=health?.base_usdc?.status==='ok'&&health?.base_usdc?.details?.caught_up===true;
+    S.serverUsdcSnapshotReady=baseCaughtUp;
     S.serverUsdcScannedTo=Number(health?.base_usdc?.details?.scanned_to||health?.base_usdc?.details?.latest||0);
     // Once caught up, start from a clean server snapshot. Do not merge stale browser rows.
     const merged=baseCaughtUp?new Map():new Map(S.usdcOnchain),serverIds=new Set();
@@ -277,7 +278,7 @@ async function hydrateServerUsdc(){
     for(const e of S.serverMarketEvents.values())S.events.push(e);
     saveUsdcCache();rebuildState();renderUsdcMarket();updateUsdcMarketMetrics();
     return rows.length
-  }catch(e){console.warn('server market snapshot',e);return 0}
+  }catch(e){S.serverUsdcSnapshotReady=false;console.warn('server market snapshot',e);return 0}
 }
 async function kickServerUsdcIndexer(){
   if(S.serverIndexing)return;S.serverIndexing=true;
@@ -1100,7 +1101,7 @@ function updateMarketMetrics(){
 }
 function updateUsdcMarketMetrics(){
   const now=Math.floor(Date.now()/1000);
-  const active=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===1&&Number(x.expiresAt)>now);
+  const active=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===1&&Number(x.expiresAt)>now&&(!S.serverUsdcSnapshotReady||x.serverIndexed===true));
   const sales=[...S.usdcOnchain.values()].filter(x=>Number(x.status)===2&&Number(x.settledAt)>0);
   let floor=active.length?active.reduce((min,x)=>{const p=Number(x.priceUSDC||0)/1e6;return !min||p<min?p:min},0):0;
   let volume=sales.reduce((sum,x)=>sum+(Number(x.priceUSDC||0)/1e6),0),salesN=sales.length,listedN=active.length;
@@ -1280,6 +1281,7 @@ function activeUsdcListingForToken(id){
   const now=Math.floor(Date.now()/1000);
   return [...S.usdcOnchain.values()].find(x=>
     Number(x.tokenId)===Number(id)&&Number(x.status)===1&&Number(x.expiresAt)>now
+    &&(!S.serverUsdcSnapshotReady||x.serverIndexed===true)
   )||null
 }
 function usdcRelayListings(){
@@ -1357,10 +1359,14 @@ async function reconcileUsdcMarket(){
   if(S.usdcReconciling||!usdcConfigured())return;
   S.usdcReconciling=true;
   try{
-    // Production rule: once the server Base index is caught up, it is the authoritative
-    // browsing snapshot. Critical Buy Now still re-reads the contract immediately before payment.
+    // Fail closed for browsing until the canonical server snapshot is caught up.
+    // Raw Base contract listings are payment intents only; they are NOT sufficient
+    // to prove current ZB-1 ownership.
+    if(!S.serverUsdcSnapshotReady)await hydrateServerUsdc();
     renderUsdcMarket();
-    const serverAuthoritative=S.serverIndexerHealth?.base_usdc?.status==='ok'&&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
+    const serverAuthoritative=S.serverUsdcSnapshotReady
+      &&S.serverIndexerHealth?.base_usdc?.status==='ok'
+      &&S.serverIndexerHealth?.base_usdc?.details?.caught_up===true;
     if(serverAuthoritative&&S.serverUsdcMetrics){updateEvmUI();return}
     const rp=await baseReadProvider();
     const c=new ethers.Contract(CFG.usdcMarketContract,USDC_MARKET_ABI,rp);
@@ -1407,11 +1413,18 @@ function renderUsdcMarket(){
     return
   }
   const now=Math.floor(Date.now()/1000);
+  if(!S.serverUsdcSnapshotReady){
+    g.innerHTML='<div class="empty" style="grid-column:1/-1">Canonical marketplace ownership is syncing… listings are hidden until verification completes.</div>';
+    return
+  }
+  // Canonical market rule: only rows emitted by the caught-up server snapshot
+  // may render as purchasable cards. An active Base contract listing whose
+  // seller is no longer the canonical ZB-1 owner stays hidden.
   const rows=[...S.usdcOnchain.values()]
-    .filter(x=>x.status===1&&x.expiresAt>now)
+    .filter(x=>x.status===1&&x.expiresAt>now&&x.serverIndexed===true)
     .sort((a,b)=>{const ap=BigInt(a.priceUSDC||0),bp=BigInt(b.priceUSDC||0);if(ap<bp)return -1;if(ap>bp)return 1;return Number(b.relay?.timestamp||0)-Number(a.relay?.timestamp||0)});
   if(!rows.length){
-    g.innerHTML='<div class="empty" style="grid-column:1/-1">No active Base USDC listings in the production index yet.</div>';
+    g.innerHTML='<div class="empty" style="grid-column:1/-1">No canonical active Base USDC listings in the production index.</div>';
     return
   }
   for(const l of rows){
