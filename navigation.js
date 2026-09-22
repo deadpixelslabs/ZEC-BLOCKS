@@ -1,6 +1,6 @@
 (function(){
   const viewMap={market:'market',activity:'activity',portfolio:'portfolio',protocol:'protocol',mining:'market','usdc-market':'market','zec-market':'market','zecs-market':'market'};
-  function currentView(){const h=(location.hash||'#market').slice(1);return viewMap[h]||'market'}
+  function currentView(){const h=(location.hash||'#market').slice(1);return h.startsWith('portfolio/receive/')?'portfolio':viewMap[h]||'market'}
   function currentAsset(){return location.hash==='#zecs-market'?'zecs':'nft'}
   function currentRail(){return location.hash==='#zec-market'?'zec':'usdc'}
   function showRail(rail){

@@ -173,3 +173,59 @@ test('both ZECS order boards load from public RPCs while edge functions are unav
     assert.match(await page.locator('#marketHealth').innerText(),/Live market data/);
   }finally{await page.close()}
 });
+test('Receive NFT copies the active wallet link and clears it on disconnect',async()=>{
+  const {page,errors}=await pageFixture();try{
+    await page.goto(url+'#portfolio');await page.waitForFunction(()=>typeof S!=='undefined');
+    await page.evaluate(owner=>{S.connection={};S.ownerCommitment=owner;updateWalletUI();Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>window.copiedNftLink=text}})},owner);
+    await page.getByRole('button',{name:'Receive NFT',exact:true}).click();
+    await page.getByRole('button',{name:'Copy receive link',exact:true}).click();
+    assert.match(await page.evaluate(()=>window.copiedNftLink),new RegExp('/'+owner+'$'));
+    await page.evaluate(other=>{S.ownerCommitment=other;updateWalletUI()},other);
+    assert.match(await page.locator('#receiveNftLink').inputValue(),new RegExp('/'+other+'$'));
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.screenshot({path:path.join(root,'test-results/nft-receive-mobile.png')});
+    await page.evaluate(()=>clearNoirSession());assert.equal(await page.locator('#receiveNftLink').inputValue(),'');
+    assert.equal(await page.locator('#copyReceiveLinkBtn').isDisabled(),true);assert.deepEqual(errors,[]);
+  }finally{await page.close()}
+});
+test('opening a receive link selects the portfolio and pre-fills only the recipient',async()=>{
+  const {page,errors}=await pageFixture();try{
+    const link=await page.evaluate(other=>MarketRuntime.receiveLink(other,CFG.genesisTxid),other);
+    await page.goto(url+new URL(link).hash);
+    await page.waitForFunction(()=>document.querySelector('#view-portfolio').classList.contains('active'));
+    assert.equal(await page.locator('#sharedRecipientId').innerText(),other);
+    assert.equal(await page.locator('#transferModal').isVisible(),false);
+    await page.evaluate(owner=>{S.connection={};S.ownerCommitment=owner;updateWalletUI();openNftTransfer(22)},owner);
+    assert.equal(await page.locator('#recipientCommit').inputValue(),link);
+    assert.equal(await page.locator('#recipientNftId').innerText(),other);
+    assert.equal(await page.locator('#submitTransferBtn').isDisabled(),false);
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:path.join(root,'test-results/nft-send-mobile.png')});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.locator('#recipientCommit').fill('u1paymentaddress');assert.equal(await page.locator('#submitTransferBtn').isDisabled(),true);
+    assert.match(await page.locator('#recipientStatus').innerText(),/Receive NFT/);
+    await page.locator('#recipientCommit').fill(owner);assert.equal(await page.locator('#submitTransferBtn').isDisabled(),true);
+    await page.locator('#recipientCommit').fill(link.replace('www.zecblocks.xyz','evil.example'));assert.equal(await page.locator('#submitTransferBtn').isDisabled(),true);
+    assert.deepEqual(errors,[]);
+  }finally{await page.close()}
+});
+test('a receive link resolves to the exact legacy transfer recipient without altering payment routing',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,other})=>{
+      S.connection={};S.ownerCommitment=owner;updateWalletUI();openNftTransfer(22);
+      const payments=[];let signed='',checked=0;
+      $('recipientCommit').value=MarketRuntime.receiveLink(other,CFG.genesisTxid);updateRecipientPreview();
+      usdcListingRailGuard=async()=>{checked++};tokenIsAtomicLocked=()=>false;
+      signDerived=async message=>{signed=message;return {pubkey:'04'+'11'.repeat(64),signature:'1b'+'22'.repeat(64)}};
+      rpc=async(method,params)=>{payments.push({method,...params[0]});return {txid:'f'.repeat(64)}};
+      publishRelay=async()=>({ok:true});fetchRelay=async()=>{};hydrateServerPortfolio=async()=>{};
+      await $('submitTransferBtn').onclick();
+      return {payments,signed,checked,mailbox:CFG.mailbox,message:$('toast').textContent};
+    },{owner,other});
+    assert.equal(result.checked,1);assert.equal(result.payments.length,1);assert.match(result.signed,new RegExp('\\|O='+other+'$'));
+    assert.match(result.payments[0].memo,new RegExp('\\|O='+other+'\\|'));
+    assert.equal(result.payments[0].to,result.mailbox);assert.equal(result.payments[0].amount,'0.00000001');
+    assert.match(result.message,/Transfer broadcast/);
+  }finally{await page.close()}
+});

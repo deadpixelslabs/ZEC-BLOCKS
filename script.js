@@ -974,8 +974,13 @@ function updateWalletUI(){
   const connected=!!S.connection&&!!S.ownerCommitment&&!S.noirLocked;
   $('walletBtn').textContent=S.noirLocked?'Unlock Noir Wallet':connected?short(S.ownerCommitment,6):'Connect Noir Wallet';
   $('ownerCommit').textContent=connected?short(S.ownerCommitment,12):'Connect wallet';
-  $('portfolioCommit').textContent=connected?S.ownerCommitment:'Connect wallet to reveal your commitment.';
+  $('portfolioCommit').textContent=connected?S.ownerCommitment:'Connect wallet to view your NFT receiving ID.';
   $('portfolioShielded').textContent=connected?(S.connection.shielded||'—'):'Private until you connect.';
+  $('receiveNftBtn').disabled=!connected;
+  $('copyReceiveLinkBtn').disabled=!connected;
+  $('receiveNftLink').value=connected?MarketRuntime.receiveLink(S.ownerCommitment,CFG.genesisTxid):'';
+  $('receiveNftOwner').textContent=connected?S.ownerCommitment:'Connect Noir Wallet to create your receive link.';
+  updateRecipientPreview();
   $('zecBalance').textContent=S.balance?.available!=null?String(S.balance.available)+' ZEC':'—';
   $('loadTargetBtn').disabled=!connected;$('startMineBtn').disabled=!connected||S.mining;$('syncPortfolioBtn').disabled=!connected;$('createListingBtn').disabled=!connected||ownedTokens().length===0;
   updateEvmUI();updateZecsMarketUI();
@@ -3596,7 +3601,7 @@ function renderPortfolio(){
     }else{
       zecBtn.textContent='List ZEC';zecBtn.onclick=()=>{openListing();$('listingToken').value=String(c.tokenId)};
       usdcBtn.textContent=S.evmAddress?'List USDC':'Connect Base → List USDC';usdcBtn.onclick=()=>openUsdcListingForToken(c.tokenId);
-      transferBtn.onclick=()=>{S.transferToken=c.tokenId;$('transferToken').value='ZEC BLOCK #'+c.tokenId;modal('transferModal',true)}
+      transferBtn.onclick=()=>openNftTransfer(c.tokenId)
     }
     g.appendChild(card)}
   renderAtomicDesk();
@@ -3611,11 +3616,58 @@ $('syncPortfolioBtn').onclick=async()=>{try{
   rebuildState();updateWalletUI();renderPortfolio();renderAtomicDesk();
   toast(r?.claims?.length?`Recovered ZEC BLOCKS ${r.claims.map(x=>'#'+x).join(', ')}.`:`Portfolio synced · ${r?.seen||0} wallet ZB-1 events found, 0 valid claims reconstructed.`,8000)
 }catch(e){toast(e.message||String(e),7000)}};
+let sharedNftRecipient=null;
+function recipientForTransfer(){
+  const result=MarketRuntime.parseNftRecipient($('recipientCommit').value,CFG.genesisTxid);
+  if(result.owner===S.ownerCommitment)throw new Error('This is your connected wallet. Use the recipient’s receive link or switch to the sending account.');
+  return result;
+}
+function updateRecipientPreview(){
+  const input=$('recipientCommit'),status=$('recipientStatus'),preview=$('recipientPreview');
+  preview.hidden=true;input.removeAttribute('aria-invalid');
+  $('submitTransferBtn').disabled=true;
+  if(!input.value.trim()){status.textContent='Ask the recipient to open Portfolio → Receive NFT and share their link.';status.className='recipientHelp';return}
+  try{
+    const target=recipientForTransfer();$('recipientNftId').textContent=target.owner;preview.hidden=false;
+    status.className='recipientHelp';status.textContent='Check the receiving ID below with the recipient before sending.';
+    $('submitTransferBtn').disabled=!!S.noirLocked;
+  }catch(e){status.textContent=e.message;status.className='recipientHelp red';input.setAttribute('aria-invalid','true')}
+}
+function openNftTransfer(tokenId){
+  if(activeWalletAction)return toast('Complete the current wallet request before selecting another NFT.',6500);
+  S.transferToken=tokenId;$('transferToken').value='ZEC BLOCK #'+tokenId;
+  $('recipientCommit').value=sharedNftRecipient?MarketRuntime.receiveLink(sharedNftRecipient,CFG.genesisTxid):'';
+  updateRecipientPreview();modal('transferModal',true);
+}
+function importNftReceiveLink(){
+  if(!location.hash.startsWith('#portfolio/receive/'))return;
+  const banner=$('sharedRecipientBanner');banner.hidden=false;
+  try{
+    sharedNftRecipient=MarketRuntime.parseNftRecipient('https://www.zecblocks.xyz/'+location.hash,CFG.genesisTxid).owner;
+    $('sharedRecipientStatus').textContent='Receive link opened. Connect the sending wallet, choose one of your NFTs below, then select Transfer.';
+    $('sharedRecipientId').textContent=sharedNftRecipient;
+  }catch(e){sharedNftRecipient=null;$('sharedRecipientStatus').textContent=e.message;$('sharedRecipientId').textContent=''}
+}
+function clearNftRecipient(){
+  sharedNftRecipient=null;$('sharedRecipientBanner').hidden=true;$('recipientCommit').value='';updateRecipientPreview();
+  if(location.hash.startsWith('#portfolio/receive/'))history.replaceState(null,'','#portfolio');
+}
+$('receiveNftBtn').onclick=()=>{updateWalletUI();if(!S.connection||S.noirLocked||!S.ownerCommitment)return;modal('receiveNftModal',true)};
+$('copyReceiveLinkBtn').onclick=async()=>{
+  if(!S.connection||S.noirLocked||!S.ownerCommitment)return;
+  const owner=S.ownerCommitment,field=$('receiveNftLink');field.value=MarketRuntime.receiveLink(owner,CFG.genesisTxid);
+  try{await navigator.clipboard.writeText(field.value);toast('Receive link copied for NFT ID '+short(owner,8)+'.',5000)}
+  catch{field.focus();field.select();toast('Select Copy from your browser menu, or press Ctrl+C to copy the highlighted link.',7000)}
+};
+$('clearNftRecipientBtn').onclick=clearNftRecipient;
+$('recipientCommit').addEventListener('input',updateRecipientPreview);
+window.addEventListener('hashchange',importNftReceiveLink);
+importNftReceiveLink();
 $('submitTransferBtn').onclick=async()=>{
   try{
-    const tokenId=Number(S.transferToken),to=$('recipientCommit').value.trim().toLowerCase();
-    if(!/^[0-9a-f]{64}$/.test(to))throw new Error('Recipient commitment must be exactly 64 hex characters.');
+    const tokenId=Number(S.transferToken),to=recipientForTransfer().owner;
     if(!S.ownerCommitment)throw new Error('Connect Noir Wallet first.');
+    $('recipientCommit').disabled=true;
 
     // Canonical server preflight: a listed, reserved, sold, or stale token can never
     // be transferred from a browser cache view.
@@ -3632,11 +3684,12 @@ $('submitTransferBtn').onclick=async()=>{
     const e=normalizeEvent({protocol:'ZB1',v:1,type:'TRANSFER',txid,memo,tokenId,fromCommitment:S.ownerCommitment,toCommitment:to,pubkey:sigPub(sig),signature:sigVal(sig),timestamp:Math.floor(Date.now()/1000),status:'pending'});
     rememberRuntimeEvent(e);
     await publishRelay(e);
-    modal('transferModal',false);$('recipientCommit').value='';
+    modal('transferModal',false);clearNftRecipient();
     toast('Transfer broadcast · '+short(txid,8)+' · canonical ownership will update after chain verification.',9000);
     await fetchRelay();
     await hydrateServerPortfolio(S.ownerCommitment).catch(()=>{})
   }catch(e){toast(e.message||String(e),10000)}
+  finally{$('recipientCommit').disabled=false;updateRecipientPreview()}
 };
 async function refreshAll(){return refreshMarketplace(true)}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
@@ -3681,7 +3734,7 @@ function markFeed(name,ok,detail=''){
   const old=feedState.get(name)||{};feedState.set(name,{...old,ok,detail,at:ok?Date.now():old.at});renderFeedStatus()
 }
 function activeFeed(){
-  if(location.hash==='#portfolio')return 'portfolio';if(location.hash==='#activity')return 'activity';
+  if(location.hash==='#portfolio'||location.hash.startsWith('#portfolio/receive/'))return 'portfolio';if(location.hash==='#activity')return 'activity';
   if(document.querySelector('[data-market-asset="zecs"].active'))return document.querySelector('[data-zecs-rail="zec"].active')?'zecs-zec':'zecs';
   return document.querySelector('[data-market-rail="zec"].active')?'zec':'usdc'
 }
