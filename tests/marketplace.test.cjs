@@ -344,6 +344,108 @@ test('Base recovery discovers the original nonce and rejects a different replace
   }finally{await page.close()}
 });
 
+test('automatic polling removes an old completed NFT purchase without a wallet hash or nonce',async()=>{
+  const {page,errors}=await pageFixture();try{
+    const hash='0x'+'e'.repeat(64),listingId='0x'+'1'.repeat(64);
+    await page.route('**/rest/v1/zecblocks_usdc_listings?**',route=>{
+      const query=new URL(route.request().url()).searchParams;
+      assert.equal(query.get('listing_id'),'eq.'+listingId);
+      return route.fulfill({json:[{settled_tx_hash:hash,updated_block:142}]});
+    });
+    await page.evaluate(({owner,other,evm,hash,listingId})=>{
+      S.ownerCommitment=owner;S.evmAddress=evm;
+      const row={id:'old-buy',kind:'nft-buy',method:'buyNow',owner,evm,tokenId:22,listingId,target:CFG.usdcMarketContract,data:'0x1234',status:'wallet_request'};
+      baseJournal.put(row);baseJournal.put({...row,id:'other-wallet',owner:other});renderPendingTransactions();
+      baseReadProvider=async()=>({
+        getTransaction:async()=>({hash,from:evm,to:row.target,data:row.data,value:0n}),
+        getTransactionReceipt:async()=>({status:1,hash})
+      });
+      indexUsdcReceipt=async()=>({ownership:[{token_id:22,owner_commitment:owner,owner_verified_level:'full'}]});
+      hydrateServerPortfolio=hydrateServerUsdc=async()=>{};
+      // Browsing can stall without preventing the independently running recovery.
+      const wait=new Promise(resolve=>window.finishPendingRefresh=resolve);
+      refreshMarketplace=()=>wait;
+    },{owner,other,evm,hash,listingId});
+    assert.equal(await page.locator('#pendingTransactions').isVisible(),true);
+    await page.evaluate(()=>{window.pendingPoll=pollMarketplace()});
+    await page.waitForFunction(()=>document.querySelector('#pendingTransactions').hidden);
+    assert.deepEqual(await page.evaluate(()=>baseJournal.read().map(x=>x.id)),['other-wallet']);
+    await page.evaluate(async()=>{window.finishPendingRefresh();await window.pendingPoll});
+    for(const hash of ['#market','#activity','#portfolio']){
+      await page.evaluate(hash=>{location.hash=hash;renderPendingTransactions()},hash);
+      assert.equal(await page.locator('#pendingTransactions').isVisible(),false);
+    }
+    // Reconnection after reload cannot resurrect the completed entry.
+    await page.reload();await page.waitForFunction(()=>typeof baseJournal!=='undefined');
+    await page.evaluate(owner=>{S.ownerCommitment=owner;renderPendingTransactions()},owner);
+    assert.equal(await page.locator('#pendingTransactions').isVisible(),false);assert.deepEqual(errors,[]);
+  }finally{await page.close()}
+});
+
+test('confirmed ZECS recovery hides the pending banner before a slow marketplace refresh finishes',async()=>{
+  const {page}=await pageFixture();try{
+    await page.evaluate(({owner,evm})=>{
+      S.ownerCommitment=owner;S.evmAddress=evm;
+      baseJournal.put({id:'zecs-complete',owner,evm,kind:'zecs',txHash:'0x'+'e'.repeat(64)});renderPendingTransactions();
+      baseReadProvider=async()=>({getTransactionReceipt:async()=>({status:1})});
+      zecsMarketIndexTx=async()=>({ok:true,contract_logs:1});
+      refreshMarketplace=()=>new Promise(resolve=>window.finishPendingRefresh=resolve);
+      window.pendingRecovery=resumeBaseTransactions();
+    },{owner,evm});
+    await page.waitForFunction(()=>typeof window.finishPendingRefresh==='function');
+    assert.equal(await page.locator('#pendingTransactions').isVisible(),false);
+    assert.equal(await page.evaluate(()=>baseJournal.read().length),0);
+    await page.evaluate(async()=>{window.finishPendingRefresh();await window.pendingRecovery});
+  }finally{await page.close()}
+});
+
+test('indexed status alone never clears a pending NFT payment, and canonical confirmation clears it later',async()=>{
+  const {page}=await pageFixture();try{
+    await page.route('**/rest/v1/zecblocks_usdc_listings?**',route=>route.fulfill({json:[{settled_tx_hash:'0x'+'e'.repeat(64)}]}));
+    const result=await page.evaluate(async({owner,evm})=>{
+      S.ownerCommitment=owner;S.evmAddress=evm;
+      const hash='0x'+'e'.repeat(64),row={id:'verify-buy',owner,evm,kind:'nft-buy',tokenId:22,listingId:'0x'+'1'.repeat(64),target:CFG.usdcMarketContract,data:'0x1234'};
+      baseJournal.put(row);renderPendingTransactions();let matching=false,canonical=false,indexCalls=0;
+      baseReadProvider=async()=>({getTransaction:async()=>({hash,from:evm,to:row.target,data:matching?row.data:'0x9999',value:0n}),getTransactionReceipt:async()=>({status:1,hash})});
+      indexUsdcReceipt=async()=>{indexCalls++;return {ownership:canonical?[{token_id:22,owner_commitment:owner,owner_verified_level:'full'}]:[]}};
+      hydrateServerPortfolio=hydrateServerUsdc=refreshMarketplace=async()=>{};
+      await resumeBaseTransactions();const unrelated={visible:!$('pendingTransactions').hidden,hash:baseJournal.read()[0].txHash||'',indexCalls};
+      matching=true;await resumeBaseTransactions();const settling={visible:!$('pendingTransactions').hidden,rows:baseJournal.read().length};
+      canonical=true;await resumeBaseTransactions();return {unrelated,settling,complete:$('pendingTransactions').hidden,rows:baseJournal.read().length};
+    },{owner,evm});
+    assert.deepEqual(result,{unrelated:{visible:true,hash:'',indexCalls:0},settling:{visible:true,rows:1},complete:true,rows:0});
+  }finally{await page.close()}
+});
+
+test('an incomplete receipt remains pending and a confirmed revert clears both recovery journals',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,evm})=>{
+      S.ownerCommitment=owner;S.evmAddress=evm;const txHash='0x'+'e'.repeat(64);let status=null;
+      baseJournal.put({id:'reverted-buy',owner,evm,kind:'nft-buy',tokenId:22,txHash});
+      saveUsdcPurchaseRecovery({txHash,tokenId:22,buyerCommitment:owner});renderPendingTransactions();
+      baseReadProvider=async()=>({getTransactionReceipt:async()=>({status,hash:txHash})});refreshMarketplace=async()=>{};
+      await resumeBaseTransactions();const incomplete=baseJournal.read().length;
+      status=0;await resumeBaseTransactions();return {incomplete,pending:baseJournal.read().length,purchases:loadUsdcPurchaseRecoveries().length,hidden:$('pendingTransactions').hidden};
+    },{owner,evm});assert.deepEqual(result,{incomplete:1,pending:0,purchases:0,hidden:true});
+  }finally{await page.close()}
+});
+
+test('a wallet speed-up resolves the replacement hash without retaining the original pending payment',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,evm})=>{
+      S.ownerCommitment=owner;S.evmAddress=evm;
+      const previous='0x'+'d'.repeat(64),hash='0x'+'e'.repeat(64),row={id:'speed-up',owner,evm,kind:'nft-buy',tokenId:22,target:CFG.usdcMarketContract,data:'0x1234',nonce:7,requestBlock:100,txHash:previous};
+      baseJournal.put(row);saveUsdcPurchaseRecovery({txHash:previous,tokenId:22,buyerCommitment:owner});renderPendingTransactions();
+      baseReadProvider=async()=>({getBlockNumber:async()=>142,getTransactionCount:async(_,block)=>block<142?7:8,
+        send:async()=>({transactions:[{from:evm,to:row.target,input:row.data,value:'0x0',nonce:7,hash}]}),
+        getTransactionReceipt:async tx=>tx===hash?{status:1,hash}:null});
+      indexUsdcReceipt=async tx=>{if(tx!==hash)throw Error('Must verify the replacement');return {ownership:[{token_id:22,owner_commitment:owner,owner_verified_level:'full'}]}};
+      hydrateServerPortfolio=hydrateServerUsdc=refreshMarketplace=async()=>{};
+      await resumeBaseTransactions();return {pending:baseJournal.read().length,purchases:loadUsdcPurchaseRecoveries().length,hidden:$('pendingTransactions').hidden};
+    },{owner,evm});assert.deepEqual(result,{pending:0,purchases:0,hidden:true});
+  }finally{await page.close()}
+});
+
 test('an NFT transfer with a missing wallet response recovers its exact new memo without resending',async()=>{
   const {page}=await pageFixture();try{
     await page.route('**/rest/v1/zecblocks_tokens?**',route=>route.fulfill({json:[{token_id:22,owner_commitment:owner,owner_verified_level:'full'}]}));

@@ -2,6 +2,31 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {singleFlight,requestJSON,journal,validSnapshot}=require('../market-runtime.js');
 const {receiveLink,parseNftRecipient}=require('../market-runtime.js');
+const {matchesBaseRequest,discoverBaseTransaction}=require('../market-runtime.js');
+
+test('completed Base payments without a wallet hash or nonce recover from verified indexed evidence',async()=>{
+  const row={evm:'0x'+'a'.repeat(40),target:'0x'+'b'.repeat(40),data:'0x1234'},hash='0x'+'c'.repeat(64);
+  const tx={hash,from:row.evm,to:row.target,data:row.data,value:0n};
+  const provider={getTransaction:async()=>tx};
+  assert.equal(await discoverBaseTransaction(row,provider,async()=>[hash]),hash);
+  provider.getBlockNumber=async()=>{throw Error('historical RPC unavailable')};
+  assert.equal(await discoverBaseTransaction({...row,nonce:7,requestBlock:100},provider,async()=>[hash]),hash);
+  for(const change of [{from:'0x'+'d'.repeat(40)},{to:'0x'+'e'.repeat(40)},{data:'0x5678'},{value:1n},{value:undefined}]){
+    provider.getTransaction=async()=>({...tx,...change});
+    assert.equal(await discoverBaseTransaction(row,provider,async()=>[hash]),'');
+  }
+  assert.equal(matchesBaseRequest(row,null),false);
+});
+
+test('Base discovery retains unknown requests and rejects malformed or unrelated index hints',async()=>{
+  const row={evm:'0x'+'a'.repeat(40),target:'0x'+'b'.repeat(40),data:'0x1234'},hash='0x'+'c'.repeat(64);
+  let reads=0;const provider={getTransaction:async()=>{reads++;return null}};
+  assert.equal(await discoverBaseTransaction(row,provider,async()=>['invalid',hash,hash]),'');
+  assert.equal(reads,1);
+  provider.getTransaction=async()=>({hash:'0x'+'d'.repeat(64),from:row.evm,to:row.target,data:row.data,value:0n});
+  assert.equal(await discoverBaseTransaction(row,provider,async()=>[hash]),'');
+  await assert.rejects(discoverBaseTransaction(row,provider,async()=>{throw Error('index offline')}),/index offline/);
+});
 
 test('overlapping reads share one job and recover after a rejected job', async()=>{
   let calls=0,release;const work=()=>{calls++;return new Promise(resolve=>release=resolve)};

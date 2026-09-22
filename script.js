@@ -2143,7 +2143,8 @@ function usdcUnits(v){
 }
 async function baseReadProvider(){
   await loadEthers();
-  return new ethers.JsonRpcProvider(CFG.baseRpc,CFG.baseChainId,{staticNetwork:true})
+  const request=new ethers.FetchRequest(CFG.baseRpc);request.timeout=12000;
+  return new ethers.JsonRpcProvider(request,CFG.baseChainId,{staticNetwork:true})
 }
 async function ensureBaseNetwork(){
   if(!window.ethereum)throw new Error('MetaMask/Rabby-compatible EVM wallet not detected.');
@@ -3937,13 +3938,13 @@ function pageRows(name,rows,query,render){
 }
 function pendingBaseRows(){try{return baseJournal.read()}catch(e){console.warn('Transaction recovery storage',e);return []}}
 function pendingListing(id){try{return directRecoveryRead().some(x=>x.listingId===id)||baseJournal.read().some(x=>String(x.listingId).toLowerCase()===String(id).toLowerCase())}catch{return true}}
-function dropBaseTransaction(txHash){for(const row of baseJournal.read())if(String(row.txHash).toLowerCase()===String(txHash).toLowerCase())baseJournal.remove(row.id);renderPendingTransactions()}
+function dropBaseTransaction(txHash){if(!/^0x[0-9a-f]{64}$/i.test(txHash||''))return;for(const row of baseJournal.read())if(String(row.txHash).toLowerCase()===String(txHash).toLowerCase())baseJournal.remove(row.id);renderPendingTransactions()}
 async function sendBaseTransaction(contract,method,args,context){
   assertWalletAction();
   const owner=actionOwner(),evm=String(S.evmAddress||'').toLowerCase(),target=String(await contract.getAddress()).toLowerCase();assertWalletAction();
   const data=contract.interface.encodeFunctionData(method,args),id=[evm,target,context.kind,context.tokenId||context.listingId||method].join(':');
   if(baseJournal.read().some(x=>x.id===id))throw new Error('This transaction is awaiting confirmation. Use Pending transactions to recover it without paying again.');
-  const row={id,owner,evm,target,data,method,...context,status:'wallet_request'};
+  const row={id,owner,evm,target,data,method,...context,status:'wallet_request',startedAt:Date.now()};
   if(S.transactionFlow?.action===activeWalletAction)S.transactionFlow.recoveryKey='base:'+id;
   // Optional discovery data. Missing wallet history must never cause a resend.
   try{const p=S.evmSigner?.provider;if(p){row.requestBlock=await p.getBlockNumber();row.nonce=await p.getTransactionCount(evm,'pending')}}catch{}
@@ -3953,7 +3954,7 @@ async function sendBaseTransaction(contract,method,args,context){
     updateTransactionFlow('wallet','Review this transaction in your Base wallet.');
     assertWalletAction();const tx=await contract[method](...args);
     if(!/^0x[0-9a-f]{64}$/i.test(tx?.hash||''))throw new Error('The wallet did not return a transaction hash. Check Pending transactions before retrying.');
-    baseJournal.put({...row,txHash:tx.hash.toLowerCase(),status:'broadcast'});renderPendingTransactions();updateTransactionFlow('network','Transaction sent. Waiting for Base confirmation…');return tx
+    baseJournal.put({...row,nonce:Number.isSafeInteger(tx.nonce)?tx.nonce:row.nonce,txHash:tx.hash.toLowerCase(),status:'broadcast'});renderPendingTransactions();updateTransactionFlow('network','Transaction sent. Waiting for Base confirmation…');return tx
   }catch(e){
     if(walletRejected(e)){baseJournal.remove(id);renderPendingTransactions();updateTransactionFlow('prepare','Transaction cancelled in your wallet.');throw e}
     // A provider error can happen after submission. Retain the journal and never send again.
@@ -3972,17 +3973,29 @@ async function confirmZecsTransaction(txHash){
   if(result?.ok!==true||Number(result.contract_logs)<1)throw new Error('Base confirmed. ZECS settlement is still being verified; recovery will continue automatically.');
   return result
 }
+async function indexedBaseCandidates(row,provider){
+  const hints=loadUsdcPurchaseRecoveries().filter(x=>String(x.listingId).toLowerCase()===String(row.listingId).toLowerCase()&&dbCommitment(x.buyerCommitment)===row.owner).map(x=>x.txHash);
+  const nft=['nft-buy','nft-list','nft-cancel'].includes(row.kind)&&row.target===CFG.usdcMarketContract.toLowerCase();
+  const zecs=row.kind==='zecs'&&row.target===CFG.zecsMarketContract.toLowerCase();
+  if((!nft&&!zecs)||!/^0x[0-9a-f]{64}$/i.test(row.listingId||''))return hints;
+  const table=nft?'zecblocks_usdc_listings':'zecblocks_zb20_market_orders',key=nft?'listing_id':'order_id';
+  const query=new URLSearchParams({select:nft?'created_tx_hash,settled_tx_hash,updated_block':'created_tx_hash,updated_block',[key]:'eq.'+row.listingId.toLowerCase(),limit:'1'});
+  try{
+    const records=await MarketRuntime.requestJSON(`${INDEX_CFG.url}/rest/v1/${table}?${query}`,{headers:indexHeaders(),cache:'no-store'});
+    if(!Array.isArray(records))throw new Error('Transaction index is temporarily unavailable.');
+    const record=records[0];if(!record)return hints;
+    hints.push(record.settled_tx_hash,record.created_tx_hash);
+    // Cancellations and ZECS settlements retain their event block in the index.
+    // Read only that block, then independently match the full transaction below.
+    if((zecs||row.kind==='nft-cancel')&&Number.isSafeInteger(Number(record.updated_block))&&Number(record.updated_block)>0){
+      const block=Number(record.updated_block),logs=await provider.getLogs({address:row.target,topics:[null,row.listingId.toLowerCase()],fromBlock:block,toBlock:block});
+      for(const log of logs)hints.push(log.transactionHash)
+    }
+  }catch(e){if(!hints.some(x=>/^0x[0-9a-f]{64}$/i.test(x||'')))throw e}
+  return hints
+}
 async function findBaseTransaction(row,provider){
-  if(!Number.isSafeInteger(row.nonce)||!Number.isSafeInteger(row.requestBlock))return '';
-  let low=row.requestBlock,high=await provider.getBlockNumber();
-  if(high<low||await provider.getTransactionCount(row.evm,high)<=row.nonce)return '';
-  // Locate the block which consumed this account nonce, then verify the entire
-  // original request. A replacement to another destination is never accepted.
-  while(low<high){const mid=Math.floor((low+high)/2);if(await provider.getTransactionCount(row.evm,mid)>row.nonce)high=mid;else low=mid+1}
-  const block=await provider.send('eth_getBlockByNumber',['0x'+low.toString(16),true]);
-  const tx=(block?.transactions||[]).find(x=>String(x.from||'').toLowerCase()===row.evm&&Number(x.nonce)===row.nonce);
-  if(!tx||String(tx.to||'').toLowerCase()!==row.target||String(tx.input||tx.data||'').toLowerCase()!==row.data.toLowerCase()||BigInt(tx.value||'0')!==0n)return '';
-  return /^0x[0-9a-f]{64}$/i.test(tx.hash||'')?tx.hash.toLowerCase():'';
+  return MarketRuntime.discoverBaseTransaction(row,provider,()=>indexedBaseCandidates(row,provider))
 }
 async function resumeBaseTransactions(){
   return MarketRuntime.singleFlight('base-recovery',async()=>{
@@ -3991,17 +4004,33 @@ async function resumeBaseTransactions(){
     const provider=await baseReadProvider();let changed=false;
     for(const row of rows){
       try{
-        if(!row.txHash){if(activeWalletAction)continue;const hash=await findBaseTransaction(row,provider);if(!hash)continue;row.txHash=hash;baseJournal.put({...row,status:'broadcast'})}
-        const receipt=await provider.getTransactionReceipt(row.txHash);if(!receipt)continue;
-        if(Number(receipt.status)===0){baseJournal.remove(row.id);dropUsdcPurchaseRecovery(row.txHash);changed=true;continue}
+        if(!row.txHash){
+          if(activeWalletAction)continue;const hash=await findBaseTransaction(row,provider);if(!hash)continue;
+          const current=baseJournal.read().find(x=>x.id===row.id);if(!current)continue;
+          row.txHash=current.txHash||hash;baseJournal.put({...current,txHash:row.txHash,status:'broadcast'});renderPendingTransactions()
+        }
+        let receipt=await provider.getTransactionReceipt(row.txHash);
+        if(!receipt&&!activeWalletAction){
+          // A wallet speed-up replaces the hash while preserving the request.
+          // Recover only an exact match; a cancellation/different call is not a purchase.
+          const hash=await findBaseTransaction(row,provider);
+          if(hash&&hash!==row.txHash){
+            const current=baseJournal.read().find(x=>x.id===row.id);if(!current)continue;
+            const previous=row.txHash;row.txHash=hash;baseJournal.put({...current,txHash:hash,status:'broadcast'});
+            dropUsdcPurchaseRecovery(previous);renderPendingTransactions();receipt=await provider.getTransactionReceipt(hash)
+          }
+        }
+        if(!receipt||receipt.status==null)continue;
+        if(Number(receipt.status)===0){baseJournal.remove(row.id);dropUsdcPurchaseRecovery(row.txHash);renderPendingTransactions();changed=true;continue}
+        if(Number(receipt.status)!==1)continue;
         if(row.kind==='nft-buy'){
           const ready=await finalizeUsdcCanonicalOwnership({txHash:row.txHash,tokenId:row.tokenId,buyerCommitment:row.owner},{quiet:true});if(!ready)continue
         }else if(row.kind==='zecs')await confirmZecsTransaction(row.txHash);
         else if(row.kind!=='approval')await indexUsdcReceipt(row.txHash,row.intent||null);
-        baseJournal.remove(row.id);updateTransactionFlow('done',row.kind==='approval'?'USDC permission confirmed. Return to the item to continue checkout.':'Transaction complete. Your portfolio is updated.','base:'+row.id);changed=true
+        baseJournal.remove(row.id);renderPendingTransactions();updateTransactionFlow('done',row.kind==='approval'?'USDC permission confirmed. Return to the item to continue checkout.':'Transaction complete. Your portfolio is updated.','base:'+row.id);changed=true
       }catch(e){console.warn('Base confirmation pending',row.txHash,e)}
     }
-    if(changed)await refreshMarketplace(true);renderPendingTransactions()
+    renderPendingTransactions();if(changed)await refreshMarketplace(true)
   })
 }
 function renderPendingTransactions(){
@@ -4027,7 +4056,7 @@ function renderPendingTransactions(){
         if(row.network==='Base'){
           if(!/^0x[0-9a-f]{64}$/.test(tx))throw new Error('Enter a valid Base transaction hash.');
           const provider=await baseReadProvider(),existing=await provider.getTransaction(tx);
-          if(!existing||String(existing.from).toLowerCase()!==row.evm||String(existing.to).toLowerCase()!==row.target||String(existing.data).toLowerCase()!==String(row.data).toLowerCase())throw new Error('This transaction does not match the original wallet request.');
+          if(!MarketRuntime.matchesBaseRequest(row,existing))throw new Error('This transaction does not match the original wallet request.');
           baseJournal.put({...row,txHash:tx,status:'broadcast'});await resumeBaseTransactions()
         }else{
           if(!/^[0-9a-f]{64}$/.test(tx))throw new Error('Enter a valid Zcash transaction ID.');
@@ -4055,7 +4084,7 @@ async function refreshMarketplace(force=false){
 async function pollMarketplace(){
   return MarketRuntime.singleFlight('market-poll',async()=>{
     clearTimeout(refreshTimer);
-    try{if(!document.hidden&&navigator.onLine){await refreshMarketplace();await Promise.allSettled([resumeDirectPayments(),resumeUsdcPurchaseRecoveries(),resumeBaseTransactions(),resumeNftTransfers()])}}
+    try{if(!document.hidden&&navigator.onLine){await Promise.allSettled([refreshMarketplace(),resumeDirectPayments(),resumeUsdcPurchaseRecoveries(),resumeBaseTransactions(),resumeNftTransfers()])}}
     finally{if(!document.hidden)refreshTimer=setTimeout(pollMarketplace,20000)}
   })
 }
