@@ -1,0 +1,30 @@
+# Buy and sell
+
+Open the [marketplace](https://www.zecblocks.xyz/#market), connect Noir, choose a listing and select **Buy**. The listing supplies its own identifiers; normal checkout does not require manually typing an NFT ID, listing ID or transaction ID.
+
+| Payment option | Required wallets | Settlement and fee |
+| --- | --- | --- |
+| ZEC on Zcash | Noir | One payment to the seller; 0% protocol trading fee |
+| USDC on Base | Noir identity and a Base wallet | Contract settlement; 3% protocol fee, 97% seller proceeds |
+
+Network fees apply. A Base wallet may request a network switch, permit signature or allowance transaction before the purchase. The interface guides these steps; “Buy” does not remove wallet approval or chain confirmation.
+
+## Buy
+
+Checkout rechecks the listing, current ownership and relevant purchase guard before payment. After approval, the application saves the transaction and checks settlement. An NFT purchase is complete only when canonical ownership resolves to the original buyer, not merely when a payment hash appears.
+
+For an interrupted response, open **Pending transactions** with the original wallet. Recovery tries to identify and verify the existing payment. Ambiguous results remain pending instead of triggering another payment. Manual transaction entry is reserved for advanced recovery when automatic evidence is insufficient.
+
+## Sell
+
+Select an owned NFT in Portfolio, choose **List for ZEC** or **List for USDC**, enter the price and approve the relevant wallet actions. The active flow checks ownership and prevents simultaneous public listings of the same NFT across both payment options. Cancel the current listing before changing payment options or transferring the item.
+
+An item can become unavailable between browsing and checkout. A stale listing, disconnected wallet or delayed indexer must not be displayed as a completed purchase.
+
+## Contracts and trust
+
+The configured Base mainnet NFT marketplace contract is `0x7674a240004fa434bb1082de28e591abb1dc645d`; Base chain ID is `8453`. The configured USDC address is `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. These are source configuration references, not an assertion of an independent contract audit or bytecode verification.
+
+Cross-chain ownership depends on verification and indexing beyond a single payment transaction. Read [architecture](architecture.md), especially the separate ZECS market authorization dependency. “Direct payment” does not mean all protocol settlement is enforced by Zcash consensus.
+
+Sources: [operations and recovery](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/MARKETPLACE-OPERATIONS.md), [NFT contract source](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/contract/ZB1BaseUSDCBuyNow.sol), [ZEC verification](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/supabase/functions/zecblocks-zec-direct-market/index.ts).
