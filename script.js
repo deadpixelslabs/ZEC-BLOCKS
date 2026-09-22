@@ -1717,6 +1717,13 @@ function activityPrice(e,kind){
   if(kind==='sale'||kind==='list'||kind==='offer')return validPrice(e.price);
   return 0;
 }
+// Display privacy only: never put a participant ID into public activity markup.
+function activityParties(e,kind){
+  const hidden='<span class="activityParty" aria-label="Participant ID hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3 4 6v6c0 4 4 7 8 9 4-2 8-5 8-9V6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>Hidden</span></span>';
+  const from=!!activityFrom(e,kind),to=!!activityTo(e,kind);
+  if(!from&&!to)return '—';
+  return `<span class="activityParties">${from?hidden:''}${from&&to?'<span class="activityPartyArrow" aria-hidden="true">→</span>':''}${to?hidden:''}</span>`;
+}
 function activityTx(e){return e.sellerPaymentTxid||e.paymentTxid||e.txid||e.transferTxid||''}
 function activityIdentity(e){
   const kind=activityKind(e),tx=String(activityTx(e)||'').toLowerCase(),cur=String(e.currency||'ZEC').toUpperCase();
@@ -1742,12 +1749,12 @@ function renderActivity(){
   const body=$('activityBody'); if(!body)return;
   body.innerHTML='';
   if(!events.length){
-    body.innerHTML='<tr><td colspan="7" style="padding:34px;text-align:center;color:#666">No matching marketplace activity yet.</td></tr>';
+    body.innerHTML='<tr><td colspan="6" style="padding:34px;text-align:center;color:#666">No matching marketplace activity yet.</td></tr>';
     return;
   }
   for(const {e,kind} of events){
     const tr=document.createElement('tr');
-    const from=activityFrom(e,kind),to=activityTo(e,kind),price=activityPrice(e,kind);
+    const price=activityPrice(e,kind);
     const tx=activityTx(e),currency=String(e.currency||'ZEC').toUpperCase();
     const isZecs=String(e.asset||'').toUpperCase()==='ZECS';
     const item=isZecs?`${Number(e.amount||0).toLocaleString()} ZECS`:`ZEC BLOCK #${e.tokenId||'—'}`;
@@ -1755,8 +1762,7 @@ function renderActivity(){
     tr.innerHTML=`<td><span class="eventBadge ${kind}">${esc(label)}</span></td>
       <td class="item">${esc(item)}</td>
       <td class="${price?'activityPrice':''}">${price?`${esc(String(e.price))} ${esc(currency)}`:'—'}</td>
-      <td>${from?esc(short(from,7)):'—'}</td>
-      <td>${to?esc(short(to,7)):'—'}</td>
+      <td>${activityParties(e,kind)}</td>
       <td>${esc(ago(e.timestamp))}</td>
       <td>${tx?`<span class="txlink" title="${esc(tx)}">${esc(short(tx,7))}</span>`:'—'}</td>`;
     body.appendChild(tr);

@@ -21,6 +21,12 @@ Select an owned NFT in Portfolio, choose **List for ZEC** or **List for USDC**, 
 
 An item can become unavailable between browsing and checkout. A stale listing, disconnected wallet or delayed indexer must not be displayed as a completed purchase.
 
+## Activity and privacy
+
+The public Activity table hides participants' Zcash/ZB-1 owner commitments for both ZEC and USDC events, including ZEC BLOCKS and ZECS trades. Two-party events display **Hidden → Hidden**; listings and cancellations display one hidden participant. No participant commitment is inserted into the table's text, tooltips or HTML attributes.
+
+This reduces casual tracking through the Activity interface. It is not cryptographic shielding: protocol data, API responses and on-chain records can still expose or link identities. NFT IDs, prices, times and transaction references remain visible. Existing published records are not erased. Base USDC settlement remains public, and a shield icon here indicates a hidden participant ID, not proof of a shielded payment.
+
 ## Contracts and trust
 
 The configured Base mainnet NFT marketplace contract is `0x7674a240004fa434bb1082de28e591abb1dc645d`; Base chain ID is `8453`. The configured USDC address is `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. These are source configuration references, not an assertion of an independent contract audit or bytecode verification.

@@ -11,10 +11,10 @@ before(async()=>{
   server=http.createServer((req,res)=>{const file=path.join(root,new URL(req.url,'http://local').pathname==='/'?'index.html':new URL(req.url,'http://local').pathname);if(!file.startsWith(root)){res.writeHead(403);return res.end()}
     fs.readFile(file,(error,data)=>{if(error){res.writeHead(404);return res.end('Not found')}const ext=path.extname(file);res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.css':'text/css','.webp':'image/webp'})[ext]||'application/octet-stream');res.end(data)})
   });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));url='http://127.0.0.1:'+server.address().port;
-  browser=await chromium.launch({headless:true});fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
+  browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||undefined});fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
 });
 after(async()=>{await browser?.close();await new Promise(resolve=>server?.close(resolve))});
-async function pageFixture(){
+async function pageFixture(activityEvents=[]){
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),requests=[],errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
   await page.route('**/index-api/**',async route=>{
@@ -23,7 +23,7 @@ async function pageFixture(){
     else if(u.pathname.includes('zecblocks_claim_stats'))data={claims_seen:3508,generated_at:now()};
     else if(u.pathname.includes('zecblocks_zec_market_states_snapshot'))data={zec_listing_states:[],generated_at:now()};
     else if(u.pathname.includes('zecblocks_zec_market_metrics'))data={sales:3,volume_base_units:'1100000',generated_at:now()};
-    else if(u.pathname.includes('zecblocks_activity_snapshot'))data={events:[],generated_at:now()};
+    else if(u.pathname.includes('zecblocks_activity_snapshot'))data={events:activityEvents,generated_at:now()};
     else if(u.pathname.includes('zecblocks_portfolio_snapshot'))data={tokens:[],active_listings:[],owned_count:0,generated_at:now()};
     else if(u.pathname.includes('zecblocks_zb20_market_snapshot'))data={orders:[{order_id:'0x'+'9'.repeat(64),amount_zecs:210,price_usdc:1000000,expires_at:now()+86400,seller_commitment:other,seller_evm:evm}],sales:1,volume_usdc_base_units:500000,generated_at:now()};
     else if(u.pathname.includes('zecblocks_zecs_zec_market_snapshot'))data={orders:[{order_id:'zecs-zec:fixture',amount_zecs:210,price_zat:1000000,expires_at:now()+86400,seller_commitment:other}],sales:0,volume_zat:0,generated_at:now()};
@@ -45,6 +45,45 @@ test('public browsing paints verified cards without wallet SDK, relays or chain 
     await page.locator('#themeToggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
     await page.screenshot({path:path.join(root,'test-results/desktop-light.png'),fullPage:false});
     await page.reload();await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
+  }finally{await page.close()}
+});
+test('public activity hides ZB-1 participant IDs across assets, currencies, filters and themes',async()=>{
+  const events=[
+        ['NOIR_SETTLED','ZEC','ZEC_BLOCK'],['NOIR_SETTLED','USDC','ZEC_BLOCK'],
+        ['ZB20_SETTLED','ZEC','ZECS'],['ZB20_SETTLED','USDC','ZECS'],
+        ['SALE','USDC','ZEC_BLOCK'],['ZB20_LIST','ZEC','ZECS'],
+        ['OFFER','ZEC','ZEC_BLOCK'],['TRANSFER','ZEC','ZEC_BLOCK'],
+        ['SALE_CANCEL','USDC','ZEC_BLOCK'],['ZB20_CANCEL','ZEC','ZECS']
+      ].map(([type,currency,asset],i)=>({type,currency,asset,tokenId:i+1,amount:210,price:.25,
+        eventId:'privacy-event-'+i,timestamp:now()-i*60,
+        sellerCommitment:owner,buyerCommitment:other,fromCommitment:owner,toCommitment:other,
+        sellerEvm:evm,txid:(i+1).toString(16).padStart(64,'d'),source:'supabase-activity'}));
+  const {page,errors}=await pageFixture(events);try{
+    await page.evaluate(()=>{location.hash='#activity'});
+    await page.locator('#view-activity').waitFor({state:'visible'});
+    await page.waitForFunction(()=>S.serverActivity.length===10);
+    const table=page.locator('.activityTable');
+    const html=await table.evaluate(el=>el.outerHTML);
+    for(const id of [owner,other,evm,owner.slice(0,7),other.slice(0,7)])assert.equal(html.includes(id),false,'participant leaked into public table');
+    assert.doesNotMatch(html,/Shielded|title="[ab]{7}/);
+    assert.equal(await page.locator('#activityBody tr').count(),10);
+    assert.equal(await page.locator('#activityBody tr').first().locator('td').count(),6);
+    assert.equal(await page.locator('#activityBody tr').first().locator('.activityParty').count(),2);
+    assert.equal(await page.locator('#activityBody tr').nth(4).locator('.activityParty').count(),1);
+    assert.match(await table.innerText(),/0.25 ZEC/);assert.match(await table.innerText(),/0.25 USDC/);
+    assert.match(await table.innerText(),/210 ZECS/);
+    await page.locator('.activityWrap').screenshot({path:path.join(root,'test-results/activity-hidden-dark.png')});
+    await page.locator('#themeToggle').click();
+    await page.locator('.activityWrap').screenshot({path:path.join(root,'test-results/activity-hidden-light.png')});
+    await page.locator('#activityFilter').selectOption('sale');
+    assert.equal(await page.locator('#activityBody tr').count(),4);
+    assert.equal(await page.locator('#activityBody .activityParty').count(),8);
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    // Re-rendered and empty feeds retain the same privacy and column layout.
+    await page.evaluate(()=>{renderActivity();S.serverActivity=[];renderActivity()});
+    assert.equal(await page.locator('#activityBody td').getAttribute('colspan'),'6');
+    assert.deepEqual(errors,[]);
   }finally{await page.close()}
 });
 test('USDC search, price sorting and pagination show the expected items',async()=>{
