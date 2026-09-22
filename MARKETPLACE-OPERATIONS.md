@@ -57,4 +57,4 @@ Production smoke checks should read the canonical RPCs, check indexer health and
 
 ## Address directory deployment
 
-Apply `supabase/migrations/20260922130516_verified_nft_address_directory.sql`, then deploy `zecblocks-nft-address` with JWT verification enabled. Include root `address-identity.js` at its relative import path. The API proxy already passes the public anon JWT; proof verification authenticates registrations. Readiness checks must reject unsigned registration and return no binding for an unregistered valid t1 address. No real user registration or mainnet payment is needed for these checks.
+Apply `supabase/migrations/20260922132144_verified_nft_address_directory.sql`, then deploy `zecblocks-nft-address` with JWT verification enabled. Include root `address-identity.js` at its relative import path. The API proxy already passes the public anon JWT; proof verification authenticates registrations. Readiness checks must reject unsigned registration and return no binding for an unregistered valid t1 address. No real user registration or mainnet payment is needed for these checks.
