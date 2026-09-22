@@ -26,5 +26,3 @@ An item can become unavailable between browsing and checkout. A stale listing, d
 The configured Base mainnet NFT marketplace contract is `0x7674a240004fa434bb1082de28e591abb1dc645d`; Base chain ID is `8453`. The configured USDC address is `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. These are source configuration references, not an assertion of an independent contract audit or bytecode verification.
 
 Cross-chain ownership depends on verification and indexing beyond a single payment transaction. Read [architecture](architecture.md), especially the separate ZECS market authorization dependency. “Direct payment” does not mean all protocol settlement is enforced by Zcash consensus.
-
-Sources: [operations and recovery](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/MARKETPLACE-OPERATIONS.md), [NFT contract source](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/contract/ZB1BaseUSDCBuyNow.sol), [ZEC verification](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/supabase/functions/zecblocks-zec-direct-market/index.ts).

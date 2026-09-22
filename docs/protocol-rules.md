@@ -1,6 +1,6 @@
 # Protocol rules
 
-This page summarizes the current collection and points to the implementations. It is not a claim that the separate candidate specification has replaced production behavior.
+This page summarizes the current collection and explains the implementation. It is not a claim that the separate candidate specification has replaced production behavior.
 
 | Rule | Requirement |
 | --- | --- |
@@ -26,7 +26,7 @@ UTF8("ZB1:MINE:v1")
 || nonce_uint64_little_endian
 ```
 
-The transaction and block hashes use their displayed hexadecimal byte order, not a silently reversed representation. Integer widths and exact bytes matter. The digest must satisfy the 26-bit target; use the published implementation and fixtures when building an encoder.
+The transaction and block hashes use their displayed hexadecimal byte order, not a silently reversed representation. Integer widths and exact bytes matter. The digest must satisfy the 26-bit target; see the [code example](reference-implementation.md) when building an encoder.
 
 ## Ordering and conflicts
 
@@ -38,6 +38,4 @@ The active fee behavior is documented separately in [fees](fees.md). Older const
 
 ## Candidate rules
 
-The `protocol/` specification defines candidate CLAIM and TRANSFER formats, full-event commitments and receipt signatures. Those wire-format version identifiers are technical identifiers, not public product release badges. They are **inactive** pending the [activation gates](roadmap.md).
-
-Sources: [mining encoder](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/index.html), [claim verifier](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/supabase/functions/zecblocks-claim-audit/index.ts), [production ownership notes](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/supabase/DEPLOYED.txt), [candidate core](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/protocol/core.mjs).
+The proposed public-evidence specification defines candidate CLAIM and TRANSFER formats, full-event commitments and receipt signatures. Those wire-format version identifiers are technical identifiers, not public product release badges. They are **inactive** pending the [activation gates](roadmap.md).

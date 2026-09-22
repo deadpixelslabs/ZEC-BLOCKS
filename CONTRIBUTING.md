@@ -10,6 +10,6 @@ Before changing code, read `MARKETPLACE-OPERATIONS.md`, the applicable protocol 
 
 Documentation changes belong in `docs/`. Update `docs/SUMMARY.md` when adding a page, keep existing page filenames stable, and cite the code that supports technical claims. Describe candidates as candidates. Never add a fixed live count, guaranteed transaction time, unsupported audit claim or promise of complete server independence.
 
-Run the relevant commands in [developer setup](docs/reference-implementation.md). Describe what you tested and what remains unverified in the pull request. The maintainers review and merge changes; a public issue or proposal does not activate new protocol rules.
+Run the relevant commands in [marketplace operations](MARKETPLACE-OPERATIONS.md). Describe what you tested and what remains unverified in the pull request. The maintainers review and merge changes; a public issue or proposal does not activate new protocol rules. Keep repository links and GitHub references out of the GitBook content under `docs/`; use direct code examples and internal page links there.
 
 Check [licensing status](docs/license.md) before submitting or reusing code. Preserve third-party notices and submit only material you have the right to contribute.

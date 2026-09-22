@@ -35,6 +35,6 @@ Do not clear browser storage while a transaction is unresolved. That removes loc
 
 ## Why a successful claim may leave Claims seen unchanged
 
-An older invalid attempt can already have put an NFT ID into Claims seen. A later valid claim can increase Confirmed claims without adding a new historical ID. This occurred for IDs 1131 and 1285 in the [dated investigation](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/docs/claim-verification-2026-09-22.md).
+An older invalid attempt can already have put an NFT ID into Claims seen. A later valid claim can increase Confirmed claims without adding a new historical ID. This occurred for IDs 1131 and 1285 in the investigation of 22 September 2026, summarized in [validation](validation-security.md).
 
 That investigation also found genuinely incorrect availability caused by truncated historical queries. The repair uses complete history classification and additional ownership guards. It does not justify treating all failed or unresolved attempts as successful claims.

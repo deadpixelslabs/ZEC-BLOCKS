@@ -46,8 +46,8 @@ Chain transactions would remain subject to their chains' continued availability.
 
 ## Is the project independently audited or fully open source?
 
-No independent audit report is supplied in the reviewed repositories. Source is publicly readable, but a project-level license and parts of the complete production source/deployment package are still missing. See [source inventory](reference-implementation.md) and [licensing](license.md).
+No independent audit report is supplied with this documentation. Code examples make selected logic inspectable; they do not establish a complete, licensed open-source distribution. See [implementation examples](reference-implementation.md), [open gaps](roadmap.md) and [licensing](license.md).
 
 ## Where can I inspect or improve the project?
 
-Use the public [marketplace repository](https://github.com/deadpixelslabs/ZEC-BLOCKS), [mining repository](https://github.com/deadpixelslabs/test-zecblocks) and [contribution guide](contributing.md). No wallet connection is required to read them.
+Start with the [code examples](reference-implementation.md), [protocol rules](protocol-rules.md) and [contribution guide](contributing.md). No wallet connection is required to read them.

@@ -8,7 +8,7 @@ ZEC BLOCKS is a 5,000-item collectible application on Zcash. ZB-1 defines its NF
 - [GitBook](https://docs.zecblocks.xyz/)
 - [Mining application source](https://github.com/deadpixelslabs/test-zecblocks)
 
-Start with [implementation status](docs/launch-status.md), [architecture and trust boundaries](docs/architecture.md), and the [source map](docs/reference-implementation.md). The separate `protocol/` public-evidence tools are **not activated on mainnet**. They do not replace existing production ownership.
+Start with [implementation status](docs/launch-status.md), [architecture and trust boundaries](docs/architecture.md), and the [code examples](docs/reference-implementation.md). The separate `protocol/` public-evidence tools are **not activated on mainnet**. They do not replace existing production ownership.
 
 ## Development
 
@@ -20,7 +20,7 @@ node --test protocol/tests/*.test.mjs
 node protocol/cli.mjs manifest
 ```
 
-See [developer setup](docs/reference-implementation.md) for browser tests and deployment limitations. See [contributing](CONTRIBUTING.md) before proposing protocol or settlement changes.
+See [MARKETPLACE-OPERATIONS.md](MARKETPLACE-OPERATIONS.md) for browser tests and operational behavior. The public [code examples](docs/reference-implementation.md) explain selected logic without exposing repository links in GitBook. See [contributing](CONTRIBUTING.md) before proposing protocol or settlement changes.
 
 ## Documentation changes
 

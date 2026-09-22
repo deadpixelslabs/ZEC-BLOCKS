@@ -22,5 +22,3 @@ The application checks availability and a reservation before mining and again be
 Use **Continue Pending Claim** with the original wallet. It checks existing records; it does not send another payment. A missing transaction ID or temporary provider error is not proof that a transaction failed. Other eligible NFT IDs can remain available while that specific ID is protected against duplicate submission.
 
 Do not repeatedly claim the same NFT to make a counter rise. Read [claims, counters and recovery](claims.md) first.
-
-Implementation: [mining client](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/index.html), [exact claim checks](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/supabase/functions/zecblocks-check-claims/index.ts).

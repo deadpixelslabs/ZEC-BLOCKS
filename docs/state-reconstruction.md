@@ -2,47 +2,55 @@
 
 Independent reconstruction means deriving a result from the necessary signed events, chain history and explicit rules, rather than accepting the project API's current answer.
 
-**The reviewed release does not establish complete independent replay of every production holding.** Public code, transaction IDs and a database snapshot are useful evidence, but each is insufficient on its own.
+**Complete independent replay of every production holding has not been established by this documentation.** A transaction ID, a code example or a database snapshot is useful evidence, but each is insufficient on its own.
 
 ## Production today
 
-The hosted system discovers events, verifies available signatures and chain evidence, and builds claim, ownership and balance projections. Nostr discovery and wallet history are additional inputs. Existing shielded memos are not automatically public, and some registration evidence is held separately from transaction memos.
+The hosted system discovers events, verifies available signatures and chain evidence, and builds claim, ownership and balance projections. Relay discovery and wallet history are additional inputs. Existing shielded memos are not automatically public, and some registration evidence is held separately from transaction memos.
 
-An independent implementation needs all relevant historical data, including earlier events and market settlements. Missing data can hide an earlier claim or a later ownership change. Historical conflicts documented in the [claim investigation](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/docs/claim-verification-2026-09-22.md) cannot be repaired merely by labeling a current database row “canonical.”
+An independent implementation needs all relevant history, including earlier claims and later transfers or market settlements. Missing data can hide a competing claim or an ownership change. Historical conflicts described in [validation](validation-security.md) cannot be repaired merely by labeling a database row “canonical.”
 
-## Published candidate tools
+## Check chain evidence
 
-The separate [`protocol/`](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/95648a4d7948dfb8c2466ed941718f405827621c/protocol) package supplies a read-only verifier, explicit event envelopes, manifest checks and Merkle checkpoint tools. It is **not activated on mainnet** and does not modify production ownership.
+A read-only verifier needs a suitable validating archival Zcash node. For example, this JSON-RPC request asks the node for a verbose transaction record:
 
-Its proposed anchor commits the full signed event digest in a domain-separated `OP_RETURN` output of one zatoshi. A post-broadcast receipt signature binds the envelope to its transaction ID. This differs from an ordinary one-zatoshi payment to a mailbox: sending a tiny amount does not by itself publicly commit every event field.
-
-The candidate also needs independent availability of the complete envelope `{event, txid, receiptSignature}`. A digest on-chain protects integrity; it does not make the original data retrievable.
-
-## Run read-only checks
-
-From a checkout of the marketplace repository, with Node.js 22 or newer:
-
-```sh
-node --test protocol/tests/*.test.mjs
-node protocol/cli.mjs manifest
-node protocol/cli.mjs prepare-spec spec-anchor-request.json
+```json
+{
+  "jsonrpc": "1.0",
+  "id": "check-transaction",
+  "method": "getrawtransaction",
+  "params": ["<transaction_id>", 1]
+}
 ```
 
-These commands do not send a transaction. `prepare-spec` creates a request for review; it does not activate the specification.
+Replace `<transaction_id>` with the actual 64-character transaction hash. Send the request through your own node connection; keep any RPC authentication private. This request does not send a payment.
 
-Chain verification requires a suitable validating archival Zcash node. Configure `ZCASH_RPC_URL`, and `ZCASH_RPC_AUTH` only if needed, in the private environment. Never commit RPC credentials. With a complete candidate envelope bundle:
+Check the transaction's block membership and confirmation using canonical node data. Verify that the source block is the block at the required height. Chain inclusion alone still does not validate a wallet signature, reveal a shielded memo to everyone, establish holder eligibility or resolve earlier protocol history.
 
-```sh
-node protocol/cli.mjs verify events.json verification-report.json
-node protocol/cli.mjs checkpoint events.json checkpoint.json
-node protocol/cli.mjs proof checkpoint.json 1131 proof-1131.json
-node protocol/cli.mjs verify-proof checkpoint.json proof-1131.json
+## Proposed public evidence
+
+A separate verifier design introduces complete signed event envelopes and Merkle checkpoints. It is **a candidate, not activated on mainnet**, and does not replace production ownership.
+
+Its proposed anchor commits a full signed event digest in a domain-separated `OP_RETURN` output of one zatoshi. A post-broadcast receipt signature binds the envelope to its transaction ID. This differs from an ordinary one-zatoshi mailbox payment: sending a tiny amount does not by itself publicly commit every event field.
+
+An envelope has this structural shape; placeholders below are illustrative, not a valid transaction or event:
+
+```json
+{
+  "event": {
+    "type": "CLAIM",
+    "signature": "<signed-event-signature>",
+    "additional_fields": "<complete fields required by the candidate schema>"
+  },
+  "txid": "<anchor-transaction-id>",
+  "receiptSignature": "<signature binding the signed event to that transaction>"
+}
 ```
 
-See the [tool README](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/protocol/README.md) for the envelope format, permitted node reads and anchor-verification commands. No tool needs a wallet seed or spending key.
+The full event, its exact encoding and all required signatures must be available to verifiers. A digest on-chain protects integrity; it does not make the original data retrievable. The illustrative object above intentionally omits the full schema and must not be submitted to a validator.
 
 ## Interpret results carefully
 
-A report can verify supplied events while lacking an earlier event. A Merkle proof proves membership in a particular snapshot, not that its inputs are complete or that all disputed history has been resolved. The candidate can report legacy records as unresolved without declaring an existing production holding invalid.
+A report can verify supplied events while lacking an earlier event. A Merkle proof proves membership in a particular snapshot, not that its inputs are complete or that disputed history has been resolved. Candidate validation can report legacy records as unresolved without declaring an existing production holding invalid.
 
-Independent mirrors, complete settlement adapters, wallet conformance and a reviewed legacy migration remain [activation requirements](roadmap.md). Do not describe candidate test success as complete production independence.
+Independent mirrors, complete settlement adapters, wallet conformance and reviewed handling of historical claims remain [activation requirements](roadmap.md). Do not describe local test success as complete production independence.

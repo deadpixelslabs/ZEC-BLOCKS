@@ -1,65 +1,132 @@
-# Source code and developer setup
+# Code examples and integration
 
-The public implementation is split between two repositories. Start from a named commit so that code, test results and documentation can be compared reproducibly.
+This page makes selected protocol logic readable directly in the documentation. The examples calculate public values locally. They do not request private keys, send payments, establish NFT ownership or replace full protocol validation.
 
-| Repository | Role | Documentation baseline |
+## Components to integrate
+
+| Component | Input | Result |
 | --- | --- | --- |
-| [deadpixelslabs/ZEC-BLOCKS](https://github.com/deadpixelslabs/ZEC-BLOCKS) | Marketplace, selected backend functions, NFT Base contract, candidate verification tools and these docs | [`95648a4`](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/95648a4d7948dfb8c2466ed941718f405827621c) |
-| [deadpixelslabs/test-zecblocks](https://github.com/deadpixelslabs/test-zecblocks) | Mining, claim recovery, ZECS minting and selected verification functions | [`c5fc203`](https://github.com/deadpixelslabs/test-zecblocks/tree/c5fc203dcf0557500f13530f49471788b1436a01) |
+| Wallet identity | Exact Noir derived public-key bytes | Owner commitment |
+| NFT proof checker | Genesis, NFT ID, source block hash, owner commitment, nonce | SHA-256 digest and target check |
+| Claim verifier | Signed claim, reservation evidence and chain transaction | Accepted, rejected or unresolved evidence |
+| Ownership projection | Valid claims, transfers and finalized settlements | Current indexed owner |
+| ZECS mint verifier | Fixed mint payload, transaction-bound registration and holder evidence | Accepted mint or pending/rejected result |
 
-The mining repository's name is historical; it serves the mining application. Read [licensing status](license.md) before copying or redistributing code.
+The following Node.js example uses only the built-in crypto library. Save it as `zb1-example.mjs` and run `node zb1-example.mjs` with Node.js 22 or newer.
 
-## Source map
+## Exact identity bytes and NFT proof
 
-| Area | Public files |
-| --- | --- |
-| Marketplace interface and transaction orchestration | [`index.html`, `script.js`, `market-runtime.js`, `navigation.js`, `styles.css`](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/95648a4d7948dfb8c2466ed941718f405827621c) |
-| NFT address proof verification | [`address-identity.js`](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/address-identity.js) |
-| Marketplace API proxies | [`api/`](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/95648a4d7948dfb8c2466ed941718f405827621c/api) |
-| Published market Edge Functions and migrations | [`supabase/`](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/95648a4d7948dfb8c2466ed941718f405827621c/supabase) |
-| NFT Base USDC contract and ABI | [`contract/`](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/95648a4d7948dfb8c2466ed941718f405827621c/contract) |
-| Candidate verifier, specification and renderer | [`protocol/`](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/95648a4d7948dfb8c2466ed941718f405827621c/protocol) |
-| Mining UI, CPU/GPU proof search and mint flows | [`index.html`](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/index.html) |
-| Mining proxies | [`api/`](https://github.com/deadpixelslabs/test-zecblocks/tree/c5fc203dcf0557500f13530f49471788b1436a01/api) |
-| Claim checks, scan, audit and ZECS mint verification | [`supabase/functions/`](https://github.com/deadpixelslabs/test-zecblocks/tree/c5fc203dcf0557500f13530f49471788b1436a01/supabase/functions) |
-| Mining history classification and guards | [`supabase/migrations/`](https://github.com/deadpixelslabs/test-zecblocks/tree/c5fc203dcf0557500f13530f49471788b1436a01/supabase/migrations) |
+```javascript
+import { createHash } from 'node:crypto';
 
-## Run checks locally
+const GENESIS =
+  'ecf6fc3a79885f573d79de70a2de85c34667fc1a4fefe034d3a4015269379f0f';
 
-Use Node.js 22 or newer. For the reviewed marketplace code:
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
 
-```sh
-git clone https://github.com/deadpixelslabs/ZEC-BLOCKS.git
-cd ZEC-BLOCKS
-git checkout 95648a4d7948dfb8c2466ed941718f405827621c
-node --test tests/runtime.test.cjs tests/address-identity.test.cjs
-node --test protocol/tests/*.test.mjs
-npm install --no-save --package-lock=false playwright@1.55.1
-npx playwright install --with-deps chromium
-node --test tests/marketplace.test.cjs
+function hex32(value) {
+  if (typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value)) {
+    throw new Error('Expected 32 bytes in lowercase hexadecimal');
+  }
+  return Buffer.from(value, 'hex');
+}
+
+function ownerCommitment(publicKeyHex) {
+  // This checks serialization only, not curve validity or a signature.
+  if (typeof publicKeyHex !== 'string' ||
+      !/^(?:(?:02|03)[0-9a-f]{64}|04[0-9a-f]{128})$/.test(publicKeyHex)) {
+    throw new Error('Unsupported public-key serialization');
+  }
+  // Preserve the exact encoding returned by the derived wallet identity.
+  return sha256(Buffer.from(publicKeyHex, 'hex'));
+}
+
+function proofHash({ tokenId, sourceHash, owner, nonce }) {
+  if (!Number.isInteger(tokenId) || tokenId < 1 || tokenId > 5000) {
+    throw new Error('Token ID must be between 1 and 5000');
+  }
+  if (typeof nonce !== 'string' || !/^(0|[1-9][0-9]{0,19})$/.test(nonce)) {
+    throw new Error('Nonce must be a canonical decimal string');
+  }
+  const n = BigInt(nonce);
+  if (n >= 2n ** 64n) throw new Error('Nonce exceeds uint64');
+  const idBytes = Buffer.alloc(4);
+  const nonceBytes = Buffer.alloc(8);
+  idBytes.writeUInt32LE(tokenId);
+  nonceBytes.writeBigUInt64LE(n);
+  return sha256(Buffer.concat([
+    Buffer.from('ZB1:MINE:v1', 'utf8'),
+    hex32(GENESIS), idBytes, hex32(sourceHash), hex32(owner), nonceBytes
+  ]));
+}
+
+function meetsTarget(hash) {
+  const bytes = hex32(hash);
+  // 24 zero bits followed by two zero high bits in the fourth byte.
+  return bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0 &&
+    (bytes[3] & 0xc0) === 0;
+}
+
+// Synthetic test data. It is not evidence of a mainnet claim.
+const publicKey =
+  '0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798' +
+  '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8';
+const owner = ownerCommitment(publicKey);
+const proof = proofHash({
+  tokenId: 1, sourceHash: '11'.repeat(32), owner, nonce: '591614715'
+});
+console.log({ owner, proof, meetsTarget: meetsTarget(proof) });
 ```
 
-In a separate directory, for mining:
+Expected output values:
 
-```sh
-git clone https://github.com/deadpixelslabs/test-zecblocks.git
-cd test-zecblocks
-git checkout c5fc203dcf0557500f13530f49471788b1436a01
-npm install --no-save --package-lock=false playwright@1.55.1
-npx playwright install --with-deps chromium
-node _syntax_check.js
-node --test tests/mining.test.cjs
-node tests/claim-chain-cache.cjs
+```json
+{
+  "owner": "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0",
+  "proof": "000000019715296376af01a726f5d9d3e88ce7270d838a0675fe335d154d1263",
+  "meetsTarget": true
+}
 ```
 
-The browser suites use simulated wallets and services. They do not spend real ZEC, establish external-service uptime, verify hardware GPU performance or prove a real mainnet purchase. The candidate verifier tests do not activate candidate rules.
+A digest meeting the target is only one validation condition. This example does not verify the supplied public key is a valid curve point, a wallet signature, the real source block, a reservation, a chain anchor or a competing claim. Do not use its `true` result as an ownership decision.
 
-## Local development and deployment limits
+## ZECS registration message
 
-The frontends are static assets with Vercel Node API handlers and rewrite configuration. A plain file server can display assets but does not implement the API routes. Review each repository's `vercel.json`, proxy configuration and backend requirements before using a development server. Defaults can point to production services; use isolated backends and wallet fixtures for mutation testing.
+The current mint memo contains exactly:
 
-The committed migrations are incremental changes, not a complete schema bootstrap. Some production workers named in deployment notes are absent from these source trees. The reviewed `contract/` directory publishes the NFT Base contract, not the ZECS market contract source. The repos also do not supply a complete historical event archive or independently verified production bytecode matching record.
+```json
+{"p":"zb-20","op":"mint","tick":"ZECS","amt":"210"}
+```
 
-Consequently, a clone is sufficient for source review and the listed isolated checks, but not a documented one-command recreation of all production services. Do not invent missing schema, bypass signature checks or reuse privileged production credentials to make a fork appear operational.
+After broadcast, the derived identity signs a separate message bound to the existing transaction:
 
-See [architecture](architecture.md), [contributing](contributing.md), [open gaps](roadmap.md) and [candidate verification](state-reconstruction.md).
+```text
+ZB20:MINT_ANCHOR:v1|T=ZECS|X=<mint_txid>|M={"p":"zb-20","op":"mint","tick":"ZECS","amt":"210"}
+```
+
+`<mint_txid>` is the actual returned transaction ID, not a new payment request. This registration signature is not appended to the mint memo. Full validation also checks deployment, holder eligibility, confirmation, supply and duplicates. See [ZECS](zecs.md).
+
+## Integrate without duplicate payments
+
+Treat the following as flow pseudocode, not an executable wallet integration:
+
+```text
+validate the connected identity and selected operation
+save the original identity, exact request and recovery metadata
+request one wallet submission
+if a transaction ID is returned:
+    persist it immediately and verify that same transaction
+if the outcome is unknown:
+    keep the pending record and search for exact matching evidence
+if evidence is missing or ambiguous:
+    remain pending; do not automatically submit another payment
+complete only after the required protocol and ownership checks pass
+```
+
+Test with isolated wallet/provider fixtures. Cover account changes, repeated clicks, storage failures, missing responses, delayed confirmation and conflicting transactions. A browser test does not establish live wallet compatibility or mainnet settlement.
+
+## Scope
+
+These examples explain selected logic. They are not a complete deployment package, SDK, security audit or license grant for the entire project. A complete independent replay also needs historical events, signatures, chain data and settlement rules. See [state reconstruction](state-reconstruction.md), [authentication](authentication.md), [open gaps](roadmap.md) and [licensing](license.md).

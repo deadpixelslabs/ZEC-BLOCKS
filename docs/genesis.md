@@ -17,5 +17,3 @@ source_height = genesis_confirmation_height - token_id
 The source block hash at that height participates in mining and rendering. A different Genesis identifies a different collection; a recipient link or protocol event for another collection must not be accepted as this one.
 
 Genesis identifies the collection. It does not imply that Zcash consensus enforces the collection rules, that all historical event data is public, or that a new protocol proposal has been activated.
-
-References: [current application configuration](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/script.js), [reference manifest](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/protocol/manifest.json). The latter belongs to the inactive public-evidence candidate and is not an activation record.
