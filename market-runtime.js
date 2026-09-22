@@ -57,6 +57,38 @@
     return !!value && typeof value === 'object' && !Array.isArray(value) &&
       arrayFields.every(key => Array.isArray(value[key]));
   }
+  function matchesBaseRequest(row, tx) {
+    const lower=value=>String(value||'').toLowerCase();
+    try {
+      return !!tx && /^0x[0-9a-f]{40}$/.test(lower(row.evm)) &&
+        /^0x[0-9a-f]{40}$/.test(lower(row.target)) && /^0x[0-9a-f]+$/.test(lower(row.data)) &&
+        lower(tx.from)===lower(row.evm) && lower(tx.to)===lower(row.target) &&
+        lower(tx.input||tx.data)===lower(row.data) && tx.value!=null && BigInt(tx.value)===0n;
+    } catch { return false; }
+  }
+  async function discoverBaseTransaction(row, provider, indexedCandidates=async()=>[]) {
+    const validHash=value=>/^0x[0-9a-f]{64}$/i.test(value||'');
+    // Nonce history is an optimization, not the only way out of recovery. Some
+    // wallets omit it, and public RPCs may not serve historical account state.
+    if(Number.isSafeInteger(row.nonce)&&row.nonce>=0&&Number.isSafeInteger(row.requestBlock)&&row.requestBlock>=0){
+      try {
+        let low=row.requestBlock,high=await provider.getBlockNumber();
+        if(high>=low&&await provider.getTransactionCount(row.evm,high)>row.nonce){
+          while(low<high){const mid=Math.floor((low+high)/2);if(await provider.getTransactionCount(row.evm,mid)>row.nonce)high=mid;else low=mid+1;}
+          const block=await provider.send('eth_getBlockByNumber',['0x'+low.toString(16),true]);
+          const tx=(block?.transactions||[]).find(x=>String(x.from||'').toLowerCase()===String(row.evm).toLowerCase()&&Number(x.nonce)===row.nonce);
+          if(matchesBaseRequest(row,tx)&&validHash(tx.hash))return tx.hash.toLowerCase();
+        }
+      } catch { /* Continue with indexed evidence, independently checked on Base. */ }
+    }
+    // These are only hints. Never complete from a database status or current NFT
+    // ownership alone. Verify the exact sender, contract, calldata and value.
+    for(const hash of [...new Set(await indexedCandidates())].filter(validHash).slice(0,8)){
+      const tx=await provider.getTransaction(hash);
+      if(matchesBaseRequest(row,tx)&&String(tx.hash||'').toLowerCase()===hash.toLowerCase())return hash.toLowerCase();
+    }
+    return '';
+  }
   function nftId(value) {
     const id=String(value||'').trim().replace(/^0x/i,'').toLowerCase();
     if(!/^[0-9a-f]{64}$/.test(id)||/^0+$/.test(id))throw new Error('Paste the recipient’s ZEC BLOCKS receive link or full NFT receiving ID.');
@@ -75,7 +107,7 @@
     if(nftId(match[1])!==nftId(genesis))throw new Error('This receive link belongs to a different collection.');
     return {owner:nftId(match[2]),source:'link'};
   }
-  const api = {singleFlight, requestJSON, writeVerified, journal, validSnapshot, receiveLink, parseNftRecipient};
+  const api = {singleFlight, requestJSON, writeVerified, journal, validSnapshot, matchesBaseRequest, discoverBaseTransaction, receiveLink, parseNftRecipient};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MarketRuntime = api;
 })(typeof window === 'undefined' ? globalThis : window);
