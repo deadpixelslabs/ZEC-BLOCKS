@@ -1860,6 +1860,14 @@ function directRecoveryRead(){const a=JSON.parse(localStorage.getItem(DIRECT_ZEC
 function directRecoveryWrite(rows){MarketRuntime.writeVerified(localStorage,DIRECT_ZEC_RECOVERY_KEY,rows);renderPendingTransactions()}
 function saveDirectRecovery(row){const rows=directRecoveryRead(),old=rows.find(x=>x.reservationId===row.reservationId)||{};directRecoveryWrite([...rows.filter(x=>x.reservationId!==row.reservationId),{...old,...row,ownerCommitment:old.ownerCommitment||row.ownerCommitment||actionOwner(),updatedAt:Date.now()}])}
 function dropDirectRecovery(id){directRecoveryWrite(directRecoveryRead().filter(x=>x.reservationId!==id))}
+function directRecoveryNeedsReview(row){return ['expired','failed','cancelled'].includes(row.reservationStatus)}
+function directReservationMatches(row,reservation,owner){
+  return reservation&&dbCommitment(reservation.buyer_commitment)===owner&&reservation.reservation_id===row.reservationId&&reservation.asset===row.asset&&reservation.listing_id===row.listingId;
+}
+function currentDirectRecovery(row,owner,epoch){
+  if(dbCommitment(S.ownerCommitment)!==owner||(S.walletEpoch||0)!==epoch)return null;
+  return directRecoveryRead().find(x=>x.reservationId===row.reservationId&&(!x.ownerCommitment||x.ownerCommitment===owner))||null;
+}
 async function refreshDirectMarketViews(){
   await Promise.allSettled([hydrateServerZecMarketStates(),hydrateServerActivity(),loadZecsMarketState({account:!!S.ownerCommitment}),loadZecsZecMarketState()]);
   if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment).catch(()=>{})
@@ -1895,13 +1903,19 @@ async function resumeDirectPayments(){
   return MarketRuntime.singleFlight('direct-recovery',async()=>{
     const owner=dbCommitment(S.ownerCommitment),epoch=S.walletEpoch||0;if(!owner)return;
     let changed=false;
-    for(const row of directRecoveryRead().filter(x=>!x.ownerCommitment||x.ownerCommitment===owner)){
+    for(let row of directRecoveryRead().filter(x=>!x.ownerCommitment||x.ownerCommitment===owner)){
       if(S.ownerCommitment!==owner||(S.walletEpoch||0)!==epoch)break;
       if(!row.reservationId)continue;
       try{
         const q=await zecDirectApi('reservation',{reservationId:row.reservationId}),r=q?.reservation;
-        if(!r||dbCommitment(r.buyer_commitment)!==owner)continue;
+        row=currentDirectRecovery(row,owner,epoch);
+        if(!row||!directReservationMatches(row,r,owner))continue;
         if(r?.status==='settled'){dropDirectRecovery(row.reservationId);updateTransactionFlow('done','Purchase complete. Your portfolio is updated.','direct:'+row.reservationId);changed=true;continue}
+        if(!['active','payment_pending','expired','failed','cancelled'].includes(r.status))continue;
+        // Only a matching server reservation may move a purchase out of active pending.
+        // Keep the full journal: a closed reservation is not proof that no money was sent.
+        row={...row,ownerCommitment:owner,reservationStatus:r.status,statusCheckedAt:Date.now(),tokenId:r.token_id||row.tokenId};
+        saveDirectRecovery(row);
         hideDirectListingLocally(row.asset,row.listingId);
         // An expired reservation does not prove that an ambiguous wallet payment never happened.
         if(!row.txid){
@@ -1909,11 +1923,12 @@ async function resumeDirectPayments(){
           const existing=zcashTxidFromResult(r.payment_txid);
           const recovered=/^[0-9a-f]{64}$/.test(existing)?existing:await findDirectPayment(row,r,owner,epoch);
           if(!recovered)continue;
-          if(S.ownerCommitment!==owner||(S.walletEpoch||0)!==epoch)break;
-          row.txid=recovered;saveDirectRecovery({...row,ownerCommitment:owner,recoveryRequired:false});
+          row=currentDirectRecovery(row,owner,epoch);if(!row)continue;
+          row={...row,txid:recovered,recoveryRequired:false};saveDirectRecovery(row);
         }
-        if(S.ownerCommitment!==owner||(S.walletEpoch||0)!==epoch)break;
+        row=currentDirectRecovery(row,owner,epoch);if(!row||directRecoveryNeedsReview(row))continue;
         const x=await zecDirectApi('submit_payment',{reservationId:row.reservationId,txid:row.txid});
+        if(!currentDirectRecovery(row,owner,epoch))continue;
         if(x?.settlement||x?.pending===false){dropDirectRecovery(row.reservationId);updateTransactionFlow('done','Purchase complete. Your portfolio is updated.','direct:'+row.reservationId);changed=true}
       }catch(e){console.warn('ZEC payment confirmation pending',e)}
     }
@@ -1923,7 +1938,8 @@ async function resumeDirectPayments(){
 }
 async function directZecBuy(asset,listingId,summary=''){
   if(S.zecDirectBusy)return;
-  if(directRecoveryRead().some(x=>(!x.ownerCommitment||x.ownerCommitment===actionOwner())&&x.asset===asset&&x.listingId===listingId))return toast('Your purchase is being checked automatically. See Pending transactions for progress.',10000);
+  const saved=directRecoveryRead().find(x=>(!x.ownerCommitment||x.ownerCommitment===actionOwner())&&x.asset===asset&&x.listingId===listingId);
+  if(saved)return toast(directRecoveryNeedsReview(saved)?'This earlier purchase needs review. Open Portfolio → Purchases needing review. Do not pay again.':'Your purchase is being checked automatically. See Pending transactions for progress.',10000);
   let reservationId='',walletRequestStarted=false;
   try{
     if(!S.ownerCommitment){await connectWallet(false);if(!S.ownerCommitment)return}
@@ -4033,17 +4049,61 @@ async function resumeBaseTransactions(){
     renderPendingTransactions();if(changed)await refreshMarketplace(true)
   })
 }
+async function useDirectRecoveryTransaction(row,txid){
+  const owner=dbCommitment(S.ownerCommitment),epoch=S.walletEpoch||0;
+  const current=currentDirectRecovery(row,owner,epoch);
+  if(!owner||!current)throw new Error('Reconnect the original wallet to check this purchase.');
+  const q=await zecDirectApi('reservation',{reservationId:row.reservationId}),r=q?.reservation;
+  if(!currentDirectRecovery(row,owner,epoch)||!directReservationMatches(current,r,owner))throw new Error('The wallet or purchase changed. Please check again.');
+  if(r.status==='settled'){dropDirectRecovery(row.reservationId);return}
+  if(['expired','failed','cancelled'].includes(r.status)){
+    // This is supporting evidence for review, not a successful settlement.
+    saveDirectRecovery({...current,txid,reservationStatus:r.status,ownerCommitment:owner,statusCheckedAt:Date.now()});
+    toast('Transaction saved for review. This purchase has not been confirmed. Do not pay again.',10000);
+    return;
+  }
+  if(!['active','payment_pending'].includes(r.status))throw new Error('The purchase status could not be verified. Please check again.');
+  const result=await zecDirectApi('submit_payment',{reservationId:row.reservationId,txid});
+  const latest=currentDirectRecovery(row,owner,epoch);if(!latest)return;
+  if(result?.settlement||result?.pending===false)dropDirectRecovery(row.reservationId);
+  else saveDirectRecovery({...latest,txid,reservationStatus:r.status,ownerCommitment:owner});
+}
+function directRecoveryLabel(row){return row.asset==='ZEC_BLOCK'&&Number.isInteger(Number(row.tokenId))&&Number(row.tokenId)>0?'ZEC BLOCK #'+Number(row.tokenId):row.asset==='ZECS'?'ZECS purchase':'Zcash purchase'}
+function renderDirectReviewHistory(rows){
+  const host=$('purchaseRecoveryHistory'),notice=$('purchaseReviewNotice');if(!host||!notice)return;
+  const review=rows.filter(directRecoveryNeedsReview);
+  host.hidden=notice.hidden=!review.length;host.replaceChildren();notice.replaceChildren();if(!review.length)return;
+  const link=document.createElement('a');link.href='#portfolio';link.dataset.appTab='portfolio';link.textContent=review.length+' earlier purchase'+(review.length===1?' needs':'s need')+' review · View in Portfolio';link.onclick=()=>{host.open=true};notice.append(link);
+  const summary=document.createElement('summary');summary.textContent='Purchases needing review ('+review.length+')';host.append(summary);
+  const intro=document.createElement('p');intro.textContent='These reservations are closed, but a payment may have been sent. The saved records remain protected from duplicate payment. They are not confirmed purchases.';host.append(intro);
+  const check=document.createElement('button');check.className='btn';check.textContent='Check status';check.onclick=async()=>{check.disabled=true;check.textContent='Checking…';try{await resumeDirectPayments()}catch(e){toast(e.message||String(e),10000)}finally{renderPendingTransactions()}};host.append(check);
+  for(const row of review){
+    const item=document.createElement('div');item.className='pendingRow';
+    const info=document.createElement('div'),title=document.createElement('strong'),note=document.createElement('p');
+    title.textContent=directRecoveryLabel(row)+' · '+(row.reservationStatus==='expired'?'Reservation expired':'Payment needs review');
+    note.textContent=row.txid?'A transaction is saved, but the purchase is not confirmed. Do not pay again.':'No transaction ID was recovered. Check your wallet history before paying again.';
+    info.append(title,note);const reference=document.createElement('small');reference.textContent='Reference: '+row.reservationId;info.append(reference);item.append(info);
+    if(row.txid){const tx=document.createElement('a');tx.href='https://zcashblockexplorer.com/transactions/'+row.txid;tx.target='_blank';tx.rel='noopener noreferrer';tx.textContent='View saved transaction ↗';item.append(tx)}
+    else{const btn=document.createElement('button');btn.className='btn';btn.textContent='Save wallet transaction';btn.onclick=async()=>{
+      const value=window.prompt('Paste the transaction ID from your wallet history to keep it with this review. This does not send funds or confirm the purchase.');if(!value)return;
+      const tx=value.trim().toLowerCase();if(!/^[0-9a-f]{64}$/.test(tx))return toast('Enter a valid Zcash transaction ID.');
+      btn.disabled=true;try{await useDirectRecoveryTransaction(row,tx)}catch(e){toast(e.message||String(e),10000)}finally{renderPendingTransactions()}
+    };item.append(btn)}
+    host.append(item);
+  }
+}
 function renderPendingTransactions(){
   const host=$('pendingTransactions');if(!host)return;
   const owner=String(S.ownerCommitment||''),evm=String(S.evmAddress||'').toLowerCase();
   const base=pendingBaseRows().filter(x=>x.owner?x.owner===owner:!!evm&&x.evm===evm);
-  let direct=[];try{direct=owner?directRecoveryRead().filter(x=>!x.ownerCommitment||x.ownerCommitment===owner):[]}catch(e){host.hidden=false;host.textContent=e.message;return}
+  let direct=[];try{direct=owner?directRecoveryRead().filter(x=>!x.ownerCommitment||x.ownerCommitment===owner):[]}catch(e){renderDirectReviewHistory([]);host.hidden=false;host.textContent=e.message;return}
+  renderDirectReviewHistory(direct);direct=direct.filter(x=>!directRecoveryNeedsReview(x));
   let transfers=[];try{transfers=owner?nftTransferJournal.read().filter(x=>x.owner===owner):[]}catch(e){host.hidden=false;host.textContent=e.message;return}
   host.hidden=!base.length&&!direct.length&&!transfers.length;host.replaceChildren();if(host.hidden)return;
   const title=document.createElement('h3');title.textContent='Pending transactions';host.append(title);
   const help=document.createElement('p');help.textContent='Your purchases are saved. We check wallet history and network confirmation automatically. You can keep browsing.';host.append(help);
   const check=document.createElement('button');check.className='btn';check.textContent='Check progress';check.onclick=async()=>{check.disabled=true;check.textContent='Checking…';try{await Promise.allSettled([resumeDirectPayments(),resumeBaseTransactions(),resumeUsdcPurchaseRecoveries(),resumeNftTransfers()])}finally{renderPendingTransactions()}};host.append(check);
-  for(const row of [...transfers.map(x=>({...x,network:'NFT transfer #'+x.tokenId,transfer:true})),...direct.map(x=>({...x,network:'Zcash'})),...base.map(x=>({...x,network:'Base'}))]){
+  for(const row of [...transfers.map(x=>({...x,network:'NFT transfer #'+x.tokenId,transfer:true})),...direct.map(x=>({...x,network:directRecoveryLabel(x)})),...base.map(x=>({...x,network:'Base'}))]){
     const item=document.createElement('div');item.className='pendingRow';const text=document.createElement('span');
     text.textContent=row.network+' · '+(row.txHash||row.txid?'Waiting for network confirmation':'Checking wallet payment — no need to pay again');item.append(text);
     const hash=row.txHash||row.txid;if(hash){const link=document.createElement('a');link.href=row.network==='Base'?'https://basescan.org/tx/'+hash:'https://zcashblockexplorer.com/transactions/'+hash;link.target='_blank';link.rel='noopener noreferrer';link.textContent=short(hash,8)+' ↗';item.append(link)}
@@ -4060,8 +4120,7 @@ function renderPendingTransactions(){
           baseJournal.put({...row,txHash:tx,status:'broadcast'});await resumeBaseTransactions()
         }else{
           if(!/^[0-9a-f]{64}$/.test(tx))throw new Error('Enter a valid Zcash transaction ID.');
-          const result=await zecDirectApi('submit_payment',{reservationId:row.reservationId,txid:tx});
-          saveDirectRecovery({...row,txid:tx});if(result?.settlement||result?.pending===false)dropDirectRecovery(row.reservationId);await resumeDirectPayments()
+          await useDirectRecoveryTransaction(row,tx);await resumeDirectPayments()
         }
         renderPendingTransactions()
       }catch(e){toast(e.message||String(e),10000)}

@@ -7,7 +7,7 @@
 <meta content="#10151d" name="theme-color"/>
 <meta content="Discover and trade ZEC BLOCKS NFTs and ZECS. Verified listings, native ZEC payments and USDC settlement on Base." name="description"/>
 <title>ZEC BLOCKS — Marketplace</title>
-<link href="/styles.css?v=simple-transactions" rel="stylesheet"/><link href="/assets/zecblocks-icon.webp" rel="icon" type="image/webp"/><script defer="" src="/market-runtime.js?v=pending-recovery"></script><script defer="" src="/address-identity.js?v=simple-transactions"></script><script defer="" src="/script.js?v=pending-recovery"></script><script defer="" src="/navigation.js?v=simple-transactions"></script></head>
+<link href="/styles.css?v=zec-recovery-status" rel="stylesheet"/><link href="/assets/zecblocks-icon.webp" rel="icon" type="image/webp"/><script defer="" src="/market-runtime.js?v=pending-recovery"></script><script defer="" src="/address-identity.js?v=simple-transactions"></script><script defer="" src="/script.js?v=zec-recovery-status"></script><script defer="" src="/navigation.js?v=simple-transactions"></script></head>
 <body data-market-version="13.0.2"><a class="skipLink" href="#market">Skip to marketplace</a>
 <header class="top">
 <a class="brand" href="#market"><img alt="ZEC BLOCKS" class="brandLogo" height="40" src="/assets/zecblocks-icon.webp" width="40"/><span class="brandText"><b>ZEC BLOCKS</b><small>NFTs &amp; ZECS</small></span></a>
@@ -33,7 +33,7 @@
 </div>
 </div>
 </section>
-<nav aria-label="ZEC BLOCKS application navigation" class="appNav"><a data-app-tab="market" href="#market">Marketplace</a><a data-app-tab="activity" href="#activity">Activity</a><a data-app-tab="portfolio" href="#portfolio">Portfolio</a><a data-app-tab="protocol" href="#protocol">Protocol</a><a class="appNavExternal" href="https://mine.zecblocks.xyz">Start mining ↗</a></nav><div class="marketHealth" data-state="loading" id="marketHealth" role="status"><i></i><span>Loading market data…</span><time></time><button class="btn small">Retry</button></div><section aria-label="Pending transactions" class="pendingTransactions" hidden="" id="pendingTransactions"></section>
+<nav aria-label="ZEC BLOCKS application navigation" class="appNav"><a data-app-tab="market" href="#market">Marketplace</a><a data-app-tab="activity" href="#activity">Activity</a><a data-app-tab="portfolio" href="#portfolio">Portfolio</a><a data-app-tab="protocol" href="#protocol">Protocol</a><a class="appNavExternal" href="https://mine.zecblocks.xyz">Start mining ↗</a></nav><div class="marketHealth" data-state="loading" id="marketHealth" role="status"><i></i><span>Loading market data…</span><time></time><button class="btn small">Retry</button></div><section aria-label="Pending transactions" class="pendingTransactions" hidden="" id="pendingTransactions"></section><div class="purchaseReviewNotice" hidden="" id="purchaseReviewNotice"></div>
 <div class="appView" data-view="market" id="view-market">
 <div class="sectionHead" hidden="" id="market"><div><h2>Explore the market</h2><p>Find your next block. Choose an asset and payment currency.</p></div><div class="tabs"></div></div>
 <div class="marketAssetBar"><button aria-label="Browse ZEC BLOCKS NFTs" class="marketAssetTab" data-market-asset="nft" type="button"><strong>Collectibles</strong></button><button aria-label="Browse ZECS orders" class="marketAssetTab" data-market-asset="zecs" type="button"><strong>$ZECS</strong></button><button class="btn marketRefresh" id="refreshMarketBtn">Refresh</button></div>
@@ -55,7 +55,7 @@
 <div class="portfolioTop"><div class="metric"><small>Owned</small><b id="ownedCount">0</b></div><div class="metric"><small>Active Listings</small><b id="listingCount">0</b></div><div class="metric"><small>Offers Received</small><b id="offerCount">0</b></div><div class="metric"><small>ZEC Available</small><b id="zecBalance">—</b></div></div>
 <div class="notice receiveBanner" hidden="" id="sharedRecipientBanner"><div><b>Send an NFT</b><p id="sharedRecipientStatus"></p><code id="sharedRecipientId"></code></div><button class="btn" id="clearNftRecipientBtn" type="button">Clear recipient</button></div>
 <div class="walletbox"><div class="copyline"><small>NFT receiving ID</small><code id="portfolioCommit">Connect wallet to view your NFT receiving ID.</code></div><div class="copyline"><small>Shielded account</small><code id="portfolioShielded">Private until you connect.</code></div></div>
-<details class="legacyRecovery"><summary>Earlier purchases &amp; advanced recovery</summary><div class="atomicDesk">
+<details class="purchaseRecoveryHistory legacyRecovery" hidden="" id="purchaseRecoveryHistory"></details><details class="legacyRecovery"><summary>Earlier purchases &amp; advanced recovery</summary><div class="atomicDesk">
 <div class="atomicCol">
 <h3>Seller · Atomic Offers</h3>
 <p>Accepting an offer creates an on-chain ZB-1 atomic lock. Once the lock confirms, the seller cannot cancel or manually transfer the NFT through this client until settlement or expiry.</p>
