@@ -1,6 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {singleFlight,requestJSON,journal,validSnapshot}=require('../market-runtime.js');
+const {receiveLink,parseNftRecipient}=require('../market-runtime.js');
 
 test('overlapping reads share one job and recover after a rejected job', async()=>{
   let calls=0,release;const work=()=>{calls++;return new Promise(resolve=>release=resolve)};
@@ -34,4 +35,18 @@ test('storage failures stop payment preparation and corrupt records are preserve
   const j=journal({getItem:()=>null,setItem:()=>{throw Error('quota')}},'pending');assert.throws(()=>j.put({id:'a'}),/quota/);
   const corrupt=journal({getItem:()=>'{broken',setItem:()=>assert.fail('must not overwrite')},'pending');assert.throws(()=>corrupt.put({id:'a'}));
   assert.equal(validSnapshot({},['orders']),false);assert.equal(validSnapshot({orders:[]},['orders']),true);
+});
+test('NFT receive links round trip only within the pinned collection and official origin',()=>{
+  const owner='ab'.repeat(32),genesis='cd'.repeat(32),link=receiveLink(owner,genesis);
+  assert.deepEqual(parseNftRecipient(link,genesis),{owner,source:'link'});
+  assert.deepEqual(parseNftRecipient('  0x'+owner.toUpperCase()+'  ',genesis),{owner,source:'id'});
+  assert.equal(new URL(link).search,''); // Identity stays in the fragment, not the HTTP request.
+  assert.equal(parseNftRecipient(link.replace('www.zecblocks.xyz','zecblocks.xyz'),genesis).owner,owner);
+  for(const invalid of [
+    link.replace('https:','http:'),link.replace('www.zecblocks.xyz','www.zecblocks.xyz.evil.test'),
+    link.replace('www.zecblocks.xyz','user@www.zecblocks.xyz'),link.replace('www.zecblocks.xyz','www.zecblocks.xyz:8443'),
+    link.replace('/#','/other/#'),link.replace('/#','/?recipient='+owner+'#'),link+'/extra',
+    link.replace(genesis,'ef'.repeat(32)),link.replace(owner,'0'.repeat(64)),
+    'u1paymentaddress','t1paymentaddress','0x'+'a'.repeat(40),'javascript:alert(1)',owner.slice(1),'0'.repeat(64)
+  ])assert.throws(()=>parseNftRecipient(invalid,genesis),'must reject '+invalid);
 });

@@ -57,7 +57,25 @@
     return !!value && typeof value === 'object' && !Array.isArray(value) &&
       arrayFields.every(key => Array.isArray(value[key]));
   }
-  const api = {singleFlight, requestJSON, writeVerified, journal, validSnapshot};
+  function nftId(value) {
+    const id=String(value||'').trim().replace(/^0x/i,'').toLowerCase();
+    if(!/^[0-9a-f]{64}$/.test(id)||/^0+$/.test(id))throw new Error('Paste the recipient’s ZEC BLOCKS receive link or full NFT receiving ID.');
+    return id;
+  }
+  function receiveLink(owner,genesis) {
+    return 'https://www.zecblocks.xyz/#portfolio/receive/'+nftId(genesis)+'/'+nftId(owner);
+  }
+  function parseNftRecipient(value,genesis) {
+    const input=String(value||'').trim();
+    if(/^(?:0x)?[0-9a-f]{64}$/i.test(input))return {owner:nftId(input),source:'id'};
+    if(/^(u1|t1|t3|0x)/i.test(input))throw new Error('This is a payment address. Ask the recipient to open Portfolio → Receive NFT and share their receive link.');
+    let url;try{url=new URL(input)}catch{throw new Error('Paste a ZEC BLOCKS receive link or full NFT receiving ID.')}
+    const match=url.hash.match(/^#portfolio\/receive\/([0-9a-f]{64})\/([0-9a-f]{64})$/i);
+    if(url.protocol!=='https:'||!['www.zecblocks.xyz','zecblocks.xyz'].includes(url.hostname)||url.username||url.password||url.port||url.pathname!=='/'||url.search||!match)throw new Error('Use a receive link from zecblocks.xyz. Other links are not supported.');
+    if(nftId(match[1])!==nftId(genesis))throw new Error('This receive link belongs to a different collection.');
+    return {owner:nftId(match[2]),source:'link'};
+  }
+  const api = {singleFlight, requestJSON, writeVerified, journal, validSnapshot, receiveLink, parseNftRecipient};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MarketRuntime = api;
 })(typeof window === 'undefined' ? globalThis : window);

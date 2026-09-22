@@ -20,6 +20,16 @@ Native ZEC reserves an item and verifies one Noir payment. An ambiguous wallet r
 
 The Pending transactions panel links submitted transactions and accepts a missing transaction ID. Base recovery checks sender, contract and exact calldata; ZEC recovery uses the existing payment verifier. Recovery checks/indexes an existing transaction and never sends money. Browser storage is scoped to the current origin/profile; clearing it removes local recovery metadata. Wallet history and backend reservations remain available.
 
+## NFT recipients
+
+Portfolio → Receive NFT creates a shareable link for the currently connected Noir derived identity. The receiving ID and collection genesis are carried in the URL fragment, which is not sent in the HTTP request. Copying the link needs no signature or payment. Account changes refresh the displayed link; disconnecting clears it.
+
+Opening a receive link selects Portfolio and retains its destination until cleared or a transfer is submitted. The sender still chooses the NFT and approves the existing wallet action. The transfer form accepts official HTTPS receive links or a full receiving ID, shows the resolved ID before submission, and rejects self-transfers, zero IDs, foreign collections and unsupported links. Link format validation does not authenticate who shared a link; confirm it with the recipient.
+
+Ordinary Zcash/Base payment addresses are deliberately not resolved to NFT owners. There is currently no proven mapping from those addresses to Noir's derived signing identity. Registering a claimed association with only a derived signature would not prove control of the payment address. Direct payment-address support needs a wallet-supported ownership proof and reviewed binding/recovery rules.
+
+The transfer event, signatures, mailbox payment, listing/lock preflight and canonical ownership checks retain their existing production behavior. The separate public-evidence protocol candidate is not activated by receive links.
+
 ## Preserved rules
 
 Native NFT and ZECS ZEC purchases retain **0% protocol fee / one seller payment**. Base USDC retains **3% protocol / 97% seller proceeds**. Network fees apply. Contract addresses, signing formats, ZB-1/ZB-20 rules, database functions and RLS are unchanged. Legacy atomic recovery remains in Portfolio → Earlier purchases & advanced recovery.
