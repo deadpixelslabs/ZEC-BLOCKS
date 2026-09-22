@@ -84,10 +84,10 @@ test('ambiguous Noir payment stays recoverable after expiry and a second click n
   const {page}=await pageFixture();try{const result=await page.evaluate(async owner=>{
     S.ownerCommitment=owner;window.confirm=()=>true;let sends=0;
     signDerived=async()=>({pubkey:'01',signature:'02'});rpc=async method=>{if(method==='zcash_getTransactionHistory')return [];sends++;throw Error('Connection lost after submission')};
-    zecDirectApi=async action=>action==='buy_challenge'?{challenge_id:'c',message:'test'}:action==='reserve_buy'?{reservation:{reservation_id:'reservation-1'},payment:{to:'t1fixture',amount_zec:'0.01'}}:action==='reservation'?{reservation:{status:'expired',buyer_commitment:owner}}:{ok:true};
+    zecDirectApi=async action=>action==='buy_challenge'?{challenge_id:'c',message:'test'}:action==='reserve_buy'?{reservation:{reservation_id:'reservation-1'},payment:{to:'t1fixture',amount_zec:'0.01'}}:action==='reservation'?{reservation:{reservation_id:'reservation-1',asset:'ZEC_BLOCK',listing_id:'listing-1',token_id:121,status:'expired',buyer_commitment:owner}}:{ok:true};
     await directZecBuy('ZEC_BLOCK','listing-1');await resumeDirectPayments();await directZecBuy('ZEC_BLOCK','listing-1');
-    return {sends,rows:directRecoveryRead(),panel:$('pendingTransactions').textContent}
-  },owner);assert.equal(result.sends,1);assert.equal(result.rows.length,1);assert.equal(result.rows[0].ownerCommitment,owner);assert.match(result.panel,/Checking wallet payment/)}finally{await page.close()}
+    return {sends,rows:directRecoveryRead(),hidden:$('pendingTransactions').hidden,review:$('purchaseRecoveryHistory').textContent}
+  },owner);assert.equal(result.sends,1);assert.equal(result.rows.length,1);assert.equal(result.rows[0].ownerCommitment,owner);assert.equal(result.hidden,true);assert.match(result.review,/ZEC BLOCK #121 · Reservation expired/);assert.equal(result.rows[0].reservationStatus,'expired')}finally{await page.close()}
 });
 test('browser storage failure stops a Noir payment before money is sent',async()=>{
   const {page}=await pageFixture();try{const result=await page.evaluate(async owner=>{
@@ -97,6 +97,81 @@ test('browser storage failure stops a Noir payment before money is sent',async()
     const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key===DIRECT_ZEC_RECOVERY_KEY)throw Error('Storage quota exceeded');return original.call(this,key,value)};
     await directZecBuy('ZEC_BLOCK','storage-listing');Storage.prototype.setItem=original;return sends
   },owner);assert.equal(result,0)}finally{await page.close()}
+});
+test('closed Zcash reservations leave active pending but preserve recovery across reload and wallet changes',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async owner=>{
+      S.ownerCommitment=owner;let submissions=0;
+      saveDirectRecovery({reservationId:'old-121',asset:'ZEC_BLOCK',listingId:'sold-listing',historyBefore:[],payment:{to:'t1Seller',amount:'0.01'},startedAt:1});
+      zecDirectApi=async(action)=>{if(action!=='reservation'){submissions++;throw Error('Closed reservation must not be resubmitted')}
+        return {reservation:{reservation_id:'old-121',asset:'ZEC_BLOCK',listing_id:'sold-listing',token_id:121,buyer_commitment:owner,status:'expired',payment_txid:null}}};
+      await resumeDirectPayments();await useDirectRecoveryTransaction(directRecoveryRead()[0],'f'.repeat(64));await resumeDirectPayments();
+      return {submissions,rows:directRecoveryRead(),pending:$('pendingTransactions').hidden,notice:$('purchaseReviewNotice').hidden};
+    },owner);
+    assert.equal(result.submissions,0);assert.equal(result.rows.length,1);assert.equal(result.rows[0].txid,'f'.repeat(64));assert.equal(result.pending,true);assert.equal(result.notice,false);
+    await page.reload();await page.waitForFunction(()=>typeof renderPendingTransactions==='function');
+    await page.evaluate(owner=>{S.ownerCommitment=owner;renderPendingTransactions()},owner);
+    await page.locator('#purchaseReviewNotice a').click();
+    assert.equal(await page.locator('#view-portfolio').isVisible(),true);assert.equal(await page.locator('#purchaseRecoveryHistory').getAttribute('open'),'');
+    assert.match(await page.locator('#purchaseRecoveryHistory').innerText(),/purchase is not confirmed/);
+    assert.match(await page.locator('#purchaseRecoveryHistory a').getAttribute('href'),/f{64}$/);
+    await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.screenshot({path:path.join(root,'test-results/closed-purchase-review.png'),fullPage:false});
+    const switched=await page.evaluate(other=>{S.ownerCommitment=other;renderPendingTransactions();return {history:$('purchaseRecoveryHistory').hidden,notice:$('purchaseReviewNotice').hidden,rows:directRecoveryRead().length}},other);
+    assert.deepEqual(switched,{history:true,notice:true,rows:1});
+  }finally{await page.close()}
+});
+test('active unknown payments and network errors remain pending while failed reservations need review',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async owner=>{
+      S.ownerCommitment=owner;let status='active',offline=false,submits=0;
+      saveDirectRecovery({reservationId:'live',asset:'ZECS',listingId:'zecs-order'});
+      zecDirectApi=async action=>{if(offline)throw Error('Network unavailable');if(action!=='reservation'){submits++;return {pending:true}}
+        return {reservation:{reservation_id:'live',asset:'ZECS',listing_id:'zecs-order',buyer_commitment:owner,status}}};
+      await resumeDirectPayments();const active=!$('pendingTransactions').hidden;
+      offline=true;await resumeDirectPayments();const failedRead=!$('pendingTransactions').hidden&&!directRecoveryNeedsReview(directRecoveryRead()[0]);
+      offline=false;status='failed';saveDirectRecovery({...directRecoveryRead()[0],txid:'f'.repeat(64)});await resumeDirectPayments();
+      return {active,failedRead,submits,review:!$('purchaseRecoveryHistory').hidden,pending:$('pendingTransactions').hidden,rows:directRecoveryRead().length};
+    },owner);assert.deepEqual(result,{active:true,failedRead:true,submits:0,review:true,pending:true,rows:1});
+  }finally{await page.close()}
+});
+test('settled Zcash reservations clear active and review notices before slow portfolio refresh',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async owner=>{
+      S.ownerCommitment=owner;let release,entered;const refreshing=new Promise(resolve=>entered=resolve);
+      refreshDirectMarketViews=()=>{entered();return new Promise(resolve=>release=resolve)};
+      for(const [id,status] of [['active','payment_pending'],['review','expired']])saveDirectRecovery({reservationId:id,asset:'ZEC_BLOCK',listingId:id,reservationStatus:status});
+      zecDirectApi=async(action,body)=>({reservation:{reservation_id:body.reservationId,asset:'ZEC_BLOCK',listing_id:body.reservationId,buyer_commitment:owner,status:'settled'}});
+      const task=resumeDirectPayments();await refreshing;
+      const result={rows:directRecoveryRead().length,pending:$('pendingTransactions').hidden,history:$('purchaseRecoveryHistory').hidden,notice:$('purchaseReviewNotice').hidden};release();await task;return result;
+    },owner);assert.deepEqual(result,{rows:0,pending:true,history:true,notice:true});
+  }finally{await page.close()}
+});
+test('Zcash recovery ignores other buyers, mismatched reservations and unknown statuses',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,other})=>{
+      S.ownerCommitment=owner;saveDirectRecovery({reservationId:'mine',asset:'ZEC_BLOCK',listingId:'original'});
+      const valid={reservation_id:'mine',asset:'ZEC_BLOCK',listing_id:'original',buyer_commitment:owner,status:'settled'};
+      for(const mismatch of [{buyer_commitment:other},{reservation_id:'other'},{asset:'ZECS'},{listing_id:'other'},{status:'unrecognized'}]){
+        zecDirectApi=async()=>({reservation:{...valid,...mismatch}});await resumeDirectPayments();
+      }
+      return {rows:directRecoveryRead().length,review:directRecoveryNeedsReview(directRecoveryRead()[0]),pending:!$('pendingTransactions').hidden};
+    },{owner,other});assert.deepEqual(result,{rows:1,review:false,pending:true});
+  }finally{await page.close()}
+});
+test('late Zcash reservation responses cannot clear a switched wallet or resurrect a removed record',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,other})=>{
+      S.ownerCommitment=owner;S.walletEpoch=1;let finish;
+      const row={reservationId:'late',asset:'ZEC_BLOCK',listingId:'late-listing'};
+      const response=status=>({reservation:{reservation_id:'late',asset:'ZEC_BLOCK',listing_id:'late-listing',buyer_commitment:owner,status}});
+      saveDirectRecovery(row);zecDirectApi=()=>new Promise(resolve=>finish=resolve);
+      const switched=resumeDirectPayments();await Promise.resolve();S.ownerCommitment=other;S.walletEpoch++;finish(response('settled'));await switched;
+      const kept=directRecoveryRead().length;S.ownerCommitment=owner;S.walletEpoch++;
+      const removed=resumeDirectPayments();await Promise.resolve();dropDirectRecovery('late');finish(response('expired'));await removed;
+      return {kept,remaining:directRecoveryRead().length};
+    },{owner,other});assert.deepEqual(result,{kept:1,remaining:0});
+  }finally{await page.close()}
 });
 test('Base payment journal preserves the original account and prevents duplicate submissions',async()=>{
   const {page}=await pageFixture();try{const result=await page.evaluate(async({owner,other,evm})=>{
@@ -309,7 +384,7 @@ test('an ambiguous ZEC buy recovers only the unique new wallet payment to the ex
       zecDirectApi=async(action,body)=>{
         if(action==='buy_challenge')return {challenge_id:'c',message:'test'};
         if(action==='reserve_buy')return {reservation:{reservation_id:'auto'},payment:{to:'t1Seller',amount_zec:'0.01'}};
-        if(action==='reservation')return {reservation:{buyer_commitment:owner,status:'payment_pending',seller_payout:'t1Seller',price_zat:'1000000'}};
+        if(action==='reservation')return {reservation:{reservation_id:'auto',asset:'ZEC_BLOCK',listing_id:'auto-listing',buyer_commitment:owner,status:'payment_pending',seller_payout:'t1Seller',price_zat:'1000000'}};
         if(action==='submit_payment'){submissions.push(body.txid);return {pending:false,settlement:{verified:true}}}return {ok:true};
       };
       await directZecBuy('ZEC_BLOCK','auto-listing');await resumeDirectPayments();
