@@ -14,7 +14,7 @@ node protocol/cli.mjs identity YOUR_DERIVED_PUBLIC_KEY identity.json
 node protocol/cli.mjs check-identity identity.json RESTORED_DERIVED_PUBLIC_KEY
 ```
 
-The prepared SPEC request contains the exact hash, transparent address, script and 1-zatoshi amount. It sends nothing. Validate wallet compatibility before approving that output; the amount is not the network fee. The receiving commitment address has no known private key. Record the confirmed TXID after approval and verify it with your own node.
+The prepared SPEC request contains the exact hash, OP_RETURN script and 1-zatoshi amount. It sends nothing. This requires custom output-script support, not an ordinary receiving-address payment. The one zatoshi is burned and is separate from the network fee. The earlier one-zatoshi P2PKH design was discarded because standard zcashd policy rejects it as dust. Validate wallet compatibility before approving the new script. Record the confirmed TXID after approval and verify it with your own node.
 
 For chain verification set ZCASH_RPC_URL to your validating archival node. If authentication is needed, set ZCASH_RPC_AUTH to its HTTP Authorization value. Never commit these credentials or place them in public files. The tool does not print credentials. Only getblockchaininfo, getblockhash, getblock and getrawtransaction are allowed.
 

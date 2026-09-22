@@ -14,12 +14,17 @@
   "claimEventVersion": 4,
   "transferEventVersion": 2,
   "anchor": {
-    "carrier": "P2PKH",
+    "carrier": "OP_RETURN",
     "amountZat": "1",
-    "domain": "ZB1:PUBLIC_ANCHOR:v1"
+    "dataPrefixHex": "5a4231",
+    "domainTags": {
+      "EVENT": "01",
+      "SPEC": "02",
+      "CHECKPOINT": "03"
+    }
   },
   "files": {
-    "SPEC.md": "0db74afca8e34599392929efc3a1f0d403b1f1616a25a194b9509f99b56bc3e6",
+    "SPEC.md": "75f2d76978a26887cf13b8687be718e171843a8050fa51627d8062dd64ddb55a",
     "IDENTITY.md": "c5b80938672c3d4aae8806db4e81cd3e8050928932de60f56a00b4f5ae87956c",
     "renderer-v1.js": "9c40257e2f81cc76eaa969674a4d6edb3f9c195308d21b11fcc11fe287e70924"
   }

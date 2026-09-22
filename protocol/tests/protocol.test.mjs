@@ -44,7 +44,9 @@ test('event, manifest, signer, proof, and exact transaction cannot be substitute
 test('signature itself is part of the output commitment',()=>{
  const e=claim(),before=signedEventHash(e,manifestHash);e.signature='1b'+'01'.repeat(64);
  assert.notEqual(signedEventHash(e,manifestHash),before);
- assert.notEqual(anchorFor('SPEC',before).address,anchorFor('EVENT',before).address);
+ assert.notEqual(anchorFor('SPEC',before).scriptPubKey,anchorFor('EVENT',before).scriptPubKey);
+ assert.equal(anchorFor('EVENT','11'.repeat(32)).scriptPubKey,'6a245a423101'+'11'.repeat(32));
+ assert.equal(Buffer.from(anchorFor('SPEC',before).scriptPubKey,'hex').length,38);
 });
 test('node verification requires exact script, value, canonical block and membership',async()=>{
  const e=envelope();const good=await verifyRecord(e,manifestHash,chainFor());assert.equal(good.txid,txid);
@@ -52,6 +54,7 @@ test('node verification requires exact script, value, canonical block and member
   const c=chainFor();mutate(c);await assert.rejects(verifyRecord(e,manifestHash,c));
  }
  const duplicate=chainFor();duplicate.txs.get(txid).vout.push(duplicate.txs.get(txid).vout[0]);await assert.rejects(verifyRecord(e,manifestHash,duplicate));
+ const extra=chainFor();extra.txs.get(txid).vout.push({value:0,scriptPubKey:{hex:'6a0101'}});await assert.rejects(verifyRecord(e,manifestHash,extra),/one OP_RETURN/);
  assert.equal(zecToZat(1e-8),1n);assert.throws(()=>zecToZat(0.000000001));
 });
 test('replay sorts chain order, rejects duplicate claims and stale A-to-B-to-A transfers',async()=>{
@@ -64,11 +67,12 @@ test('replay sorts chain order, rejects duplicate claims and stale A-to-B-to-A t
  const replay=replayVerified([...report.records,report.records[0]]);assert.ok(replay.rejected.length>=2);
  const missing=await verifyBundle([ab],manifestHash,chain);assert.equal(missing.owners.length,0);assert.match(missing.rejected[0].error,/ancestry/);
 });
-test('multiple distinct events in one transaction are rejected independent of bundle order',async()=>{
- const first=envelope(),ab=envelope(transfer(first,ownerCommitment(pub2)),txid),chain=chainFor([first]);
- chain.txs.get(txid).vout.push({value:1e-8,scriptPubKey:{hex:anchorFor('EVENT',signedEventHash(ab.event,manifestHash)).scriptPubKey}});
- for(const input of [[first,ab],[ab,first]]){
-  const report=await verifyBundle(input,manifestHash,chain);assert.equal(report.owners.length,0);assert.equal(report.rejected.length,2);
+test('replay defensively rejects distinct events sharing a TXID regardless of order',async()=>{
+ const first=envelope(),ab=envelope(transfer(first,ownerCommitment(pub2)),txid);
+ const position={height:GENESIS_HEIGHT+100,txIndex:0};
+ const r1={...first,...position,eventHash:signedEventHash(first.event,manifestHash)},r2={...ab,...position,eventHash:signedEventHash(ab.event,manifestHash)};
+ for(const input of [[r1,r2],[r2,r1]]){
+  const report=replayVerified(input);assert.equal(report.owners.length,0);assert.equal(report.rejected.length,2);
   assert.ok(report.rejected.every(x=>/Ambiguous/.test(x.error)));
  }
 });

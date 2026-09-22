@@ -3,7 +3,7 @@
   "specAnchorTxid": null,
   "checks": {
     "walletSignatureConformance": false,
-    "transparentOneZatoshiAccepted": false,
+    "opReturnOneZatoshiAcceptedByWalletAndNode": false,
     "specAnchorConfirmed": false,
     "claimAndReceiptRecoveryOnChain": false,
     "productionEnvelopeIngestion": false,

@@ -45,16 +45,12 @@ export function verifySignature(message,signature,pub){
     return got.toLowerCase()===SigningKey.computePublicKey('0x'+pub,false).toLowerCase();
   }catch{return false}
 }
-export function base58Check(payload){
-  const bytes=Buffer.concat([payload,sha(sha(payload)).subarray(0,4)]),alphabet='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let n=BigInt('0x'+bytes.toString('hex')),s='';while(n){s=alphabet[Number(n%58n)]+s;n/=58n}
-  for(const b of bytes){if(b!==0)break;s='1'+s}return s;
-}
 export function anchorFor(domain,hash,amountZat='1'){
   hex(hash,32,'commitment');requireThat(amountZat==='1','Unsupported anchor amount');
   requireThat(['EVENT','SPEC','CHECKPOINT'].includes(domain),'Unknown anchor domain');
-  const h=sha(Buffer.from('ZB1:PUBLIC_ANCHOR:v1|'+domain+'|'+hash)).subarray(0,20);
-  return {domain,hash,address:base58Check(Buffer.concat([Buffer.from([0x1c,0xb8]),h])),scriptPubKey:'76a914'+h.toString('hex')+'88ac',amountZat};
+  const tag={EVENT:'01',SPEC:'02',CHECKPOINT:'03'}[domain];
+  // OP_RETURN, one minimal 36-byte push: ASCII ZB1, domain byte, full digest.
+  return {domain,hash,scriptPubKey:'6a24'+'5a4231'+tag+hash,amountZat};
 }
 export function eventBody(event,manifestHash){
   hex(manifestHash,32,'manifest hash');

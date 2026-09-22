@@ -1,13 +1,12 @@
 {
   "status": "awaiting-wallet-validation-and-approval",
-  "manifestHash": "b7ef2c88446e86fa5cae378e0b45d8a1106bd0dcda7c099174904353c024edee",
+  "manifestHash": "8e0535f57f05bd8af256c3d7f9cbc4e62e5482b8c47c4c17717e7c146ff3789d",
   "anchor": {
     "domain": "SPEC",
-    "hash": "b7ef2c88446e86fa5cae378e0b45d8a1106bd0dcda7c099174904353c024edee",
-    "address": "t1eeRbb2Vf1HoPsgFB2W286VpkqNjCX5KjF",
-    "scriptPubKey": "76a914e3dc8b69e65cc7807cdfa45be8425d67ef2a9fdf88ac",
+    "hash": "8e0535f57f05bd8af256c3d7f9cbc4e62e5482b8c47c4c17717e7c146ff3789d",
+    "scriptPubKey": "6a245a4231028e0535f57f05bd8af256c3d7f9cbc4e62e5482b8c47c4c17717e7c146ff3789d",
     "amountZat": "1"
   },
   "networkFee": "Wallet calculated; not included in amountZat",
-  "warning": "This transparent output has no known spend key. Validate the 1-zatoshi output with your wallet/node before any broadcast. This command sends nothing."
+  "warning": "This OP_RETURN output burns 1 zatoshi. It requires explicit custom-script support from the wallet. Do not substitute a receiving address or a private memo. This command sends nothing."
 }

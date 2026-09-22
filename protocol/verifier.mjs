@@ -45,6 +45,7 @@ export async function verifyAnchor(txid,anchor,chain,{heightLimit=Number.MAX_SAF
   requireThat(Array.isArray(tx.vout),'Decoded transparent outputs required');
   const outputs=tx.vout.filter(o=>o?.scriptPubKey?.hex===anchor.scriptPubKey&&zecToZat(o.value)===BigInt(anchor.amountZat));
   requireThat(outputs.length===1,'Exact public anchor output missing or duplicated');
+  requireThat(tx.vout.filter(o=>o?.scriptPubKey?.hex?.startsWith('6a')).length===1,'Exactly one OP_RETURN output required');
   return {txid,height,blockHash:block.hash,txIndex:index};
 }
 export async function verifyRecord(envelope,manifestHash,chain,options={}){

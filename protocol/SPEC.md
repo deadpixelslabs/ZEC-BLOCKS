@@ -30,12 +30,14 @@ The signed-event hash is SHA256 of UTF-8 `ZB1:SIGNED_EVENT:v1|` plus canonical(b
 
 For domain EVENT, SPEC or CHECKPOINT and a 32-byte hash H:
 
-1. D = first 20 bytes of SHA256(UTF-8 `ZB1:PUBLIC_ANCHOR:v1|` + domain + `|` + lower-case H).
-2. Expected transparent P2PKH script is hex `76a914` + D + `88ac`.
-3. Mainnet address is Base58Check of bytes 0x1c 0xb8 followed by D.
-4. Candidate output amount is exactly **1 zatoshi**, separate from network fees. There must be exactly one matching output in the decoded transaction.
+1. Domain byte is 01 for EVENT, 02 for SPEC, or 03 for CHECKPOINT.
+2. Data is ASCII `ZB1` (hex 5a4231), the domain byte, then all 32 bytes of H: 36 bytes total.
+3. Expected transparent script is hex `6a24` + `5a4231` + domain byte + lower-case H: OP_RETURN followed by one minimal 36-byte push.
+4. Candidate output amount is exactly **1 zatoshi**, irrecoverably burned, separate from network fees. There must be exactly one OP_RETURN output and exactly one matching script/value in the transaction.
 
-The 20-byte P2PKH projection has a 160-bit output space; it is not a full 256-bit on-chain digest. No spend key is known for this address. Wallet policy/relay acceptance of the one-zatoshi transparent output is an activation gate. Do not increase the amount or claim it works merely because a shielded one-zatoshi memo transaction works. A changed carrier or amount requires a separately reviewed manifest.
+This exposes the full 256-bit digest. It deliberately has no receiving address. An earlier P2PKH proposal was discarded: a one-zatoshi P2PKH output is dust under zcashd's standard policy. Unspendable OP_RETURN outputs have a zero dust threshold and a single small data output is permitted when data-carrier policy is enabled. See zcashd [output policy](https://github.com/zcash/zcash/blob/558f686599586f55def3db86955d74d3be44605e/src/policy/policy.cpp) and [dust threshold calculation](https://github.com/zcash/zcash/blob/558f686599586f55def3db86955d74d3be44605e/src/primitives/transaction.cpp). This source inspection is not an end-to-end broadcast test.
+
+The wallet must support an explicit custom output script. Noir support is not established by its ordinary recipient/memo interface. Wallet/node acceptance of this exact output remains an activation gate. Do not replace the script with an address, private memo, or a larger payment. A changed carrier or amount requires a separately reviewed manifest.
 
 The event cannot include its own future TXID in a pre-transaction signature without a circular dependency. Therefore, after broadcast, the same owner signs:
 
@@ -61,4 +63,4 @@ An inclusion proof shows membership in that particular snapshot. It does not est
 
 ## Activation gates
 
-All gates must be reviewed before the mining frontend emits these events: candidate artifacts reproducible; real wallet signature/header conformance; one-zatoshi transparent output accepted by wallet/node; confirmed SPEC anchor TXID pinned by clients; end-to-end claim/receipt recovery tested; server ingestion understands the envelope; full legacy ownership and cross-rail settlement migration policy reviewed; public event mirrors available. Until then, status is candidate and the existing production event format remains active.
+All gates must be reviewed before the mining frontend emits these events: candidate artifacts reproducible; real wallet signature/header conformance; exact one-zatoshi OP_RETURN script accepted by wallet/node; confirmed SPEC anchor TXID pinned by clients; end-to-end claim/receipt recovery tested; server ingestion understands the envelope; full legacy ownership and cross-rail settlement migration policy reviewed; public event mirrors available. Until then, status is candidate and the existing production event format remains active.

@@ -18,7 +18,7 @@ export async function main(args){
   const [command,...a]=args,{manifest,hash}=await loadManifest();
   switch(command){
     case 'manifest': console.log(JSON.stringify({hash,manifest},null,2));break;
-    case 'prepare-spec': await output(a[0]||'spec-anchor-request.json',{status:'awaiting-wallet-validation-and-approval',manifestHash:hash,anchor:anchorFor('SPEC',hash),networkFee:'Wallet calculated; not included in amountZat',warning:'This transparent output has no known spend key. Validate the 1-zatoshi output with your wallet/node before any broadcast. This command sends nothing.'});break;
+    case 'prepare-spec': await output(a[0]||'spec-anchor-request.json',{status:'awaiting-wallet-validation-and-approval',manifestHash:hash,anchor:anchorFor('SPEC',hash),networkFee:'Wallet calculated; not included in amountZat',warning:'This OP_RETURN output burns 1 zatoshi. It requires explicit custom-script support from the wallet. Do not substitute a receiving address or a private memo. This command sends nothing.'});break;
     case 'verify-spec': console.log(JSON.stringify(await verifyAnchor(a[0],anchorFor('SPEC',hash),node()),null,2));break;
     case 'signing-request': {const e=await json(a[0]);await output(a[1],{message:eventMessage(e,hash),signingMode:'derived',publicKey:e.publicKey});break}
     case 'prepare-event': {const e=await json(a[0]),h=validateSignedEvent(e,hash);await output(a[1],{event:e,eventHash:h,anchor:anchorFor('EVENT',h),status:'not-broadcast'});break}
