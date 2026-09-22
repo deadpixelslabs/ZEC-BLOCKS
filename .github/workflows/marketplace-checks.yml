@@ -6,6 +6,17 @@ on:
 permissions:
   contents: read
 jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test protocol/tests/*.test.mjs
+      - run: node protocol/cli.mjs prepare-spec /tmp/spec-anchor-request.json
+      - run: diff -u protocol/spec-anchor-request.json /tmp/spec-anchor-request.json
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 12

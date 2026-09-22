@@ -1,0 +1,13 @@
+{
+  "status": "awaiting-wallet-validation-and-approval",
+  "manifestHash": "b7ef2c88446e86fa5cae378e0b45d8a1106bd0dcda7c099174904353c024edee",
+  "anchor": {
+    "domain": "SPEC",
+    "hash": "b7ef2c88446e86fa5cae378e0b45d8a1106bd0dcda7c099174904353c024edee",
+    "address": "t1eeRbb2Vf1HoPsgFB2W286VpkqNjCX5KjF",
+    "scriptPubKey": "76a914e3dc8b69e65cc7807cdfa45be8425d67ef2a9fdf88ac",
+    "amountZat": "1"
+  },
+  "networkFee": "Wallet calculated; not included in amountZat",
+  "warning": "This transparent output has no known spend key. Validate the 1-zatoshi output with your wallet/node before any broadcast. This command sends nothing."
+}
