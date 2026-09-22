@@ -1,0 +1,6 @@
+root: ./docs/
+structure:
+  readme: README.md
+  summary: SUMMARY.md
+redirects:
+  zb-1-protocol: README.md
