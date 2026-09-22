@@ -1,0 +1,14 @@
+{
+  "status": "candidate-not-active",
+  "specAnchorTxid": null,
+  "checks": {
+    "walletSignatureConformance": false,
+    "opReturnOneZatoshiAcceptedByWalletAndNode": false,
+    "specAnchorConfirmed": false,
+    "claimAndReceiptRecoveryOnChain": false,
+    "productionEnvelopeIngestion": false,
+    "legacyAndMarketplaceMigrationReviewed": false,
+    "independentEventMirrors": false,
+    "walletSeedDerivationConformance": false
+  }
+}

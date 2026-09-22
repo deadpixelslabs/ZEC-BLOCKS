@@ -1,0 +1,31 @@
+{
+  "schema": "zb1-public-evidence-1",
+  "status": "candidate",
+  "network": "mainnet",
+  "genesisTxid": "ecf6fc3a79885f573d79de70a2de85c34667fc1a4fefe034d3a4015269379f0f",
+  "genesisHeight": 3488573,
+  "supply": 5000,
+  "proof": {
+    "algorithm": "SHA-256",
+    "domain": "ZB1:MINE:v1",
+    "leadingZeroBits": 26
+  },
+  "ownerScheme": "sha256-exact-noir-derived-public-key-v1",
+  "claimEventVersion": 4,
+  "transferEventVersion": 2,
+  "anchor": {
+    "carrier": "OP_RETURN",
+    "amountZat": "1",
+    "dataPrefixHex": "5a4231",
+    "domainTags": {
+      "EVENT": "01",
+      "SPEC": "02",
+      "CHECKPOINT": "03"
+    }
+  },
+  "files": {
+    "SPEC.md": "75f2d76978a26887cf13b8687be718e171843a8050fa51627d8062dd64ddb55a",
+    "IDENTITY.md": "c5b80938672c3d4aae8806db4e81cd3e8050928932de60f56a00b4f5ae87956c",
+    "renderer-v1.js": "9c40257e2f81cc76eaa969674a4d6edb3f9c195308d21b11fcc11fe287e70924"
+  }
+}
