@@ -14,7 +14,7 @@ before(async()=>{
   browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE||undefined});fs.mkdirSync(path.join(root,'test-results'),{recursive:true});
 });
 after(async()=>{await browser?.close();await new Promise(resolve=>server?.close(resolve))});
-async function pageFixture(){
+async function pageFixture(activityEvents=[]){
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),requests=[],errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
   await page.route('**/index-api/**',async route=>{
@@ -23,7 +23,7 @@ async function pageFixture(){
     else if(u.pathname.includes('zecblocks_claim_stats'))data={claims_seen:3508,generated_at:now()};
     else if(u.pathname.includes('zecblocks_zec_market_states_snapshot'))data={zec_listing_states:[],generated_at:now()};
     else if(u.pathname.includes('zecblocks_zec_market_metrics'))data={sales:3,volume_base_units:'1100000',generated_at:now()};
-    else if(u.pathname.includes('zecblocks_activity_snapshot'))data={events:[],generated_at:now()};
+    else if(u.pathname.includes('zecblocks_activity_snapshot'))data={events:activityEvents,generated_at:now()};
     else if(u.pathname.includes('zecblocks_portfolio_snapshot'))data={tokens:[],active_listings:[],owned_count:0,generated_at:now()};
     else if(u.pathname.includes('zecblocks_zb20_market_snapshot'))data={orders:[{order_id:'0x'+'9'.repeat(64),amount_zecs:210,price_usdc:1000000,expires_at:now()+86400,seller_commitment:other,seller_evm:evm}],sales:1,volume_usdc_base_units:500000,generated_at:now()};
     else if(u.pathname.includes('zecblocks_zecs_zec_market_snapshot'))data={orders:[{order_id:'zecs-zec:fixture',amount_zecs:210,price_zat:1000000,expires_at:now()+86400,seller_commitment:other}],sales:0,volume_zat:0,generated_at:now()};
@@ -48,21 +48,19 @@ test('public browsing paints verified cards without wallet SDK, relays or chain 
   }finally{await page.close()}
 });
 test('public activity hides ZB-1 participant IDs across assets, currencies, filters and themes',async()=>{
-  const {page,errors}=await pageFixture();try{
-    await page.evaluate(({owner,other,evm})=>{
-      S.events=[];S.verifiedAtomic.clear();
-      S.serverActivity=[
+  const events=[
         ['NOIR_SETTLED','ZEC','ZEC_BLOCK'],['NOIR_SETTLED','USDC','ZEC_BLOCK'],
         ['ZB20_SETTLED','ZEC','ZECS'],['ZB20_SETTLED','USDC','ZECS'],
         ['SALE','USDC','ZEC_BLOCK'],['ZB20_LIST','ZEC','ZECS'],
         ['OFFER','ZEC','ZEC_BLOCK'],['TRANSFER','ZEC','ZEC_BLOCK'],
         ['SALE_CANCEL','USDC','ZEC_BLOCK'],['ZB20_CANCEL','ZEC','ZECS']
       ].map(([type,currency,asset],i)=>({type,currency,asset,tokenId:i+1,amount:210,price:.25,
-        eventId:'privacy-event-'+i,timestamp:Math.floor(Date.now()/1000)-i*60,
+        eventId:'privacy-event-'+i,timestamp:now()-i*60,
         sellerCommitment:owner,buyerCommitment:other,fromCommitment:owner,toCommitment:other,
         sellerEvm:evm,txid:(i+1).toString(16).padStart(64,'d'),source:'supabase-activity'}));
-      renderActivity();location.hash='#activity';
-    },{owner,other,evm});
+  const {page,errors}=await pageFixture(events);try{
+    await page.waitForFunction(()=>S.serverActivity.length===10);
+    await page.evaluate(()=>{location.hash='#activity'});
     await page.locator('#view-activity').waitFor({state:'visible'});
     const table=page.locator('.activityTable');
     const html=await table.evaluate(el=>el.outerHTML);
