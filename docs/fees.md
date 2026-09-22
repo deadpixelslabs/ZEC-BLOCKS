@@ -17,5 +17,3 @@ An anchor of **one zatoshi is 0.00000001 ZEC**. It is distinct from the network 
 Older pages described a first-500-free schedule followed by a 0.0013 ZEC claim fee. The current mining source has `claimProtocolFeeEnabled=false`; do not present that older schedule or a fixed number of remaining free NFTs as current policy. Unused legacy constants and older release notes are not sufficient evidence of an active charge.
 
 Similarly, the old statement that every marketplace trade has a 3% fee is too broad: the active native ZEC path uses 0%, while Base USDC uses 3%.
-
-Sources: [current mining configuration](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/index.html), [marketplace fee behavior](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/MARKETPLACE-OPERATIONS.md), [ZECS parameters](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/ZECS-PROTOCOL.md).

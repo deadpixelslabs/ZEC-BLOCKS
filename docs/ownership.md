@@ -20,8 +20,6 @@ A wallet's Zcash receiving address, its NFT owner commitment and a connected Bas
 
 Restore wallets only through their own recovery interface. The website never needs the mnemonic, spending private key or viewing key. Check that the restored account returns the same derived public identity before assuming it controls an existing holding.
 
-The repository's public-profile tool can compare returned identities. It does not establish arbitrary cross-wallet seed compatibility. Generating different shielded `u1` addresses does not require those addresses to be publicly linkable.
+Comparing a saved public identity with the restored wallet result can detect an identity mismatch. It does not establish arbitrary cross-wallet seed compatibility. Generating different shielded `u1` addresses does not require those addresses to be publicly linkable.
 
 Opting into [address receiving](transfers.md) deliberately publishes a binding between a transparent address and the NFT identity. Receiving links remain an alternative to that address binding, but the identity and related public protocol activity can still be linkable.
-
-Sources: [wallet integration](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/script.js), [identity contract and limits](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/protocol/IDENTITY.md), [Noir provider documentation](https://docs.zknoir.com/developers/provider-api/).

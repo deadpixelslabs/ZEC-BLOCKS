@@ -29,8 +29,8 @@ Pending local data can include signed messages, exact amounts, recipients, trans
 
 ## API boundary
 
-The mining [`api/zb.js`](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/api/zb.js) gateway permits named RPC and Edge Function operations. The marketplace [`api/index.js`](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/api/index.js) proxy forwards allowed HTTP methods under the `rest/v1/` and `functions/v1/` namespaces using the public anon role. Its path restriction is not per-user authorization; backend validation, RLS and database grants remain important.
+The mining gateway permits named RPC and Edge Function operations. The marketplace proxy forwards allowed HTTP methods under the `rest/v1/` and `functions/v1/` namespaces using the public anon role. Its path restriction is not per-user authorization; backend validation, RLS and database grants remain important.
 
-The receiving-address directory is an example of explicit proof-based authorization. A new record requires signatures from both the address key and derived NFT key. The browser verifies resolved proofs again. Its migration restricts direct public table access and prohibits overwriting bindings through the API. See [the verifier](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/address-identity.js) and [database permissions](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/supabase/migrations/20260922132144_verified_nft_address_directory.sql).
+The receiving-address directory is an example of explicit proof-based authorization. A new record requires signatures from both the address key and derived NFT key. The browser verifies resolved proofs again. Its migration restricts direct public table access and prohibits overwriting bindings through the API. See [receiving addresses](transfers.md) for the user flow.
 
 A published migration is evidence of intended permissions, not an independent audit of every deployed permission. Changes to backend grants or privileged code require separate review.

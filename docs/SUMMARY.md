@@ -26,9 +26,9 @@
 - [State reconstruction](state-reconstruction.md)
 - [Validation and security](validation-security.md)
 
-## Build in public
+## Developers and community
 
-- [Source code and developer setup](reference-implementation.md)
+- [Code examples and integration](reference-implementation.md)
 - [Contribute](contributing.md)
 - [Roadmap and open gaps](roadmap.md)
 - [Documentation changes](changelog.md)

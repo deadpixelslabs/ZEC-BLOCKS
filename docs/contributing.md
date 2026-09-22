@@ -1,18 +1,21 @@
-# Contribute
+# Community contributions
 
-Anyone can inspect the published source and propose a correction through GitHub. You do not need to connect a wallet to read these docs, report a bug or review the implementation.
+You can help improve the documentation, report an application issue or propose a protocol improvement without connecting a wallet.
 
-| Contribution | Where to start |
-| --- | --- |
-| Marketplace bug or improvement | [Marketplace issues](https://github.com/deadpixelslabs/ZEC-BLOCKS/issues) |
-| Mining, claim recovery or ZECS mint issue | [Mining issues](https://github.com/deadpixelslabs/test-zecblocks/issues) |
-| Documentation correction | [Documentation source](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/main/docs) |
-| Verification or protocol proposal | [Candidate specification](https://github.com/deadpixelslabs/ZEC-BLOCKS/tree/main/protocol) and an explanatory pull request |
+## Send useful feedback
 
-A useful report includes the affected page, approximate time, browser/wallet version, expected result, actual result and reproduction steps. Include a public transaction ID only when you are comfortable sharing its activity. Never publish seeds, private keys, viewing keys, service credentials or whole local-storage exports.
+Use the official community or support links shown in the [marketplace](https://www.zecblocks.xyz/). Identify whether the report concerns mining, claim recovery, ZECS, transfers or buying and selling.
 
-For code changes, explain the behavior and the evidence used to test it. Transaction changes should address uncertain broadcasts, stale wallet identities, duplicate actions and recovery without another payment. Documentation changes should cite code and distinguish active behavior from proposals.
+Include the affected page, approximate time, browser/wallet version, expected result, actual result and reproduction steps. Include a public transaction ID only when you are comfortable sharing its activity. Never publish seeds, private keys, viewing keys, service credentials or whole local-storage exports.
 
-Protocol changes require more than merging prose: review the compatibility impact, migration plan, data availability and activation gates. A pull request is not activation authority.
+For a potential security issue, request a private disclosure channel before sharing exploit details. These pages do not establish a dedicated disclosure contact or response SLA.
 
-Read the repository's [contribution guide](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/main/CONTRIBUTING.md), [developer setup](reference-implementation.md) and [licensing status](license.md). Publication of a repository does not substitute for a clear license grant.
+## Propose an improvement
+
+Start with the [architecture](architecture.md), [protocol rules](protocol-rules.md) and [code examples](reference-implementation.md). Explain which behavior should change, why it matters and how the proposed result can be verified.
+
+Transaction changes should address uncertain broadcasts, stale wallet identities, duplicate actions and recovery without another payment. Protocol proposals also need a compatibility analysis, historical-data plan and activation criteria. A proposal does not itself change live rules or ownership.
+
+For documentation corrections, identify the page and the precise statement, then provide non-secret evidence. Keep implementation status, known limits and fees accurate. Avoid fixed live counters and guaranteed transaction times.
+
+Read [licensing status](license.md) before reusing examples or submitting material owned by someone else.

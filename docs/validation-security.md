@@ -24,6 +24,4 @@ Hosted verifier logic and privileged database administration can affect the proj
 
 ## Report a problem
 
-For a normal bug, use the appropriate repository's issue tracker with reproducible steps and non-secret evidence. For a security concern, use GitHub private vulnerability reporting if offered; do not post exploitable details or credentials publicly. A dedicated disclosure contact and response guarantee are not established by these pages.
-
-Sources: [claim incident and remaining cases](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/docs/claim-verification-2026-09-22.md), [historical guards](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/supabase/migrations/20260922121500_claim_history_guards.sql), [marketplace controls](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/MARKETPLACE-OPERATIONS.md), [address verification tests](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/tests/address-identity.test.cjs).
+For a normal bug, use the official community or support links in the [marketplace](https://www.zecblocks.xyz/) and share reproducible steps with non-secret evidence. For a security concern, request a private disclosure channel before sharing exploit details. A dedicated disclosure contact and response guarantee are not established by these pages.

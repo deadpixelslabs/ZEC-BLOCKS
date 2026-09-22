@@ -29,5 +29,3 @@ Confirm the link with the intended recipient. A correctly formatted link does no
 4. Wait for the pending transfer to resolve to the recipient's canonical ownership.
 
 Recovery checks the existing transaction; it does not send another one. A transaction timeout leaves the pending record intact. The current transfer uses the existing signed event and mailbox transaction; it does not activate the separate public-evidence candidate.
-
-Sources: [transfer behavior](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/MARKETPLACE-OPERATIONS.md), [dual-signature verifier](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/address-identity.js), [registration backend](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/supabase/functions/zecblocks-nft-address/index.ts).

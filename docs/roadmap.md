@@ -8,11 +8,11 @@ This page records work needed for stronger public verification. It is not a rele
 - Publish missing production worker source and a reproducible database bootstrap, with non-secret configuration examples.
 - Publish the ZECS market contract source and reproducible contract/deployment verification records.
 - Maintain public incident findings and explain unresolved evidence without exposing user secrets.
-- Keep technical documentation linked to dated source revisions and an auditable change history.
+- Keep technical documentation dated and maintain a clear change history.
 
 ## Public-evidence candidate activation
 
-The machine-readable record is [`protocol/activation.json`](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/protocol/activation.json). At the reviewed revision its status is `candidate-not-active`, its specification anchor TXID is absent, and the checks below are false.
+At the review date the candidate status is `candidate-not-active`, its specification anchor transaction is absent, and the requirements below have not been marked complete.
 
 | Gate | Evidence needed |
 | --- | --- |
@@ -29,4 +29,4 @@ Legacy owners must not be reassigned automatically to make candidate verificatio
 
 ## Reporting progress
 
-Mark a gate complete only with a public implementation, reproducible evidence and the relevant deployment/activation record. Distinguish merged source, deployed services and live public documentation. None implies the other automatically.
+Mark a gate complete only with a public implementation, reproducible evidence and the relevant deployment/activation record. Distinguish reviewed code, deployed services and live public documentation. None implies the other automatically.

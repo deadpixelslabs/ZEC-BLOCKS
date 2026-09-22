@@ -35,5 +35,3 @@ Use **Recover Pending Mint** after an interrupted broadcast or registration. It 
 The configured canonical deployment transaction is `5bde45c224ae58a41bdd72ab0bfdfe36a23a4d3aa5335381842e19fdac02e5ed`. The published launch record identifies height `3,490,444`; independent checks should verify it with a Zcash node.
 
 The marketplace offers ZEC and Base USDC paths for ZECS. A payment contract on Base does not turn ZECS into a Base ERC-20 token. The Base ZECS market also depends on a server-held verifier signer for authorizations and a backend balance projection. This dependency is distinct from the NFT Base contract and must be considered when evaluating trust.
-
-Sources: [launch parameters and signature format](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/ZECS-PROTOCOL.md), [mint verifier](https://github.com/deadpixelslabs/test-zecblocks/blob/c5fc203dcf0557500f13530f49471788b1436a01/supabase/functions/zecblocks-zb20-mint/index.ts), [market backend](https://github.com/deadpixelslabs/ZEC-BLOCKS/blob/95648a4d7948dfb8c2466ed941718f405827621c/ZECS-MARKET-BACKEND.md).
