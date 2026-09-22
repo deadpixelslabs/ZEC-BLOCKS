@@ -19,6 +19,6 @@ Checked against the implementation described in this documentation on 22 Septemb
 
 The [claim investigation](validation-security.md) records an availability pagination bug, repairs and unresolved historical evidence. A repaired finder does not make every historical claim valid. Disputed evidence requires review; it must not be resolved by silently inventing ownership or sending another transaction.
 
-A complete independently reproducible package of all production database definitions, deployed workers and historical events is not provided here. [Licensing](license.md) also needs a project-level license file. These gaps must remain visible when describing openness.
+A complete independently reproducible package of all production database definitions, deployed workers and historical events is not provided here. The existing [MIT notice](license.md) is preserved; application distributions still need a clearly scoped license file alongside their code. These gaps must remain visible when describing openness.
 
 Candidate activation requirements are recorded in the [roadmap](roadmap.md). Publishing documentation or changing code does not activate that candidate.

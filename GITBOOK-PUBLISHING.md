@@ -44,3 +44,12 @@ Public pages are self-contained and intentionally omit repository links at the p
 - Proof example and activation gates: `protocol/core.mjs`, `protocol/tests/pow-fixture.json`, `protocol/tests/protocol.test.mjs` and `protocol/activation.json`.
 
 Do not import this maintainer guide into the public space.
+
+## Existing space checked after login
+
+- Organization: ZECBLOCKS (`XDGLrjKv1NzTECXdrXtC`).
+- Site: ZECBLOCKS Docs (`site_KxqwB`), domain `docs.zecblocks.xyz`.
+- Existing space: `lxknJ6gR81oPzlO5fPpR`.
+- Before import, version history retained merged change request `JxZTsAsQN4mZBSOG2XNH` (Add ZECS documentation, 20 September 2026) and the earlier initial revision.
+- The rendered LICENSE page includes the full MIT notice, copyright 2026 ZEC BLOCKS, scoped to reference software published with the license. Preserve that grant instead of replacing it with an assertion that no license was published.
+- Preserve `/bitmap-v1` as the artwork page URL while using the public title Artwork generation.

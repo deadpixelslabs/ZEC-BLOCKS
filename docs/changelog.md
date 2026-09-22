@@ -12,7 +12,8 @@ This entry describes the documentation refresh.
 - Added practical receiving-address, transfer, checkout and ZECS guides.
 - Described hosted indexers, database projections, off-chain evidence and the ZECS market verifier dependency.
 - Labelled the public-evidence verifier inactive and documented its activation gates and replay limitations.
-- Recorded source-completeness and licensing gaps instead of implying they are already resolved.
+- Recorded source-completeness and license-packaging gaps instead of implying they are already resolved.
+- Preserved the existing MIT notice and artwork page URL, with the deterministic renderer shown directly in the documentation.
 
 Checked against the mining and marketplace implementations on 22 September 2026.
 
