@@ -23,7 +23,7 @@ e80cbcf6bfb27638ab1d34a3d202929d2038da84be6e8bb609da6543a2034f1c  ./supabase/DEP
 3a78f28dae99cd789e0099ce8fbcc79dde7f3baf8d2b96adde2eb8abd570b660  ./supabase/migrations/20260922132144_verified_nft_address_directory.sql
 2b4feb7b467ee49caf275f864c1862237b7517c1f6712a959447ec9f11e96fa6  ./tests/address-identity.test.cjs
 d17c6cabc5ab9c7b692adc5bf704b77a22433dacd0db45d3a226b936ae1c811d  ./tests/fixtures/address.cjs
-dc3f407c3c80ae8e15d94994a21853398491fbb4145db55c7095ce4736af4ed7  ./tests/marketplace.test.cjs
+1dc038ea15eb05f03f2e6d49c71a598d875acd43fd755bfa80da7b318977f055  ./tests/marketplace.test.cjs
 eb089ed9f6fa18f024d24865b5e6f272ba9ce03e537dbd1e2ca79316267af05e  ./tests/runtime.test.cjs
 c6bfcb8d9c411fb991b645d9959a7b09b838cb7f420709017fa77f5fb5e8c6a7  ./vendor/ETHERS-LICENSE.txt
 c8550f9644492f2d1278467b301c615c768a0d61d5c22d5bcd107ec7c9cbd329  ./vendor/ethers-6.13.5.umd.min.js

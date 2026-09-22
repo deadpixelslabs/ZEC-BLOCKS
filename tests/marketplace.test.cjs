@@ -112,7 +112,7 @@ test('closed Zcash reservations leave active pending but preserve recovery acros
     await page.reload();await page.waitForFunction(()=>typeof renderPendingTransactions==='function');
     await page.evaluate(owner=>{S.ownerCommitment=owner;renderPendingTransactions()},owner);
     await page.locator('#purchaseReviewNotice a').click();
-    assert.equal(await page.locator('#view-portfolio').isVisible(),true);assert.equal(await page.locator('#purchaseRecoveryHistory').getAttribute('open'),'');
+    await page.locator('#view-portfolio').waitFor({state:'visible'});assert.equal(await page.locator('#purchaseRecoveryHistory').getAttribute('open'),'');
     assert.match(await page.locator('#purchaseRecoveryHistory').innerText(),/purchase is not confirmed/);
     assert.match(await page.locator('#purchaseRecoveryHistory a').getAttribute('href'),/f{64}$/);
     await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
