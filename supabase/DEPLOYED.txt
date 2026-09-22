@@ -82,3 +82,13 @@ Canonical Ownership Finality (V12.7.8 — 2026-09-21):
 - USDC checkout now requires a server-side purchase guard and canonical owner rebuild before payment.
 - A Base transaction is not reported as "Purchase complete" until the canonical owner projection equals the buyer.
 - Broadcast/confirmed-but-not-yet-indexed purchases are stored in browser recovery state and retried without a second payment.
+
+Verified NFT address receiving (2026-09-22):
+- Migration: verified_nft_address_directory; table zecblocks_nft_addresses.
+- RLS enabled; anon/authenticated cannot read or write the table directly.
+- Service role has SELECT/INSERT only; address bindings cannot be overwritten.
+- Edge Function: zecblocks-nft-address, version 1, JWT verification enabled.
+- Registrations require both current-address and derived-NFT Noir signatures.
+- Browser independently verifies every resolved address proof.
+- Supports opt-in mainnet t1 addresses; u1/t3/Base recipient addresses are not supported.
+- No mainnet transaction or user address registration was performed during deployment checks.
