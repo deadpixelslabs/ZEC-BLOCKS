@@ -46,7 +46,7 @@ Chain transactions would remain subject to their chains' continued availability.
 
 ## Is the project independently audited or fully open source?
 
-No independent audit report is supplied with this documentation. Code examples make selected logic inspectable; they do not establish a complete, licensed open-source distribution. See [implementation examples](reference-implementation.md), [open gaps](roadmap.md) and [licensing](license.md).
+No independent audit report is supplied with this documentation. The published MIT notice covers the reference software distributed with it. Code examples make selected logic inspectable, but a complete reproducible application distribution and clearly packaged license scope remain open tasks. See [implementation examples](reference-implementation.md), [open gaps](roadmap.md) and [licensing](license.md).
 
 ## Where can I inspect or improve the project?
 

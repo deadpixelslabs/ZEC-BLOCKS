@@ -23,6 +23,7 @@
 - [Wallet authentication and credentials](authentication.md)
 - [Genesis](genesis.md)
 - [Protocol rules](protocol-rules.md)
+- [Artwork generation](bitmap-v1.md)
 - [State reconstruction](state-reconstruction.md)
 - [Validation and security](validation-security.md)
 
@@ -32,4 +33,4 @@
 - [Contribute](contributing.md)
 - [Roadmap and open gaps](roadmap.md)
 - [Documentation changes](changelog.md)
-- [Licensing status](license.md)
+- [License](license.md)

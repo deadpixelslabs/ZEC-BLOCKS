@@ -4,7 +4,7 @@ This page records work needed for stronger public verification. It is not a rele
 
 ## Documentation and source completeness
 
-- Add an explicit project license with a clear scope; preserve third-party licenses and distinguish software from branding/artwork rights.
+- Package the published MIT notice with the reference software and clarify the scope for complete application distributions; preserve third-party licenses and distinguish software from branding/artwork rights.
 - Publish missing production worker source and a reproducible database bootstrap, with non-secret configuration examples.
 - Publish the ZECS market contract source and reproducible contract/deployment verification records.
 - Maintain public incident findings and explain unresolved evidence without exposing user secrets.
