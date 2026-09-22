@@ -59,9 +59,9 @@ test('public activity hides ZB-1 participant IDs across assets, currencies, filt
         sellerCommitment:owner,buyerCommitment:other,fromCommitment:owner,toCommitment:other,
         sellerEvm:evm,txid:(i+1).toString(16).padStart(64,'d'),source:'supabase-activity'}));
   const {page,errors}=await pageFixture(events);try{
-    await page.waitForFunction(()=>S.serverActivity.length===10);
     await page.evaluate(()=>{location.hash='#activity'});
     await page.locator('#view-activity').waitFor({state:'visible'});
+    await page.waitForFunction(()=>S.serverActivity.length===10);
     const table=page.locator('.activityTable');
     const html=await table.evaluate(el=>el.outerHTML);
     for(const id of [owner,other,evm,owner.slice(0,7),other.slice(0,7)])assert.equal(html.includes(id),false,'participant leaked into public table');
