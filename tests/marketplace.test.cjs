@@ -5,6 +5,7 @@ const {chromium}=require('playwright');
 let browser,server,url;const root=path.resolve(__dirname,'..');
 const owner='a'.repeat(64),other='b'.repeat(64),evm='0x'+'c'.repeat(40);
 const now=()=>Math.floor(Date.now()/1000);
+const {fixture:addressFixture}=require('./fixtures/address.cjs');
 function board(){return {generated_at:now(),usdc_listings:Array.from({length:52},(_,i)=>({listing_id:'0x'+String(i+1).padStart(64,'0'),token_id:i+1,status:'active',expires_at:now()+86400,intent_verified:true,ownership_valid:true,indexed_owner_commitment:other,indexed_owner_verified_level:'full',seller_commitment:other,seller_evm:evm,price_usdc:(i+1)*1000000,created_block:1000+i,updated_block:1000+i})),usdc_metrics:{listed:52,sales:128,floor_base_units:'1000000',volume_base_units:'312120000'},indexer_health:{base_usdc:{status:'ok',details:{caught_up:true}}}}}
 before(async()=>{
   server=http.createServer((req,res)=>{const file=path.join(root,new URL(req.url,'http://local').pathname==='/'?'index.html':new URL(req.url,'http://local').pathname);if(!file.startsWith(root)){res.writeHead(403);return res.end()}
@@ -82,16 +83,16 @@ test('wallet action gate blocks double clicks and rejects a changed identity bef
 test('ambiguous Noir payment stays recoverable after expiry and a second click never pays again',async()=>{
   const {page}=await pageFixture();try{const result=await page.evaluate(async owner=>{
     S.ownerCommitment=owner;window.confirm=()=>true;let sends=0;
-    signDerived=async()=>({pubkey:'01',signature:'02'});rpc=async()=>{sends++;throw Error('Connection lost after submission')};
+    signDerived=async()=>({pubkey:'01',signature:'02'});rpc=async method=>{if(method==='zcash_getTransactionHistory')return [];sends++;throw Error('Connection lost after submission')};
     zecDirectApi=async action=>action==='buy_challenge'?{challenge_id:'c',message:'test'}:action==='reserve_buy'?{reservation:{reservation_id:'reservation-1'},payment:{to:'t1fixture',amount_zec:'0.01'}}:action==='reservation'?{reservation:{status:'expired',buyer_commitment:owner}}:{ok:true};
     await directZecBuy('ZEC_BLOCK','listing-1');await resumeDirectPayments();await directZecBuy('ZEC_BLOCK','listing-1');
     return {sends,rows:directRecoveryRead(),panel:$('pendingTransactions').textContent}
-  },owner);assert.equal(result.sends,1);assert.equal(result.rows.length,1);assert.equal(result.rows[0].ownerCommitment,owner);assert.match(result.panel,/Check wallet history/)}finally{await page.close()}
+  },owner);assert.equal(result.sends,1);assert.equal(result.rows.length,1);assert.equal(result.rows[0].ownerCommitment,owner);assert.match(result.panel,/Checking wallet payment/)}finally{await page.close()}
 });
 test('browser storage failure stops a Noir payment before money is sent',async()=>{
   const {page}=await pageFixture();try{const result=await page.evaluate(async owner=>{
     S.ownerCommitment=owner;window.confirm=()=>true;let sends=0;
-    signDerived=async()=>({pubkey:'01',signature:'02'});rpc=async()=>{sends++;return {txid:'f'.repeat(64)}};
+    signDerived=async()=>({pubkey:'01',signature:'02'});rpc=async method=>{if(method==='zcash_getTransactionHistory')return [];sends++;return {txid:'f'.repeat(64)}};
     zecDirectApi=async action=>action==='buy_challenge'?{challenge_id:'c',message:'test'}:{reservation:{reservation_id:'storage-test'},payment:{to:'t1fixture',amount_zec:'0.01'}};
     const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key===DIRECT_ZEC_RECOVERY_KEY)throw Error('Storage quota exceeded');return original.call(this,key,value)};
     await directZecBuy('ZEC_BLOCK','storage-listing');Storage.prototype.setItem=original;return sends
@@ -178,6 +179,7 @@ test('Receive NFT copies the active wallet link and clears it on disconnect',asy
     await page.goto(url+'#portfolio');await page.waitForFunction(()=>typeof S!=='undefined');
     await page.evaluate(owner=>{S.connection={};S.ownerCommitment=owner;updateWalletUI();Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>window.copiedNftLink=text}})},owner);
     await page.getByRole('button',{name:'Receive NFT',exact:true}).click();
+    await page.getByText('Receive using a link instead',{exact:true}).click();
     await page.getByRole('button',{name:'Copy receive link',exact:true}).click();
     assert.match(await page.evaluate(()=>window.copiedNftLink),new RegExp('/'+owner+'$'));
     await page.evaluate(other=>{S.ownerCommitment=other;updateWalletUI()},other);
@@ -204,7 +206,7 @@ test('opening a receive link selects the portfolio and pre-fills only the recipi
     await page.screenshot({path:path.join(root,'test-results/nft-send-mobile.png')});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     await page.locator('#recipientCommit').fill('u1paymentaddress');assert.equal(await page.locator('#submitTransferBtn').isDisabled(),true);
-    assert.match(await page.locator('#recipientStatus').innerText(),/Receive NFT/);
+    assert.match(await page.locator('#recipientStatus').innerText(),/enabled t1 address/);
     await page.locator('#recipientCommit').fill(owner);assert.equal(await page.locator('#submitTransferBtn').isDisabled(),true);
     await page.locator('#recipientCommit').fill(link.replace('www.zecblocks.xyz','evil.example'));assert.equal(await page.locator('#submitTransferBtn').isDisabled(),true);
     assert.deepEqual(errors,[]);
@@ -227,5 +229,137 @@ test('a receive link resolves to the exact legacy transfer recipient without alt
     assert.match(result.payments[0].memo,new RegExp('\\|O='+other+'\\|'));
     assert.equal(result.payments[0].to,result.mailbox);assert.equal(result.payments[0].amount,'0.00000001');
     assert.match(result.message,/Transfer broadcast/);
+  }finally{await page.close()}
+});
+
+test('a verified t1 address sends to the signed NFT identity with no manual ID',async()=>{
+  const {page,errors}=await pageFixture(),proof=addressFixture();try{
+    await page.route('**/functions/v1/zecblocks-nft-address',r=>r.fulfill({json:{ok:true,proof}}));
+    await page.evaluate(owner=>{
+      S.connection={};S.ownerCommitment=owner;updateWalletUI();openNftTransfer(22);window.transferSends=[];
+      usdcListingRailGuard=async()=>{};tokenIsAtomicLocked=()=>false;
+      signDerived=async()=>({pubkey:'04'+'11'.repeat(64),signature:'1b'+'22'.repeat(64)});
+      rpc=async(method,params)=>{if(method==='zcash_getTransactionHistory')return [];window.transferSends.push(params[0]);return 'f'.repeat(64)};
+      publishRelay=async()=>({ok:true});fetchRelay=async()=>{};hydrateServerPortfolio=async()=>{};
+    },owner);
+    await page.locator('#recipientCommit').fill(proof.address);
+    await page.waitForFunction(()=>!document.querySelector('#submitTransferBtn').disabled);
+    assert.equal(await page.locator('#recipientNftId').innerText(),proof.address);
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:path.join(root,'test-results/address-transfer-mobile.png')});
+    await page.locator('#submitTransferBtn').click();
+    await page.waitForFunction(()=>window.transferSends.length===1);
+    const sent=await page.evaluate(()=>window.transferSends[0]);
+    assert.match(sent.memo,new RegExp('\\|O='+proof.owner+'\\|'));
+    assert.equal(sent.amount,'0.00000001');assert.deepEqual(errors,[]);
+    await page.evaluate(()=>openNftTransfer(22));await page.locator('#recipientCommit').fill(proof.address);
+    await page.waitForFunction(()=>!document.querySelector('#submitTransferBtn').disabled);
+    await page.locator('#submitTransferBtn').click();
+    await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('already being checked'));
+    assert.equal(await page.evaluate(()=>window.transferSends.length),1);
+    assert.match(await page.locator('#toast').innerText(),/already being checked/);
+  }finally{await page.close()}
+});
+test('a forged directory response cannot enable the send button',async()=>{
+  const {page}=await pageFixture(),proof=addressFixture();try{
+    await page.route('**/functions/v1/zecblocks-nft-address',r=>r.fulfill({json:{ok:true,proof:{...proof,owner:other}}}));
+    await page.evaluate(owner=>{S.connection={};S.ownerCommitment=owner;updateWalletUI();openNftTransfer(22)},owner);
+    await page.locator('#recipientCommit').fill(proof.address);
+    await page.waitForFunction(()=>document.querySelector('#recipientCommit').getAttribute('aria-invalid')==='true');
+    assert.equal(await page.locator('#submitTransferBtn').isDisabled(),true);
+    assert.match(await page.locator('#recipientStatus').innerText(),/does not match/);
+  }finally{await page.close()}
+});
+test('receiving setup obtains both real test-key signatures without sending funds',async()=>{
+  const {page,errors}=await pageFixture(),proof=addressFixture();try{
+    await page.evaluate(async proof=>{
+      await loadEthers();S.connection={transparent:proof.address};S.pubkey=proof.nftPubkey;S.ownerCommitment=proof.owner;updateWalletUI();
+      window.addressModes=[];window.addressSends=0;
+      const tools=NftAddressTools(ethers);
+      rpc=async(method,params)=>{
+        if(method==='zcash_getPublicKey')return {pubkey:proof.addressPubkey};
+        if(method==='zcash_sendTransaction'){window.addressSends++;throw Error('Unexpected payment')}
+        if(method==='zcash_signMessage'){
+          const mode=params[1].signingMode;window.addressModes.push(mode);
+          const key=new ethers.SigningKey('0x'+(mode==='current'?'1':'2').padStart(64,'0'));
+          const s=key.sign(tools.digest(params[0]));return {pubkey:key.publicKey.slice(2),signature:(31+s.yParity).toString(16)+s.r.slice(2)+s.s.slice(2)};
+        }
+      };
+      indexFunction=async(name,body)=>{if(body.action==='register'){window.registeredAddressProof=tools.verify(body.proof,CFG.genesisTxid);return {ok:true,proof:body.proof}}return {ok:true,proof:null}};
+      modal('receiveNftModal',true);
+    },proof);
+    await page.locator('#enableNftAddressBtn').click();
+    await page.waitForFunction(()=>!!window.registeredAddressProof);
+    assert.deepEqual(await page.evaluate(()=>window.addressModes),['current','derived']);
+    assert.equal(await page.evaluate(()=>window.addressSends),0);
+    assert.equal(await page.locator('#copyNftAddressBtn').isVisible(),true);
+    await page.evaluate(()=>clearNoirSession());assert.equal(await page.locator('#copyNftAddressBtn').isVisible(),false);
+    assert.deepEqual(errors,[]);
+  }finally{await page.close()}
+});
+test('an ambiguous ZEC buy recovers only the unique new wallet payment to the exact seller',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async owner=>{
+      S.ownerCommitment=owner;let sent=0,historyCalls=0,submissions=[];
+      const old='1'.repeat(64),wrong='2'.repeat(64),paid='3'.repeat(64);
+      signDerived=async()=>({pubkey:'01',signature:'02'});
+      rpc=async(method)=>{if(method==='zcash_getTransactionHistory'){historyCalls++;return (sent?[old,wrong,paid]:[old]).map(txid=>({txid,timestamp:Date.now(),amount:'0.01',type:'sent'}))}sent++;return null};
+      explorerFetch=async(kind,txid)=>({txid,outputs:[{address:txid===wrong?'t1Other':'t1Seller',valueZat:'1000000'}]});
+      refreshDirectMarketViews=async()=>{};
+      zecDirectApi=async(action,body)=>{
+        if(action==='buy_challenge')return {challenge_id:'c',message:'test'};
+        if(action==='reserve_buy')return {reservation:{reservation_id:'auto'},payment:{to:'t1Seller',amount_zec:'0.01'}};
+        if(action==='reservation')return {reservation:{buyer_commitment:owner,status:'payment_pending',seller_payout:'t1Seller',price_zat:'1000000'}};
+        if(action==='submit_payment'){submissions.push(body.txid);return {pending:false,settlement:{verified:true}}}return {ok:true};
+      };
+      await directZecBuy('ZEC_BLOCK','auto-listing');await resumeDirectPayments();
+      return {sent,historyCalls,submissions,pending:directRecoveryRead().length};
+    },owner);
+    assert.equal(result.sent,1);assert.ok(result.historyCalls>=2);assert.deepEqual(result.submissions,['3'.repeat(64)]);assert.equal(result.pending,0);
+  }finally{await page.close()}
+});
+test('duplicate history matches, changed wallets and missing outputs never select a payment',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,other})=>{
+      S.ownerCommitment=owner;S.walletEpoch=1;
+      const row={reservationId:'uncertain',payment:{to:'t1Seller',amount:'0.01'},historyBefore:[],startedAt:Date.now()},reservation={seller_payout:'t1Seller',price_zat:'1000000'};
+      rpc=async()=>['1'.repeat(64),'2'.repeat(64)].map(txid=>({txid,timestamp:Date.now()}));
+      explorerFetch=async(kind,txid)=>({txid,outputs:[{address:'t1Seller',valueZat:'1000000'}]});
+      const duplicate=await findDirectPayment(row,reservation,owner,1);
+      rpc=async()=>{S.ownerCommitment=other;return [{txid:'3'.repeat(64),timestamp:Date.now()}]};
+      const changed=await findDirectPayment(row,reservation,owner,1);
+      S.ownerCommitment=owner;rpc=async()=>[{txid:'3'.repeat(64),timestamp:Date.now()}];explorerFetch=async()=>({});
+      let unreadable=false;try{await findDirectPayment(row,reservation,owner,1)}catch{unreadable=true}
+      return {duplicate,changed,unreadable};
+    },{owner,other});assert.deepEqual(result,{duplicate:'',changed:'',unreadable:true});
+  }finally{await page.close()}
+});
+test('Base recovery discovers the original nonce and rejects a different replacement transaction',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,evm})=>{
+      const hash='0x'+'e'.repeat(64),row={owner,evm,target:'0x'+'a'.repeat(40),data:'0x1234',nonce:7,requestBlock:100};let wrong=false;
+      const p={getBlockNumber:async()=>200,getTransactionCount:async(addr,block)=>block<142?7:8,send:async(method,args)=>({transactions:[{from:evm,to:row.target,nonce:'0x7',input:wrong?'0x9999':row.data,value:'0x0',hash}]})};
+      const recovered=await findBaseTransaction(row,p);wrong=true;const replacement=await findBaseTransaction(row,p);return {recovered,replacement};
+    },{owner,evm});assert.equal(result.recovered,'0x'+'e'.repeat(64));assert.equal(result.replacement,'');
+  }finally{await page.close()}
+});
+
+test('an NFT transfer with a missing wallet response recovers its exact new memo without resending',async()=>{
+  const {page}=await pageFixture();try{
+    await page.route('**/rest/v1/zecblocks_tokens?**',route=>route.fulfill({json:[{token_id:22,owner_commitment:owner,owner_verified_level:'full'}]}));
+    const result=await page.evaluate(async({owner,other})=>{
+      S.connection={};S.ownerCommitment=owner;updateWalletUI();openNftTransfer(22);
+      $('recipientCommit').value=other;updateRecipientPreview();
+      let sends=0,memo='',published=[];
+      usdcListingRailGuard=async()=>{};tokenIsAtomicLocked=()=>false;
+      signDerived=async()=>({pubkey:'04'+'11'.repeat(64),signature:'1b'+'22'.repeat(64)});
+      rpc=async(method,params)=>{if(method==='zcash_getTransactionHistory')return sends?[{txid:'f'.repeat(64),memo}]:[];sends++;memo=params[0].memo;return null};
+      publishRelay=async e=>{published.push(e);return {ok:true}};
+      await $('submitTransferBtn').onclick();await resumeNftTransfers();
+      await $('submitTransferBtn').onclick();
+      return {sends,published,pending:nftTransferJournal.read()};
+    },{owner,other});
+    assert.equal(result.sends,1);assert.equal(result.published.length,1);
+    assert.equal(result.published[0].toCommitment,other);assert.equal(result.pending[0].txid,'f'.repeat(64));
   }finally{await page.close()}
 });
