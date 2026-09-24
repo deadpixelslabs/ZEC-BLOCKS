@@ -25,7 +25,9 @@ An item can become unavailable between browsing and checkout. A stale listing, d
 
 The public Activity table hides participants' Zcash/ZB-1 owner commitments for both ZEC and USDC events, including ZEC BLOCKS and ZECS trades. Two-party events display **Hidden → Hidden**; listings and cancellations display one hidden participant. No participant commitment is inserted into the table's text, tooltips or HTML attributes.
 
-This reduces casual tracking through the Activity interface. It is not cryptographic shielding: protocol data, API responses and on-chain records can still expose or link identities. NFT IDs, prices, times and transaction references remain visible. Existing published records are not erased. Base USDC settlement remains public, and a shield icon here indicates a hidden participant ID, not proof of a shielded payment.
+Public NFT and ZECS listing cards also omit seller identities for both ZEC and USDC: neither Zcash owner commitments nor Base seller addresses are shown. NFT search matches item numbers only. Render cache keys stay in memory rather than HTML attributes; seller data is still used internally to verify ownership and route payments.
+
+This reduces casual tracking through the marketplace interface. It is not cryptographic shielding: protocol data, API responses and on-chain records can still expose or link identities. NFT IDs, prices, times and transaction references remain visible. Existing published records are not erased. Base USDC settlement remains public, and a shield icon here indicates a hidden participant ID, not proof of a shielded payment.
 
 ## Contracts and trust
 

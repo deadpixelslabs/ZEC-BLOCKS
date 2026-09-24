@@ -2044,7 +2044,7 @@ function renderZecsZecMarket(){
   for(const o of valid){
     const amount=Number(o.amount_zecs),total=Number(o.price_zat)/1e8,unit=total/amount,own=String(o.seller_commitment||'').toLowerCase()===String(S.ownerCommitment||'').toLowerCase();
     const card=document.createElement('article');card.className='zecsOrder';
-    card.innerHTML='<div class="zecsOrderTop"><div><div class="zecsAmount">'+esc(amount.toLocaleString())+' ZECS</div><div class="zecsUnit">'+esc(unit.toLocaleString(undefined,{maximumFractionDigits:8}))+' ZEC / ZECS</div></div><div class="zecsTotal">'+esc(total.toLocaleString(undefined,{maximumFractionDigits:8}))+' ZEC</div></div><div class="zecsOrderMeta">Seller '+esc(short(o.seller_commitment,7))+'<br>0% protocol fee · seller receives 100%<br>Expires '+esc(new Date(Number(o.expires_at)*1000).toLocaleString())+'</div><button class="btn '+(own?'red':'gold')+' zecsZecAction">'+(own?'Cancel Order':'Buy Now · ZEC')+'</button>';
+    card.innerHTML='<div class="zecsOrderTop"><div><div class="zecsAmount">'+esc(amount.toLocaleString())+' ZECS</div><div class="zecsUnit">'+esc(unit.toLocaleString(undefined,{maximumFractionDigits:8}))+' ZEC / ZECS</div></div><div class="zecsTotal">'+esc(total.toLocaleString(undefined,{maximumFractionDigits:8}))+' ZEC</div></div><div class="zecsOrderMeta">0% protocol fee · seller receives 100%<br>Expires '+esc(new Date(Number(o.expires_at)*1000).toLocaleString())+'</div><button class="btn '+(own?'red':'gold')+' zecsZecAction">'+(own?'Cancel Order':'Buy Now · ZEC')+'</button>';
     card.querySelector('.zecsZecAction').onclick=()=>own?cancelZecsZecOrder(o):directZecBuy('ZECS',String(o.order_id),'Buy '+amount.toLocaleString()+' ZECS for '+total.toLocaleString(undefined,{maximumFractionDigits:8})+' ZEC');g.appendChild(card)
   }
 }
@@ -2113,7 +2113,7 @@ function renderZecsMarket(){
     const amount=Number(o.amount_zecs),total=Number(o.price_usdc)/1e6,unit=total/amount,own=String(S.ownerCommitment||'').toLowerCase()===String(o.seller_commitment||'').toLowerCase(),ownEvm=String(S.evmAddress||'').toLowerCase()===String(o.seller_evm||'').toLowerCase();
     const card=document.createElement('article');card.className='zecsOrder';
     const label=own?(ownEvm?'Cancel Order':'Seller Order · Connect Base'):'Buy Now · USDC',cls=own&&ownEvm?'red':(own?'':'usdc');
-    card.innerHTML=`<div class="zecsOrderTop"><div><div class="zecsAmount">${esc(amount.toLocaleString())} ZECS</div><div class="zecsUnit">${esc(unit.toLocaleString(undefined,{maximumFractionDigits:8}))} USDC / ZECS</div></div><div class="zecsTotal">${esc(total.toLocaleString(undefined,{maximumFractionDigits:6}))} USDC</div></div><div class="zecsOrderMeta">Seller ${esc(short(o.seller_commitment,7))}<br>Base ${esc(short(o.seller_evm,6))}<br>Expires ${esc(new Date(Number(o.expires_at)*1000).toLocaleString())}</div><button class="btn ${cls} zecsOrderAction">${label}</button>`;
+    card.innerHTML=`<div class="zecsOrderTop"><div><div class="zecsAmount">${esc(amount.toLocaleString())} ZECS</div><div class="zecsUnit">${esc(unit.toLocaleString(undefined,{maximumFractionDigits:8}))} USDC / ZECS</div></div><div class="zecsTotal">${esc(total.toLocaleString(undefined,{maximumFractionDigits:6}))} USDC</div></div><div class="zecsOrderMeta">Expires ${esc(new Date(Number(o.expires_at)*1000).toLocaleString())}</div><button class="btn ${cls} zecsOrderAction">${label}</button>`;
     const action=card.querySelector('.zecsOrderAction');action.onclick=()=>own?(ownEvm?cancelZecsOrder(o):connectEvmWallet(false).then(()=>renderZecsMarket())):buyZecsOrder(o);g.appendChild(card)
   }
 }
@@ -2491,10 +2491,10 @@ function renderUsdcMarket(){
   }
   const now=Math.floor(Date.now()/1000);
   const query=($('usdcSearch')?.value||'').trim().toLowerCase(),sort=$('usdcSort')?.value||'priceLow';
-  let rows=canonicalActiveUsdcListings().filter(x=>!query||String(x.tokenId).includes(query)||String(x.seller).toLowerCase().includes(query)||String(x.sellerCommitment).toLowerCase().includes(query))
+  let rows=canonicalActiveUsdcListings().filter(x=>!query||String(x.tokenId).includes(query))
     .sort((a,b)=>{const ap=BigInt(a.priceUSDC||0),bp=BigInt(b.priceUSDC||0);if(ap<bp)return -1;if(ap>bp)return 1;return usdcListingFreshness(b)-usdcListingFreshness(a)});
   const viewKey=JSON.stringify([query,sort,boardPages.get('usdc')?.page||1,S.ownerCommitment,S.evmAddress,!!S.serverUsdcSnapshotAt,rows.map(x=>[x.listingId,x.tokenId,x.priceUSDC,x.expiresAt,x.seller,x.sellerCommitment,x.serverOwnerCommitment,x.serverIntentVerified,pendingListing(x.listingId)])]);
-  if(g.dataset.viewKey===viewKey){hydrateTokenSources([...g.querySelectorAll('[data-art-token]')].map(x=>x.dataset.artToken));return}g.dataset.viewKey=viewKey;g.innerHTML='';
+  if(boardViewKeys.get(g)===viewKey){hydrateTokenSources([...g.querySelectorAll('[data-art-token]')].map(x=>x.dataset.artToken));return}boardViewKeys.set(g,viewKey);g.innerHTML='';
   if(!rows.length){
     pageRows('usdc',[],query+'|'+sort,renderUsdcMarket);
     g.innerHTML=S.serverUsdcSnapshotAt<=0
@@ -2510,7 +2510,7 @@ function renderUsdcMarket(){
     card.innerHTML=`<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div>
       <div class="nftinfo">
         <div class="nftline"><span class="nfttitle">ZEC BLOCK #${esc(l.tokenId)}</span><span class="usdcPrice">${esc(usdcFmt(l.priceUSDC))} USDC</span></div>
-        <div class="meta"><span>Base seller ${esc(short(l.seller,6))}</span><span>${new Date(l.expiresAt*1000).toLocaleDateString()}</span></div>
+        <div class="meta"><span>Expires ${new Date(l.expiresAt*1000).toLocaleDateString()}</span></div>
         <div class="usdcCardTag"><span class="railBadge usdc">BASE</span><span class="usdcStatus">3% fee</span></div>
         <div class="controls"><button class="btn usdc usdcAction">Buy Now · USDC</button></div>
       </div>`;
@@ -2843,15 +2843,15 @@ if($('zecsZecListBtn'))$('zecsZecListBtn').onclick=async()=>{try{if(!S.ownerComm
 if($('publishZecsZecListingBtn'))$('publishZecsZecListingBtn').onclick=publishZecsZecListing;
 
 function renderMarket(){
-  const q=$('marketSearch').value.trim().toLowerCase(),sort=$('marketSort').value;let a=visibleMarketListings().filter(x=>!q||String(x.tokenId).includes(q)||String(x.sellerCommitment).toLowerCase().includes(q));
+  const q=$('marketSearch').value.trim().toLowerCase(),sort=$('marketSort').value;let a=visibleMarketListings().filter(x=>!q||String(x.tokenId).includes(q));
   if(sort==='priceLow')a.sort((x,y)=>Number(x.price)-Number(y.price));else if(sort==='priceHigh')a.sort((x,y)=>Number(y.price)-Number(x.price));else a.sort((x,y)=>(y.timestamp||0)-(x.timestamp||0));
   const g=$('marketGrid'),viewKey=JSON.stringify([q,sort,boardPages.get('zec')?.page||1,S.ownerCommitment,S.serverZecMarketReady,a.map(x=>[x.listingId,x.tokenId,x.price,x.expires,x.directBuyEnabled,x.sellerCommitment,canonicalZecOwner(x.tokenId),tokenIsAtomicLocked(x.tokenId),pendingListing(x.listingId)])]);
-  if(g.dataset.viewKey===viewKey){hydrateTokenSources([...g.querySelectorAll('[data-art-token]')].map(x=>x.dataset.artToken));return}g.dataset.viewKey=viewKey;g.innerHTML='';
+  if(boardViewKeys.get(g)===viewKey){hydrateTokenSources([...g.querySelectorAll('[data-art-token]')].map(x=>x.dataset.artToken));return}boardViewKeys.set(g,viewKey);g.innerHTML='';
   if(!a.length){pageRows('zec',[],q+'|'+sort,renderMarket);g.innerHTML='<div class="empty" style="grid-column:1/-1">'+(S.serverZecMarketReady?'No matching ZEC listings. Try another search.':'Loading verified ZEC listings…')+'</div>';return}
   a=pageRows('zec',a,q+'|'+sort,renderMarket);hydrateTokenSources(a.map(x=>x.tokenId));
   for(const l of a){
     const c=tokenSource(l.tokenId),artHash=c?.sourceHash,card=document.createElement('article');card.className='nft';
-    card.innerHTML='<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #'+esc(l.tokenId)+'</span><span class="price">'+esc(l.price)+' ZEC</span></div><div class="meta"><span>Seller '+esc(short(l.sellerCommitment,6))+'</span><span>'+new Date((l.expires||0)*1000).toLocaleDateString()+'</span></div><div class="meta"><span>'+(l.directBuyEnabled?'0% marketplace fee':'Seller needs to enable Buy Now')+'</span></div><div class="controls"><button class="btn offerBtn" style="min-height:32px">Buy Now · ZEC</button></div></div>';
+    card.innerHTML='<div class="nftart"><svg class="blockArt" viewBox="0 0 600 600"></svg></div><div class="nftinfo"><div class="nftline"><span class="nfttitle">ZEC BLOCK #'+esc(l.tokenId)+'</span><span class="price">'+esc(l.price)+' ZEC</span></div><div class="meta"><span>Expires '+new Date((l.expires||0)*1000).toLocaleDateString()+'</span></div><div class="meta"><span>'+(l.directBuyEnabled?'0% marketplace fee':'Seller needs to enable Buy Now')+'</span></div><div class="controls"><button class="btn offerBtn" style="min-height:32px">Buy Now · ZEC</button></div></div>';
     renderTokenArt(card.querySelector('svg'),l.tokenId,c);
     const controls=card.querySelector('.controls'),action=card.querySelector('.offerBtn'),resolvedOwner=canonicalZecOwner(l.tokenId),mine=S.ownerCommitment&&l.sellerCommitment===S.ownerCommitment;
     if(pendingListing(l.listingId)){action.textContent='Payment pending';action.disabled=true}
@@ -3874,6 +3874,8 @@ $('submitTransferBtn').onclick=async()=>{
 async function refreshAll(){return refreshMarketplace(true)}
 function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d690'],bg=['#080808','#0c0c0c','#11100e','#0a0a0a'],dark=['#111','#141311','#181613','#1d1a15'];const hex=((seed||'')+seed).toLowerCase().replace(/[^0-9a-f]/g,'')||'0',bits=[...hex].map(ch=>parseInt(ch,16).toString(2).padStart(4,'0')).join(''),grid=24,cell=20,pad=60,bgc=bg[parseInt(hex[0]||'0',16)%bg.length],g1=gold[parseInt(hex[1]||'0',16)%4],g2=gold[parseInt(hex[2]||'0',16)%4],g3=gold[parseInt(hex[3]||'0',16)%4],d1=dark[parseInt(hex[4]||'0',16)%4];const r=(x,y,w=1,h=1,f=d1,o=1)=>`<rect x="${pad+x*cell}" y="${pad+y*cell}" width="${w*cell}" height="${h*cell}" fill="${f}" opacity="${o}"/>`;let a=`<rect width="600" height="600" fill="${bgc}"/>`;for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const i=(x+y*grid)%bits.length;if(((x+y)%2===0&&bits[i]==='1')||((x+y)%5===0&&bits[(i+17)%bits.length]==='1'))a+=r(x,y,1,1,dark[(x+y)%4],.35)}for(let y=0;y<grid;y++)for(let x=0;x<grid;x++){const ed=x===0||y===0||x===grid-1||y===grid-1,inn=x===2||y===2||x===grid-3||y===grid-3;if(ed)a+=r(x,y,1,1,(x+y)%3===0?g2:g1,.96);else if(inn&&((x+y)%2===0||bits[(x*7+y*11)%bits.length]==='1'))a+=r(x,y,1,1,g3,.88)}for(let y=0;y<16;y++)for(let x=0;x<8;x++){const i=(y*8+x)%bits.length,b1=bits[i]==='1',b2=bits[(i+29)%bits.length]==='1',b3=bits[(i+61)%bits.length]==='1',ring=Math.max(Math.abs(x-3.5),Math.abs(y-7.5));let on=ring<=1.5?(b1||b2):ring<=3.5?((b1&&b2)||(b1&&((x+y)%2===0))):ring<=6.5?(b1&&b2&&(b3||((x+y)%3===0))):false;if(on){const f=(x+y)%5===0?g3:(b2&&b3?g2:g1);a+=r(4+x,4+y,1,1,f,.98)+r(grid-5-x,4+y,1,1,f,.98)}}const arm=3+(parseInt(hex[5]||'0',16)%4);a+=r(11,11-arm,2,arm*2+2,g2,.96)+r(11-arm,11,arm*2+2,2,g2,.96)+r(10,10,4,4,g1,1);svg.innerHTML=a+`<text x="36" y="46" fill="#6d665a" font-size="14" font-family="monospace">ZEC BLOCKS / ${esc(label)}</text><text x="36" y="568" fill="#45413b" font-size="11" font-family="monospace">${esc(String(seed).slice(0,34).toUpperCase())}</text>`}
 // Marketplace V13: canonical reads, wallet-scoped recovery and bounded rendering.
+// Render keys include wallet identities; keep them out of DOM attributes.
+const boardViewKeys=new WeakMap();
 const feedState=new Map(),boardPages=new Map(),artCache=new Map();
 let activeWalletAction=null,refreshTimer=null,lastStatsAt=0,lastPortfolioAt=0;
 const baseJournal=MarketRuntime.journal(localStorage,'zb1_base_pending_v1');
