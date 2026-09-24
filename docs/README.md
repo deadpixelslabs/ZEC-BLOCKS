@@ -2,7 +2,7 @@
 
 Understand the protocol, use the applications, and read the implementation examples behind ZEC BLOCKS.
 
-ZEC BLOCKS is a collection of **5,000 digital collectibles** associated with Zcash blocks. **ZB-1** defines the application's NFT rules. **ZB-20** is its token layer, and **ZECS** is the project's first ZB-20 token. These are application-layer systems; Zcash consensus validates the underlying transactions, not the project's NFT ownership or token balances.
+ZEC BLOCKS is a collection of **4,444 claim slots** associated with Zcash blocks. **ZB-1** defines the application's NFT rules. **ZB-20** is its token layer, and **ZECS** is the project's first ZB-20 token. These are application-layer systems; Zcash consensus validates the underlying transactions, not the project's NFT ownership or token balances.
 
 ## Get started
 

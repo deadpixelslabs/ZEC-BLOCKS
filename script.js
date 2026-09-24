@@ -4,7 +4,7 @@ const CFG={
   genesisTxid:'ecf6fc3a79885f573d79de70a2de85c34667fc1a4fefe034d3a4015269379f0f',
   mailbox:'u1qqjyaypzmvgfnc9uatk5t0f6hmge6htpfck3d366nhx94450crtznujwn8kql9u39uzdqcdg8flzk3tmf32j2p4u0xvx370xwcjjsrmd',
   treasury:'t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz',
-  supply:5000,powBits:26,freeClaims:500,paidClaimFeeZat:130000,marketFeeBps:300,
+  supply:5000,claimLimit:4444,powBits:26,freeClaims:500,paidClaimFeeZat:130000,marketFeeBps:300,
   explorer:'/api/zcash',
   relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net','wss://relay.nostr.band','wss://relay.snort.social','wss://nostr.mom'],
   nostrKind:30078,relayTag:'zb1-mainnet-v1',

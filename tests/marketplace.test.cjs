@@ -579,3 +579,15 @@ test('an NFT transfer with a missing wallet response recovers its exact new memo
     assert.equal(result.published[0].toCommitment,other);assert.equal(result.pending[0].txid,'f'.repeat(64));
   }finally{await page.close()}
 });
+
+test('displayed supply is 4,444 while verified legacy NFT 5000 remains tradable',async()=>{
+ const {page,errors}=await pageFixture();try{
+  assert.equal(await page.locator('.stat').filter({hasText:'Supply'}).locator('b').innerText(),'4,444');
+  const high=board();high.usdc_listings[0].token_id=5000;
+  await page.route('**/rest/v1/rpc/zecblocks_usdc_market_board',r=>r.fulfill({json:high}));
+  await page.evaluate(()=>hydrateServerUsdc());await page.locator('#usdcSearch').fill('5000');
+  assert.equal(await page.locator('#usdcMarketGrid .nft').count(),1);
+  assert.match(await page.locator('#usdcMarketGrid').innerText(),/#5000/);
+  assert.equal(await page.evaluate(()=>CFG.supply),5000);assert.deepEqual(errors,[]);
+ }finally{await page.close()}
+});
