@@ -8,7 +8,7 @@ ecf6fc3a79885f573d79de70a2de85c34667fc1a4fefe034d3a4015269379f0f
 
 The published reference manifest records Zcash mainnet height **3,488,573**. Applications and independent verifiers must check the actual transaction and canonical chain rather than treating a displayed height as proof.
 
-The collection contains NFT IDs `1` through `5000`. The source-height rule is:
+The original NFT ID range is `1` through `5000`. The current phase is capped at **4,444 unique claims**; IDs are not renumbered or truncated. The source-height rule is:
 
 ```text
 source_height = genesis_confirmation_height - token_id

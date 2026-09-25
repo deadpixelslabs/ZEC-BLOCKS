@@ -5,7 +5,8 @@ This page summarizes the current collection and explains the implementation. It 
 | Rule | Requirement |
 | --- | --- |
 | Collection identity | Exact configured Genesis transaction and network |
-| NFT supply | IDs 1–5000 |
+| Current NFT claim limit | 4,444 unique NFTs; enforced by shared claim-slot admission |
+| Legacy ID range | IDs 1–5000 remain valid identifiers, including existing IDs above 4444 |
 | Source block | Canonical block at Genesis height minus NFT ID |
 | Mining proof | SHA-256 with 26 leading zero bits, bound to the selected identity and NFT |
 | Identity | SHA-256 of the exact Noir derived public-key bytes |
@@ -39,3 +40,7 @@ The active fee behavior is documented separately in [fees](fees.md). Older const
 ## Candidate rules
 
 The proposed public-evidence specification defines candidate CLAIM and TRANSFER formats, full-event commitments and receipt signatures. Those wire-format version identifiers are technical identifiers, not public product release badges. They are **inactive** pending the [activation gates](roadmap.md).
+
+## Current claim phase
+
+New NFT claims stop at 4,444 admitted unique IDs. Active reservations and unresolved claims hold capacity so simultaneous submissions cannot exceed the cap. A repeated claim for an admitted ID does not use a second slot. Existing ownership, trading, transfers and pending recovery retain the original ID range. The remaining original allocation is reserved for future ZSA public mint; migration and ZSA minting are not activated by this change.

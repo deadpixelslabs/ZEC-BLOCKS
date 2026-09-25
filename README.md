@@ -1,6 +1,6 @@
 # ZEC BLOCKS
 
-ZEC BLOCKS is a 5,000-item collectible application on Zcash. ZB-1 defines its NFT events; ZB-20 defines the ZECS token layer. The applications use wallet signatures, chain transactions and hosted verification services. Zcash consensus does not implement these NFT or token rules.
+ZEC BLOCKS is a collectible application with a 4,444-claim cap on Zcash. ZB-1 defines its NFT events; ZB-20 defines the ZECS token layer. The applications use wallet signatures, chain transactions and hosted verification services. Zcash consensus does not implement these NFT or token rules.
 
 - [Public documentation source](docs/README.md)
 - [Marketplace](https://www.zecblocks.xyz/)
