@@ -27,7 +27,7 @@ const INDEX_CFG={
   key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2d3ZlbnlvbWx3dmp0d3hhc2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MjIwMTcsImV4cCI6MjEwNDE5ODAxN30.RLGs8yTBd0JyRdHlv63YzLHJ7t8qPNHqZWN3WRu00VY'
 };
 console.info('ZEC BLOCKS MARKETPLACE V13.0.1 · VERIFIED MARKET DATA');
-const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverClaimCount:0,serverRelayIndexing:false,serverOwners:new Map(),serverZecOwners:new Map(),serverZecMarketReady:false,serverIndexerHealth:{},serverUsdcScannedTo:0,serverUsdcRequestSeq:0,serverUsdcAppliedSeq:0,serverUsdcGeneratedAt:0,serverUsdcFingerprint:'',serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set(),usdcBuyBusy:new Set(),zecsMarketSnapshot:null,zecsMarketAccount:null,zecsMarketBackend:null,zecsMarketBusy:false,zecsZecSnapshot:null,zecDirectBusy:false};
+const S={provider:null,connection:null,pubkey:null,ownerCommitment:null,balance:null,genesisHeight:null,target:null,proof:null,workers:[],mining:false,hashes:0,startMs:0,relay:null,nostr:null,events:[],claims:new Map(),transfers:[],listings:new Map(),offers:[],nostrSk:null,nostrPk:null,currentOfferListing:null,relayHealth:new Map(),didRepair:false,walletRecovered:new Map(),walletRecoveredClaims:new Map(),atomicLocks:new Map(),atomicSettlements:new Map(),confirmedLocks:new Map(),verifiedAtomic:new Map(),atomicWatchBusy:false,atomicWatchTimer:null,portfolioSourceCache:new Map(),portfolioSourcePending:new Set(),relayFetchBusy:false,lastRelayFetch:0,liveDiscoverySub:null,liveDiscoveryEvents:new Map(),liveRenderTimer:null,historicalSettlementRecoveryBusy:false,evmProvider:null,evmSigner:null,evmAddress:null,usdcEvents:new Map(),usdcOnchain:new Map(),usdcVerifiedSettlements:new Map(),usdcReconciling:false,usdcScanBlock:0,walletHistoryBusy:false,serverUsdcMetrics:null,serverZecMetrics:null,serverUsdcCanonical:new Map(),serverUsdcSnapshotAt:0,usdcLiveOverlay:new Map(),usdcLiveTombstones:new Map(),usdcLiveBlock:0,usdcLiveSyncing:false,usdcFastSyncing:false,usdcFastIds:new Set(),usdcFastFingerprint:'',usdcVerifiedIntentIds:new Set(),serverIndexing:false,serverPortfolioLoaded:new Set(),serverPortfolioOwner:null,serverPortfolioTokens:new Map(),serverPortfolioActiveListings:new Map(),serverPortfolioCount:0,serverPortfolioListingCount:0,serverPortfolioGeneratedAt:0,serverPortfolioTimer:null,serverRelayIndexing:false,serverOwners:new Map(),serverZecOwners:new Map(),serverZecMarketReady:false,serverIndexerHealth:{},serverUsdcScannedTo:0,serverUsdcRequestSeq:0,serverUsdcAppliedSeq:0,serverUsdcGeneratedAt:0,serverUsdcFingerprint:'',serverMarketEvents:new Map(),serverActivity:[],serverActivityGeneratedAt:0,usdcListingBusy:new Set(),usdcBuyBusy:new Set(),zecsMarketSnapshot:null,zecsMarketAccount:null,zecsMarketBackend:null,zecsMarketBusy:false,zecsZecSnapshot:null,zecDirectBusy:false};
 const $=id=>document.getElementById(id); const enc=new TextEncoder();
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function toast(msg,ms=4200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms)}
@@ -247,15 +247,6 @@ async function resumeUsdcPurchaseRecoveries(){
   }finally{S.usdcRecoveryBusy=false}
 }
 
-async function hydrateServerClaimStats(){
-  try{
-    const snap=await indexRpc('zecblocks_claim_stats',{}), n=Number(snap?.claims_seen);
-    if(!Number.isInteger(n)||n<0||n>CFG.supply)throw new Error('Incomplete claim statistics');
-    S.serverClaimCount=n;
-    if($('claimCount')){$('claimCount').textContent=n.toLocaleString();$('claimCount').title='Verified server count · '+new Date().toLocaleTimeString()}
-    return n
-  }catch(e){console.warn('claim statistics',e);return S.serverClaimCount}
-}
 async function kickServerRelayIndexer(){
   if(S.serverRelayIndexing)return;S.serverRelayIndexing=true;
   try{
@@ -263,7 +254,6 @@ async function kickServerRelayIndexer(){
     await indexFunction('zecblocks-verify-events',{}).catch(e=>console.warn('event verifier',e));
     indexFunction('zecblocks-index-zec-sales',{}).catch(e=>console.warn('zec settlement indexer',e));
     await indexFunction('zecblocks-claim-tail',{}).catch(e=>console.warn('claim tail',e));
-    await hydrateServerClaimStats();
     if(S.ownerCommitment)await hydrateServerPortfolio(S.ownerCommitment)
   }catch(e){console.warn('server production index pipeline',e)}finally{S.serverRelayIndexing=false}
 }
@@ -1450,7 +1440,6 @@ function rebuildState(){
   }
   for(const id of canceled)listings.delete(id);
   S.listings=listings;S.offers=offers;S.atomicLocks=locks;S.atomicSettlements=settled;
-  if($('claimCount'))$('claimCount').textContent=Number(S.serverClaimCount||0)>0?Number(S.serverClaimCount).toLocaleString():'Syncing…';
   renderMarket();renderUsdcMarket();renderActivity();renderPortfolio();renderAtomicDesk();updateWalletUI();
 }
 function eventUnix(e){return Number(e?.blockTime||e?.block_time||e?.timestamp)||0}
@@ -3975,7 +3964,7 @@ function artSvg(svg,seed,label){const gold=['#d3a84f','#e9c56e','#b98a37','#f0d6
 // Render keys include wallet identities; keep them out of DOM attributes.
 const boardViewKeys=new WeakMap();
 const feedState=new Map(),boardPages=new Map(),artCache=new Map();
-let activeWalletAction=null,refreshTimer=null,lastStatsAt=0,lastPortfolioAt=0;
+let activeWalletAction=null,refreshTimer=null,lastPortfolioAt=0;
 const baseJournal=MarketRuntime.journal(localStorage,'zb1_base_pending_v1');
 function actionOwner(){return activeWalletAction?.owner||S.ownerCommitment||''}
 function assertWalletAction(){
@@ -4237,7 +4226,6 @@ function renderPendingTransactions(){
 async function refreshMarketplace(force=false){
   return MarketRuntime.singleFlight('market-refresh',async()=>{
     const now=Date.now(),feed=activeFeed(),jobs=[];
-    if(force||now-lastStatsAt>60000){lastStatsAt=now;jobs.push(hydrateServerClaimStats())}
     if(feed==='usdc'||force)jobs.push(hydrateServerUsdc());
     if(feed==='zec'||force)jobs.push(hydrateServerZecMarketStates(),hydrateServerZecMetrics());
     if(feed==='zecs'||force)jobs.push(loadZecsMarketState({account:!!S.ownerCommitment}));
@@ -4263,7 +4251,7 @@ function installMarketplaceGuards(){
   for(const [id,fn] of [['publishUsdcListingBtn',publishUsdcListing],['publishZecsListingBtn',publishZecsListing],['publishZecsZecListingBtn',publishZecsZecListing]])if($(id))$(id).onclick=fn;
   for(const id of ['publishListingBtn','submitTransferBtn','publishOfferBtn','enableNftAddressBtn'])if($(id)?.onclick)$(id).onclick=guardedAction($(id).onclick);
   // Coalesce complete snapshot jobs, including owner lookups and state application.
-  for(const name of ['hydrateServerUsdc','hydrateServerZecMarketStates','hydrateServerZecMetrics','hydrateServerActivity','hydrateServerClaimStats','loadZecsZecMarketState']){
+  for(const name of ['hydrateServerUsdc','hydrateServerZecMarketStates','hydrateServerZecMetrics','hydrateServerActivity','loadZecsZecMarketState']){
     const original=window[name];window[name]=(...args)=>MarketRuntime.singleFlight('snapshot:'+name,()=>original(...args))
   }
 }
