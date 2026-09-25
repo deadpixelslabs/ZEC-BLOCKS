@@ -20,7 +20,6 @@ async function pageFixture(activityEvents=[]){
   await page.route('**/index-api/**',async route=>{
     const req=route.request(),u=new URL(req.url()),body=req.postDataJSON?.()||{};let data={};
     if(u.pathname.includes('zecblocks_usdc_market_board'))data=board();
-    else if(u.pathname.includes('zecblocks_claim_stats'))data={claims_seen:3508,generated_at:now()};
     else if(u.pathname.includes('zecblocks_zec_market_states_snapshot'))data={zec_listing_states:[],generated_at:now()};
     else if(u.pathname.includes('zecblocks_zec_market_metrics'))data={sales:3,volume_base_units:'1100000',generated_at:now()};
     else if(u.pathname.includes('zecblocks_activity_snapshot'))data={events:activityEvents,generated_at:now()};
@@ -37,7 +36,9 @@ async function pageFixture(activityEvents=[]){
 }
 test('public browsing paints verified cards without wallet SDK, relays or chain scans',async()=>{
   const {page,requests,errors}=await pageFixture();
-  try{assert.equal(await page.locator('#usdcListedCount').innerText(),'52');assert.equal(await page.locator('#claimCount').innerText(),'3,508');
+  try{assert.equal(await page.locator('#usdcListedCount').innerText(),'52');assert.equal(await page.locator('#claimCount').count(),0);
+    assert.equal(await page.locator('.collectionStats .stat').filter({hasText:'Supply'}).locator('b').innerText(),'4,444');
+    assert.equal(requests.some(x=>x.includes('zecblocks_claim_stats')),false);
     await page.waitForFunction(()=>document.querySelectorAll('#usdcMarketGrid img').length===24);
     assert.equal(await page.locator('#usdcMarketGrid rect').count(),0);
     assert.equal(requests.some(x=>/ethers|esm\.sh|mainnet\.base/.test(x)),false);assert.deepEqual(errors,[]);
@@ -93,14 +94,14 @@ test('USDC search, price sorting and pagination show the expected items',async()
     await page.locator('#usdcPagination').getByText('Next',{exact:true}).click();assert.match(await page.locator('#usdcPagination').innerText(),/Page 2 of 3/);assert.match(await page.locator('#usdcMarketGrid .nfttitle').first().innerText(),/#28/);
   }finally{await page.close()}
 });
-test('failed and malformed snapshots keep the last verified board, metrics and claim count',async()=>{
+test('failed and malformed snapshots keep the last verified board and metrics',async()=>{
   const {page}=await pageFixture();try{
     const before=await page.locator('#usdcMarketGrid').innerText();
     await page.route('**/rest/v1/rpc/zecblocks_usdc_market_board',r=>r.fulfill({status:200,contentType:'application/json',body:'{}'}));
     await page.evaluate(()=>hydrateServerUsdc());assert.equal(await page.locator('#usdcMarketGrid').innerText(),before);assert.equal(await page.locator('#usdcListedCount').innerText(),'52');
     assert.match(await page.locator('#marketHealth').innerText(),/Connection delayed/);
-    await page.route('**/rest/v1/rpc/zecblocks_claim_stats',r=>r.fulfill({status:200,contentType:'application/json',body:'{"claims_seen":3500}'}));await page.evaluate(()=>hydrateServerClaimStats());assert.equal(await page.locator('#claimCount').innerText(),'3,500');
-    await page.route('**/rest/v1/rpc/zecblocks_claim_stats',r=>r.fulfill({status:503,contentType:'application/json',body:'{"error":"Unavailable"}'}));await page.evaluate(()=>hydrateServerClaimStats());assert.equal(await page.locator('#claimCount').innerText(),'3,500');
+    await page.route('**/rest/v1/rpc/zecblocks_usdc_market_board',r=>r.fulfill({status:503,contentType:'application/json',body:'{"error":"Unavailable"}'}));
+    await page.evaluate(()=>hydrateServerUsdc());assert.equal(await page.locator('#usdcMarketGrid').innerText(),before);assert.equal(await page.locator('#usdcListedCount').innerText(),'52');
   }finally{await page.close()}
 });
 test('a late portfolio response cannot repopulate a disconnected or different wallet',async()=>{
