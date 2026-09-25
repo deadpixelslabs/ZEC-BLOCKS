@@ -282,7 +282,7 @@ test('both ZECS order boards load from public RPCs while edge functions are unav
     await page.getByRole('button',{name:'Browse ZECS orders',exact:true}).click();
     await page.waitForFunction(()=>document.querySelectorAll('#zecsMarketGrid .zecsOrder').length===1);
     assert.match(await page.locator('#zecsMarketGrid').innerText(),/210 ZECS/);
-    await page.getByRole('button',{name:'ZEC on Zcash 0% marketplace fee',exact:true}).click();
+    await page.getByRole('button',{name:'ZEC on Zcash 0% trading · 0.0002 ZEC listing',exact:true}).click();
     await page.waitForFunction(()=>document.querySelectorAll('#zecsZecMarketGrid .zecsOrder').length===1);
     assert.match(await page.locator('#zecsZecMarketGrid').innerText(),/0.01 ZEC/);
     assert.match(await page.locator('#marketHealth').innerText(),/Live market data/);
@@ -590,4 +590,80 @@ test('displayed supply is 4,444 while verified legacy NFT 5000 remains tradable'
   assert.match(await page.locator('#usdcMarketGrid').innerText(),/#5000/);
   assert.equal(await page.evaluate(()=>CFG.supply),5000);assert.deepEqual(errors,[]);
  }finally{await page.close()}
+});
+
+test('native NFT and ZECS listing payments send the exact fee once and recover publication',async()=>{
+  const {page,errors}=await pageFixture();try{
+    const result=await page.evaluate(async({owner})=>{
+      S.ownerCommitment=owner;S.connection={transparent:'t1Fixture'};
+      nftAddressTools=async()=>({addressFor:()=> 't1Fixture'});readNoirHistory=async()=>[];refreshDirectMarketViews=async()=>{};
+      const sends=[];rpc=async(method,args)=>{
+        if(method==='zcash_signMessage')return {pubkey:'02'+'1'.repeat(64),signature:'1'.repeat(130)};
+        if(method==='zcash_getMaxTransfer')return {maxAmount:'0.01'};
+        if(method==='zcash_sendTransaction'){sends.push(args[0]);return 'c'.repeat(64)};
+      };
+      let confirmed=false;zecDirectApi=async(action,body)=>body.feeTxid
+        ? confirmed?{[action==='create_zb1_listing'?'listing':'order']:{status:'active'}}:{fee_pending:true}
+        : {fee_required:true,payment:{to:ListingFee.treasury,amount_zec:ListingFee.amount,funding_source:'transparent',listing_id:body.nonce,created_at:new Date().toISOString()}};
+      for(const [asset,action] of [['ZEC_BLOCK','create_zb1_listing'],['ZECS','create_zecs_order']]){
+        const fields={sellerCommitment:owner,sellerPayout:'t1Fixture',nonce:asset,tokenId:1};
+        await publishPaidZecListing(action,fields,'fixture '+asset,asset);
+        try{await publishPaidZecListing(action,fields,'fixture '+asset,asset)}catch{}
+      }
+      const pending=pendingListingFees().length;confirmed=true;await resumeListingFees();await resumeListingFees();
+      return {sends,pending,left:pendingListingFees().length,statuses:listingFeeJournal.read().map(x=>x.status)};
+    },{owner});
+    assert.equal(await page.locator('#listingFeeRecoveries input').count(),0);
+    assert.doesNotMatch(await page.locator('#listingFeeRecoveries').innerText(),/TXID|Use wallet transaction|Paste/);
+    assert.equal(result.pending,2);assert.equal(result.left,0);assert.deepEqual(result.statuses,['complete','complete']);assert.equal(result.sends.length,2);
+    for(const send of result.sends)assert.deepEqual(send,{to:'t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz',amount:'0.0002',fundingSource:'transparent'});
+    assert.deepEqual(errors,[]);
+  }finally{await page.close()}
+});
+test('unknown listing fee survives retry and reload without opening another payment',async()=>{
+  const {page}=await pageFixture();try{
+    await page.evaluate(async({owner})=>{
+      S.ownerCommitment=owner;S.connection={transparent:'t1Fixture'};window.feeSends=0;
+      nftAddressTools=async()=>({addressFor:()=> 't1Fixture'});readNoirHistory=async()=>[];
+      rpc=async(method)=>{if(method==='zcash_signMessage')return {pubkey:'02'+'1'.repeat(64),signature:'1'.repeat(130)};if(method==='zcash_getMaxTransfer')return {maxAmount:'0.01'};if(method==='zcash_sendTransaction'){window.feeSends++;throw Error('Wallet sync timed out')}};
+      zecDirectApi=async()=>({fee_required:true,payment:{to:ListingFee.treasury,amount_zec:ListingFee.amount,funding_source:'transparent',listing_id:'unknown-fee',created_at:new Date().toISOString()}});
+      for(let i=0;i<2;i++)try{await publishPaidZecListing('create_zb1_listing',{sellerCommitment:owner,sellerPayout:'t1Fixture',tokenId:8},'fixture','ZEC_BLOCK')}catch{}
+      await resumeListingFees();
+    },{owner});
+    assert.equal(await page.evaluate(()=>window.feeSends),1);
+    await page.reload();await page.waitForFunction(()=>typeof listingFeeJournal!=='undefined');
+    const saved=await page.evaluate(()=>listingFeeJournal.read());assert.equal(saved.length,1);assert.equal(saved[0].status,'broadcasting');assert.equal(saved[0].owner,owner);
+  }finally{await page.close()}
+});
+test('listing fee blocked storage, insufficient funds and switched accounts never send',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async({owner,other})=>{
+      S.ownerCommitment=owner;S.connection={transparent:'t1Fixture'};let sends=0;
+      nftAddressTools=async()=>({addressFor:()=> 't1Fixture'});readNoirHistory=async()=>[];
+      let max='0.0001';rpc=async(method)=>{if(method==='zcash_signMessage')return {pubkey:'02'+'1'.repeat(64),signature:'1'.repeat(130)};if(method==='zcash_getMaxTransfer')return {maxAmount:max};if(method==='zcash_sendTransaction')sends++};
+      zecDirectApi=async()=>({fee_required:true,payment:{to:ListingFee.treasury,amount_zec:ListingFee.amount,funding_source:'transparent',listing_id:'blocked-fee',created_at:new Date().toISOString()}});
+      const fields={sellerCommitment:owner,sellerPayout:'t1Fixture',tokenId:8},failures=[];
+      try{await publishPaidZecListing('create_zb1_listing',fields,'fixture','ZEC_BLOCK')}catch(e){failures.push(e.message)}
+      max='0.01';const put=listingFeeJournal.put;listingFeeJournal.put=()=>{throw Error('Storage blocked')};
+      try{await publishPaidZecListing('create_zb1_listing',fields,'fixture','ZEC_BLOCK')}catch(e){failures.push(e.message)}listingFeeJournal.put=put;
+      activeWalletAction={owner,evm:'',noirEpoch:S.walletEpoch||0,evmEpoch:S.evmEpoch||0};
+      const previous=zecDirectApi;zecDirectApi=async()=>{const r=await previous();S.ownerCommitment=other;return r};
+      try{await publishPaidZecListing('create_zb1_listing',fields,'fixture','ZEC_BLOCK')}catch(e){failures.push(e.message)}finally{activeWalletAction=null}
+      return {sends,failures};
+    },{owner,other});assert.equal(result.sends,0);assert.equal(result.failures.length,3);
+  }finally{await page.close()}
+});
+test('listing payment recovers automatically when Noir history is unavailable, with no TXID field',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async owner=>{
+      S.ownerCommitment=owner;let sends=0,recovery=false;
+      rpc=async()=>{sends++;throw Error('Unexpected wallet request')};
+      readNoirHistory=async()=>{throw Error('Wallet syncing')};refreshDirectMarketViews=async()=>{};
+      listingFeeJournal.put({id:'auto-fee',owner,asset:'ZEC_BLOCK',action:'create_zb1_listing',fields:{tokenId:9,sellerCommitment:owner},payment:{created_at:new Date().toISOString()},status:'broadcasting',historyBefore:[]});
+      renderListingFeeRecoveries();const before=$('listingFeeRecoveries').innerHTML;
+      zecDirectApi=async(action,b)=>{recovery=b.recoverFee===true;return {listing:{status:'active'}}};
+      await resumeListingFees();return {before,sends,recovery,pending:pendingListingFees().length};
+    },owner);
+    assert.equal(result.sends,0);assert.equal(result.recovery,true);assert.equal(result.pending,0);assert.doesNotMatch(result.before,/<input|TXID|Use wallet transaction|Paste/);
+  }finally{await page.close()}
 });

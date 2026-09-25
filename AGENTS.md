@@ -70,6 +70,7 @@ as the code base for the next authorized update**.
 - Preserve existing marketplace rails: native ZEC NFT/ZECS purchases use 0%
   protocol fee and Base USDC uses 3% protocol fee, unless the owner requests a
   deliberate rule change.
+- Native ZEC NFT/ZECS listing fee: 0.0002 ZEC per new listing, paid to treasury `t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz` (owner update, 25 September 2026). This is separate from the unchanged 0% sale protocol fee. Preserve fee verification and duplicate-payment recovery.
 - Retain the latest user-approved privacy changes. Public marketplace listings
   and Activity must not reintroduce seller/participant IDs through UI text,
   tooltips or render attributes.

@@ -7,6 +7,10 @@ Open the [marketplace](https://www.zecblocks.xyz/#market), connect Noir, choose 
 | ZEC on Zcash | Noir | One payment to the seller; 0% protocol trading fee |
 | USDC on Base | Noir identity and a Base wallet | Contract settlement; 3% protocol fee, 97% seller proceeds |
 
+Each new NFT or ZECS listing for ZEC costs **0.0002 ZEC**, paid to treasury `t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz`. The sale protocol fee remains **0%**. Existing listings keep their original terms; a new listing after cancellation or expiry requires a new fee. Listing fees are not refunded on cancellation.
+
+Noir pays the listing fee from its **transparent balance**. This publicly links the selected inputs and payment address. Keep enough transparent ZEC for the listing fee and the network fee. The listing becomes active after payment verification and confirmation. If Noir or the network is delayed, **Listing payments** keeps the request for recovery without sending another payment.
+
 Network fees apply. A Base wallet may request a network switch, permit signature or allowance transaction before the purchase. The interface guides these steps; “Buy” does not remove wallet approval or chain confirmation.
 
 ## Buy
