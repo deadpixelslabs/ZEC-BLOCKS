@@ -54,7 +54,7 @@ grant execute on function public.zecblocks_record_listing_fee(text,text,bigint,b
 
 create function public.zecblocks_require_listing_fee() returns trigger
 language plpgsql security definer set search_path=pg_catalog,public as $$
-declare id text; asset_name text; terms jsonb; receipt public.zecblocks_listing_fee_intents%rowtype;
+declare id text; asset_name text; v_terms jsonb; receipt public.zecblocks_listing_fee_intents%rowtype;
 begin
   if new.status<>'active' then return new; end if;
   if TG_OP='UPDATE' and old.status in ('sold','cancelled') and new.status='active' then
@@ -62,14 +62,14 @@ begin
   end if;
   if TG_TABLE_NAME='zecblocks_zec_listings' then
     id:=new.listing_id; asset_name:='ZEC_BLOCK';
-    terms:=jsonb_build_object('seller',new.seller_commitment,'token',new.token_id,'price',(new.price_zec*100000000)::bigint::text,'expires',new.expires_at,'message',new.signed_message);
+    v_terms:=jsonb_build_object('seller',new.seller_commitment,'token',new.token_id,'price',(new.price_zec*100000000)::bigint::text,'expires',new.expires_at,'message',new.signed_message);
   else
     id:=new.order_id; asset_name:='ZECS';
-    terms:=jsonb_build_object('seller',new.seller_commitment,'amount',new.amount_zecs,'price',new.price_zat::bigint::text,'expires',new.expires_at,'message',new.signed_message);
+    v_terms:=jsonb_build_object('seller',new.seller_commitment,'amount',new.amount_zecs,'price',new.price_zat::bigint::text,'expires',new.expires_at,'message',new.signed_message);
   end if;
-  if exists(select 1 from public.zecblocks_listing_fee_legacy l where l.listing_id=id and l.asset=asset_name and l.terms=terms) then return new; end if;
+  if exists(select 1 from public.zecblocks_listing_fee_legacy l where l.listing_id=id and l.asset=asset_name and l.terms=v_terms) then return new; end if;
   select * into receipt from public.zecblocks_listing_fee_intents f where f.listing_id=id and f.asset=asset_name;
-  if receipt.payment_txid is null or receipt.terms<>terms or receipt.payment_address is distinct from new.seller_payout then
+  if receipt.payment_txid is null or receipt.terms<>v_terms or receipt.payment_address is distinct from new.seller_payout then
     raise exception 'LISTING_FEE_REQUIRED';
   end if;
   return new;

@@ -52,15 +52,15 @@ async function feeAddressTransactions(address){
 async function discoverListingFee(intent){
   const rows=await feeAddressTransactions(intent.payment_address),before=new Set(intent.baseline_txids);
   const candidates=rows.filter(x=>!before.has(x.txid)&&Number(x.blockTime)>=Date.parse(intent.created_at)/1000-180);
-  if(candidates.length>12)return "";
-  const matches=[];
-  for(const row of candidates){
-    const {data:used,error}=await supabase.from("zecblocks_listing_fee_intents").select("listing_id").eq("payment_txid",row.txid).maybeSingle();if(error)throw error;if(used)continue;
+  if(!candidates.length||candidates.length>12)return "";
+  const {data:used,error}=await supabase.from("zecblocks_listing_fee_intents").select("payment_txid").in("payment_txid",candidates.map(x=>x.txid));if(error)throw error;
+  const consumed=new Set((used||[]).map(x=>x.payment_txid));
+  const matches=(await Promise.all(candidates.filter(x=>!consumed.has(x.txid)).map(async row=>{
     const response=await fetch(EXPLORERS[0]+"/tx/"+row.txid,{signal:AbortSignal.timeout(12000)});
     if(!response.ok)throw Error("Listing payment is still being checked.");
     const tx=await response.json();
-    try{feePolicy.transactionProof(tx,{txid:row.txid,address:intent.payment_address,createdAt:Date.parse(intent.created_at)});matches.push(row.txid)}catch{}
-  }
+    try{feePolicy.transactionProof(tx,{txid:row.txid,address:intent.payment_address,createdAt:Date.parse(intent.created_at)});return row.txid}catch{return null}
+  }))).filter(Boolean);
   return matches.length===1?matches[0]:"";
 }
 async function listingFeeGate(asset,listingId,message,b,terms){

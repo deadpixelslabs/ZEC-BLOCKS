@@ -282,7 +282,7 @@ test('both ZECS order boards load from public RPCs while edge functions are unav
     await page.getByRole('button',{name:'Browse ZECS orders',exact:true}).click();
     await page.waitForFunction(()=>document.querySelectorAll('#zecsMarketGrid .zecsOrder').length===1);
     assert.match(await page.locator('#zecsMarketGrid').innerText(),/210 ZECS/);
-    await page.getByRole('button',{name:'ZEC on Zcash 0% marketplace fee',exact:true}).click();
+    await page.getByRole('button',{name:'ZEC on Zcash 0% trading · 0.0002 ZEC listing',exact:true}).click();
     await page.waitForFunction(()=>document.querySelectorAll('#zecsZecMarketGrid .zecsOrder').length===1);
     assert.match(await page.locator('#zecsZecMarketGrid').innerText(),/0.01 ZEC/);
     assert.match(await page.locator('#marketHealth').innerText(),/Live market data/);
@@ -613,6 +613,8 @@ test('native NFT and ZECS listing payments send the exact fee once and recover p
       const pending=pendingListingFees().length;confirmed=true;await resumeListingFees();await resumeListingFees();
       return {sends,pending,left:pendingListingFees().length,statuses:listingFeeJournal.read().map(x=>x.status)};
     },{owner});
+    assert.equal(await page.locator('#listingFeeRecoveries input').count(),0);
+    assert.doesNotMatch(await page.locator('#listingFeeRecoveries').innerText(),/TXID|Use wallet transaction|Paste/);
     assert.equal(result.pending,2);assert.equal(result.left,0);assert.deepEqual(result.statuses,['complete','complete']);assert.equal(result.sends.length,2);
     for(const send of result.sends)assert.deepEqual(send,{to:'t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz',amount:'0.0002',fundingSource:'transparent'});
     assert.deepEqual(errors,[]);
