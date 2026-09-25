@@ -653,3 +653,17 @@ test('listing fee blocked storage, insufficient funds and switched accounts neve
     },{owner,other});assert.equal(result.sends,0);assert.equal(result.failures.length,3);
   }finally{await page.close()}
 });
+test('listing payment recovers automatically when Noir history is unavailable, with no TXID field',async()=>{
+  const {page}=await pageFixture();try{
+    const result=await page.evaluate(async owner=>{
+      S.ownerCommitment=owner;let sends=0,recovery=false;
+      rpc=async()=>{sends++;throw Error('Unexpected wallet request')};
+      readNoirHistory=async()=>{throw Error('Wallet syncing')};refreshDirectMarketViews=async()=>{};
+      listingFeeJournal.put({id:'auto-fee',owner,asset:'ZEC_BLOCK',action:'create_zb1_listing',fields:{tokenId:9,sellerCommitment:owner},payment:{created_at:new Date().toISOString()},status:'broadcasting',historyBefore:[]});
+      renderListingFeeRecoveries();const before=$('listingFeeRecoveries').innerHTML;
+      zecDirectApi=async(action,b)=>{recovery=b.recoverFee===true;return {listing:{status:'active'}}};
+      await resumeListingFees();return {before,sends,recovery,pending:pendingListingFees().length};
+    },owner);
+    assert.equal(result.sends,0);assert.equal(result.recovery,true);assert.equal(result.pending,0);assert.doesNotMatch(result.before,/<input|TXID|Use wallet transaction|Paste/);
+  }finally{await page.close()}
+});

@@ -1848,12 +1848,12 @@ async function publishPaidZecListing(action,fields,message,asset){
   listingFeeJournal.put(row);renderListingFeeRecoveries();
   let raw;
   try{raw=await rpc('zcash_sendTransaction',[{to:ListingFee.treasury,amount:ListingFee.amount,fundingSource:'transparent'}])}
-  catch(error){if(walletRejected(error))listingFeeJournal.put({...row,status:'rejected'});throw error}
+  catch(error){if(walletRejected(error))listingFeeJournal.put({...row,status:'rejected'});else await zecDirectApi(action,{...fields,recoverFee:true}).catch(()=>{});throw error}
   const txid=zcashTxidFromResult(raw);
   if(/^[0-9a-f]{64}$/.test(txid)){row={...row,txid,status:'confirmation'};listingFeeJournal.put(row)}
   assertWalletAction();
   modal(asset==='ZECS'?'zecsZecListingModal':'listingModal',false);
-  if(!row.txid){toast('Listing payment saved. Checking Noir history; no second fee will be sent.',10000);return {pending:true}}
+  if(!row.txid)toast('Listing payment saved. Checking Noir history; no second fee will be sent.',10000);
   return finishListingFee(row);
 }
 async function finishListingFee(row,silent=false){

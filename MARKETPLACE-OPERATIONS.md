@@ -58,3 +58,14 @@ Production smoke checks should read the canonical RPCs, check indexer health and
 ## Address directory deployment
 
 Apply `supabase/migrations/20260922132144_verified_nft_address_directory.sql`, then deploy `zecblocks-nft-address` with JWT verification enabled. Include root `address-identity.js` at its relative import path. The API proxy already passes the public anon JWT; proof verification authenticates registrations. Readiness checks must reject unsigned registration and return no binding for an unregistered valid t1 address. No real user registration or mainnet payment is needed for these checks.
+
+
+## Native ZEC listing fees — 25 September 2026
+
+New NFT and ZECS listings for ZEC cost 0.0002 ZEC (20,000 zatoshi), sent to `t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz`. Native sale fees remain 0%, and the USDC rail stays at 3%. Existing listings retain their original terms. Cancellation does not refund the listing fee; new listings require a new payment.
+
+The listing dialog discloses transparent funding and network costs. The seller authorizes the listing and payment address, then approves the fee in Noir. Publication follows one canonical confirmation. There is no listing-fee TXID input. A journal is saved before spending; wallet history and bounded address-history discovery recover uncertain responses without resending. The existing once-per-minute direct-market worker completes queued payments if the browser closes after submission. Clearing browser storage before an uncertain payment is registered can still remove local recovery metadata.
+
+The private fee-intent table binds exact listing terms and current-address authorization. The verifier checks the exact treasury output and a matching transparent input. A unique confirmed transaction receipt prevents fee reuse across NFT and ZECS listings. Database triggers reject unpaid activations through legacy paths and term changes that try to inherit an existing listing's waiver. No user seed, private key, or real-fund test payment is involved.
+
+Validation adds fee-proof unit tests, browser payment/recovery regressions and PostgreSQL 17 fee/replay/grant tests. Production changes are limited to the marketplace repository and its direct-market backend; mining/minting remains on its existing deployment.

@@ -7,6 +7,9 @@ create table public.zecblocks_listing_fee_intents (
   signed_message text not null,
   terms jsonb not null,
   baseline_txids jsonb not null default '[]',
+  request jsonb not null default '{}',
+  pending_txid text check (pending_txid ~ '^[0-9a-f]{64}$'),
+  watch_at timestamptz,
   created_at timestamptz not null default now(),
   payment_txid text unique check (payment_txid ~ '^[0-9a-f]{64}$'),
   paid_height bigint check (paid_height > 0),
@@ -14,9 +17,11 @@ create table public.zecblocks_listing_fee_intents (
   check ((payment_txid is null and paid_height is null and paid_at is null) or
          (payment_txid is not null and paid_height is not null and paid_at is not null))
 );
+create index zecblocks_listing_fee_watch on public.zecblocks_listing_fee_intents(watch_at) where watch_at is not null;
 alter table public.zecblocks_listing_fee_intents enable row level security;
 revoke all on public.zecblocks_listing_fee_intents from public, anon, authenticated, service_role;
 grant select,insert on public.zecblocks_listing_fee_intents to service_role;
+grant update(pending_txid,watch_at) on public.zecblocks_listing_fee_intents to service_role;
 
 -- Freeze existing terms at cutover; neither a new ID nor new terms inherit a waiver.
 create table public.zecblocks_listing_fee_legacy (
