@@ -92,3 +92,14 @@ Verified NFT address receiving (2026-09-22):
 - Browser independently verifies every resolved address proof.
 - Supports opt-in mainnet t1 addresses; u1/t3/Base recipient addresses are not supported.
 - No mainnet transaction or user address registration was performed during deployment checks.
+
+Native ZEC listing fee (2026-09-25):
+- Migration: 20260925011044_native_zec_listing_fee
+- Edge: zecblocks-zec-direct-market v11
+- New NFT/ZECS listings: 20,000 zatoshi to t1b9PCdoCncgoc13CWwWz8tzZZLDYfMaTyz
+- Native trading protocol fee remains 0%; Base USDC remains 3%.
+- Existing 497 listing rows grandfathered at cutover; 142 active NFT listings preserved.
+- Fee intent/receipt tables are private and RLS enabled; confirmation RPC is service-role only.
+- Automatic wallet/chain recovery and scheduled publication; no listing-fee TXID entry.
+- CI covers 40 browser tests, 18 unit tests, 13 protocol tests and PostgreSQL 17 fee enforcement.
+- No real wallet payment was used for deployment verification.
