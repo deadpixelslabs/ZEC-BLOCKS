@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --check script.js && node --check market-runtime.js && node --check navigation.js && node --check address-identity.js && node --test tests/runtime.test.cjs tests/address-identity.test.cjs tests/activity-privacy.test.cjs
+      - run: node --check script.js && node --check market-runtime.js && node --check navigation.js && node --check address-identity.js && node --test tests/runtime.test.cjs tests/address-identity.test.cjs tests/activity-privacy.test.cjs tests/listing-fee.test.cjs
       - run: npm install --no-save playwright@1.55.1
       - run: npx playwright install --with-deps chromium
       - run: node --test tests/marketplace.test.cjs
@@ -34,3 +34,26 @@ jobs:
         with:
           name: marketplace-browser-checks
           path: test-results/
+
+  listing-fee-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -v ON_ERROR_STOP=1 -f tests/listing-fee-db-setup.sql
+      - run: for file in supabase/migrations/*_native_zec_listing_fee.sql; do psql -v ON_ERROR_STOP=1 -f "$file"; done
+      - run: psql -v ON_ERROR_STOP=1 -f tests/listing-fee-db.sql
