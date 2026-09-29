@@ -1,5 +1,5 @@
 4df5987693429f55a7b298044dda9e9612244917127a65eeedd68a37800a9ebc  ./.gitbook.yaml
-3f2b965bee233fd3f993c416830b158e283b89a8feb218fc3133819b6485e67f  ./.github/workflows/marketplace-checks.yml
+327892ac92f2682d8cc38514bb76f68023c8418d8ba9c26e5a8c76295bf498b0  ./.github/workflows/marketplace-checks.yml
 a1b9b3aabbabe90958f5b13afee01981b529713cc1a54d5109e4ba88c5b0c77f  ./.gitignore
 c6d1cf164e24da9202789532bd6cdade1eef6ea796f97b623e227e19907c0eb2  ./.vercelignore
 093ade134b956abdc0b64e4ae46105fed6341dc1dc9d3fa16bb6847ca503491c  ./AGENTS.md
@@ -118,7 +118,7 @@ cc200f7a0dc25c716ac6f8b24f59352e1098551ab95cdc8baef60acd62420bb7  ./tests/listin
 14ed8f179da91ae1322af64694e546591a9b838ffdf1a2457fba7549dc7ba171  ./tests/rh20-holders.cjs
 24b0e5e02ef8bbc42d96b25b3731789d96ad74d592ace7d6911f40bdc8ccf2db  ./tests/rh20-market-browser.cjs
 781a6ba68aeba6a0473780267bfff576a0717cfb628706240892d6c4494dd940  ./tests/rh20-market-contract.cjs
-8be6b62d6490cd5cf07cc5403d30ae19358e249ce03e05dcd75d9826fbc21eba  ./tests/rh20-market-live.cjs
+b3dd3d3abe8bd6d22111209dfd9f89a9c61e368138a1ed9be78405a969d2b14b  ./tests/rh20-market-live.cjs
 bfe59078abb90d97c4024d0e9f3155169a7372642a848d6c6ba2ead312852c8d  ./tests/rh20-price.cjs
 eb089ed9f6fa18f024d24865b5e6f272ba9ce03e537dbd1e2ca79316267af05e  ./tests/runtime.test.cjs
 c6bfcb8d9c411fb991b645d9959a7b09b838cb7f420709017fa77f5fb5e8c6a7  ./vendor/ETHERS-LICENSE.txt
@@ -129,7 +129,7 @@ a2bff451c9f2743c98822ae22efea09eb88ac73784f353887c4c86e025d5538a  ./zecs-deploy.
 28e6de68cfbbb59788da496510d5465b3d2ee146b4a46e26c569262eb24ebc4b  rh20.html
 d31edb067e7d596f49597d578753d4fa1a459f3ec13f7b9754af511489634fcf  rh20/market.css
 3fb6c76e05e608f2410b0662482bf73d5cd3b40e3e1223713f6b6e1d0c84017a  rh20/ordinal/block.svg
-8be6b62d6490cd5cf07cc5403d30ae19358e249ce03e05dcd75d9826fbc21eba  tests/rh20-market-live.cjs
+b3dd3d3abe8bd6d22111209dfd9f89a9c61e368138a1ed9be78405a969d2b14b  tests/rh20-market-live.cjs
 c5d24e1e06881361e646a7d59a5cf66180e653266f84fc4c7ef6143def4a2b9b  MARKETPLACE-OPERATIONS.md
 2c645f856ca8cba99676f232884abe460af6f9597bb657112c07bed5a56384dc  contract/RH20Sweep.sol
 27c2fb90787b4ad4df9c336da6f20bb225017b44220ab05a1b6c222f48d76eb2  rh20-sweep-deploy.html
@@ -141,4 +141,4 @@ a1d7bf5fa6d1cf4715c7445f95a37ee1526b224242bcae3909b957a1f9a7d5fd  scripts/build-
 11b9dbf6c6c5d0f96f03278401c5d7d1ddebd2930b6c03d04f80266fc12b5690  scripts/publish-rh20-sweep.cjs
 bf93199eeaab41ebd97bfed7948b27e03a0ecf17329d8666794589cfbb94c4f0  tests/helpers/rh20-sweep-chain.cjs
 016457dd42c1c28d8d1b9e3e6ad0aca1df20b8ec37a2c56162e9703a905d0a09  tests/rh20-sweep-browser.cjs
-ae652520701f8240f403ccce96a9501c8773cf787436b9a474d1ba2a6e33d248  tests/rh20-sweep-contract.cjs
+7d8bc6e031d3c790eb6b546219a0374d2f0e3076db29296a5adb866cd824269a  tests/rh20-sweep-contract.cjs

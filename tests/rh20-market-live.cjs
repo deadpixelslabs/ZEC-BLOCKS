@@ -40,7 +40,13 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.screenshot({path:path.join(root,'test-results/rh20/live-market.png'),fullPage:true});
   assert.equal(await page.locator('#openSweep').isDisabled(),false);
   await page.locator('#openSweep').click();await page.locator('#sweepDialog').waitFor({state:'visible'});
-  assert.equal(await page.locator('#confirmSweep').isDisabled(),true);
+  if(sweepConfig.contractAddress){
+    await page.waitForFunction(()=>!document.querySelector('#confirmSweep').disabled,null,{timeout:30000});
+    assert.equal(await page.locator('#confirmSweep').innerText(),'Connect wallet to continue');
+    assert.equal(await page.locator('#sweepLots .sweep-lot').count(),5);
+    assert.match(await page.locator('#sweepAmount').innerText(),/RHSC/);
+    assert.match(await page.locator('#sweepPrice').innerText(),/ETH/);
+  }else assert.equal(await page.locator('#confirmSweep').isDisabled(),true);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-sweep.png'),fullPage:true});
   await page.goto(base+'/rh20-sweep-deploy.html');await page.waitForFunction(()=>!document.querySelector('#status').textContent.startsWith('Loading'));
   // The status changes before the asynchronous RPC refresh enables deployment.
@@ -51,6 +57,6 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.waitForFunction(pinned=>document.querySelector('#deploy').disabled===pinned,!!config.contractAddress);
   assert.equal(await page.locator('#deploy').isDisabled(),!!config.contractAddress);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-deploy.png'),fullPage:true});assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:config.contractAddress,coreVerified:true,readOnly:true,totalSupply,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,pagesVerified:4,pageErrors:0}));
+  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:config.contractAddress,coreVerified:true,sweepAddress:sweepConfig.contractAddress,sweepQuoteReady:!!sweepConfig.contractAddress,readOnly:true,totalSupply,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,pagesVerified:4,pageErrors:0}));
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

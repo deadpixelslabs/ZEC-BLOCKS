@@ -59,6 +59,10 @@ jobs:
           mkdir -p test-results/rh20
           node scripts/publish-rh20-market.cjs --tx 0x1977c9e7ce769c63a43207259f92057f65070f871f5503eca816cecd310ebc18 --address 0x3E6E91232CE0895C6154b66800ee5c8B8EE83CFC --check > test-results/rh20/verified-deployment.json
           cat test-results/rh20/verified-deployment.json
+      - name: Verify the owner-deployed Sweep helper through mainnet RPC
+        run: |
+          node scripts/publish-rh20-sweep.cjs --tx 0x7574f21e786b2abde24a4261fa0c4fba5e2f6e69bbf18b9cb45965f624e69ef4 --address 0x2fc152Fb31D175BdD4F2b4A7CFf1434D457524Ce --check > test-results/rh20/verified-sweep-deployment.json
+          cat test-results/rh20/verified-sweep-deployment.json
       - name: Verify published pages and read-only chain access
         if: github.ref == 'refs/heads/main'
         run: node tests/rh20-market-live.cjs

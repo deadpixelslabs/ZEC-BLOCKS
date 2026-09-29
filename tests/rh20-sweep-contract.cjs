@@ -6,6 +6,7 @@ const solc=require('solc');
 const {startSweep}=require('./helpers/rh20-sweep-chain.cjs');
 const config=require('../rh20/mainnet.json');
 const artifact=require('../rh20/RH20Sweep.json');
+const unpinned={...require('../rh20/sweep.json'),contractAddress:null,deploymentTxHash:null,deploymentBlock:null};
 const {verifyDeployment}=require('../scripts/publish-rh20-sweep.cjs');
 let chain,core,market,sweep,seller,buyer,snapshot;
 const tx=async p=>(await p).wait();
@@ -20,11 +21,11 @@ function buy(ids,amount,price,rid=id('sweep'),signer=buyer){return sweep.connect
 test('exact deployment binds existing contracts and verifier rejects wrong receipts or reorgs',async()=>{
  assert.equal(await sweep.MARKETPLACE(),config.contractAddress);assert.equal(await sweep.MAX_LOTS(),20n);
  assert.equal(keccak256(await chain.provider.getCode(await sweep.getAddress())),artifact.runtimeCodeHash);
- const result=await verifyDeployment(chain.provider,chain.sweepReceipt.hash);assert.equal(result.contractAddress,await sweep.getAddress());
- await assert.rejects(verifyDeployment(chain.provider,chain.marketReceipt.hash));
+ const result=await verifyDeployment(chain.provider,chain.sweepReceipt.hash,unpinned);assert.equal(result.contractAddress,await sweep.getAddress());
+ await assert.rejects(verifyDeployment(chain.provider,chain.marketReceipt.hash,unpinned));
  await assert.rejects(verifyDeployment(chain.provider,chain.sweepReceipt.hash,{...result,deploymentTxHash:id('other')}));
  const proxy=new Proxy(chain.provider,{get:(target,key)=>key==='getBlock'?async()=>({hash:id('orphan')}):typeof target[key]==='function'?target[key].bind(target):target[key]});
- await assert.rejects(verifyDeployment(proxy,chain.sweepReceipt.hash),/canonical/);
+ await assert.rejects(verifyDeployment(proxy,chain.sweepReceipt.hash,unpinned),/canonical/);
  await chain.provider.send('anvil_setCode',[config.contractAddress,'0x00']);
  await assert.rejects(new ContractFactory(artifact.abi,artifact.bytecode,seller).deploy());
 });
