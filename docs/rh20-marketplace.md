@@ -2,6 +2,8 @@
 
 RH-20 inscriptions settle on Robinhood Chain using native ETH. The first public trading page is for RHSC at [ZEC BLOCKS](https://www.zecblocks.xyz/rh20.html). The public interface enables trading only after the official settlement deployment is published and its runtime bytecode is verified.
 
+The official marketplace is `0x3E6E91232CE0895C6154b66800ee5c8B8EE83CFC`, deployed in transaction `0x1977c9e7ce769c63a43207259f92057f65070f871f5503eca816cecd310ebc18` at Robinhood Chain RPC block 75378393. Its creation bytecode, runtime bytecode, core binding, treasury and 3% fee were independently checked through mainnet RPC before activation.
+
 ## Two contracts
 
 The existing RH-20 registry at `0x4e89Bc6A7A218B338060d428f40d8f551efc8058` controls token balances, minting and transfers. A separate `RH20Marketplace` contract handles trading. Marketplace deployment does not redeploy RHSC or change its 21,000,000 supply, 500 tokens per mint, or lifetime limit of 20 mints per wallet. Buying and selling do not reset mint counts.

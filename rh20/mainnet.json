@@ -6,7 +6,7 @@
   "coreAddress": "0x4e89Bc6A7A218B338060d428f40d8f551efc8058",
   "treasury": "0x81046ab56F41a78077662624aC4116465fDf00cc",
   "feeBps": 300,
-  "contractAddress": null,
-  "deploymentTxHash": null,
-  "deploymentBlock": null
+  "contractAddress": "0x3E6E91232CE0895C6154b66800ee5c8B8EE83CFC",
+  "deploymentTxHash": "0x1977c9e7ce769c63a43207259f92057f65070f871f5503eca816cecd310ebc18",
+  "deploymentBlock": 75378393
 }
