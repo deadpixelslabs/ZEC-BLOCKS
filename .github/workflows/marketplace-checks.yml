@@ -46,10 +46,14 @@ jobs:
       - name: Check reproducible contract and isolated settlement flows
         run: |
           node scripts/build-rh20-market.cjs --check
+          node scripts/build-rh20-sweep.cjs --check
           node --check rh20/market.js
+          node --check rh20/sweep.js
           node --test tests/rh20-price.cjs
           node --test tests/rh20-market-contract.cjs
+          node --test tests/rh20-sweep-contract.cjs
           node --test tests/rh20-market-browser.cjs
+          node --test tests/rh20-sweep-browser.cjs
       - name: Verify the owner-deployed marketplace through mainnet RPC
         run: |
           mkdir -p test-results/rh20

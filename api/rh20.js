@@ -1,6 +1,7 @@
 'use strict';
 const config = require('../rh20/mainnet.json');
-const target = address => [config.coreAddress, config.contractAddress].some(a => a && a.toLowerCase() === address.toLowerCase());
+const sweep = require('../rh20/sweep.json');
+const target = address => [config.coreAddress, config.contractAddress, sweep.contractAddress].some(a => a && a.toLowerCase() === address.toLowerCase());
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 const BLOCK = /^(latest|safe|finalized|pending|0x[0-9a-fA-F]+)$/;
@@ -9,6 +10,7 @@ function allowed(body) {
   const { method, params } = body;
   if (['eth_chainId', 'eth_blockNumber'].includes(method)) return params.length === 0;
   if (['eth_getTransactionReceipt', 'eth_getTransactionByHash'].includes(method)) return params.length === 1 && HASH.test(params[0]);
+  if (method === 'eth_getBlockByNumber') return params.length === 2 && /^0x[0-9a-fA-F]+$/.test(params[0]) && params[1] === false;
   if (method === 'eth_getCode') return params.length === 2 && ADDRESS.test(params[0]) && target(params[0]) && BLOCK.test(params[1]);
   if (method === 'eth_call') return params.length === 2 && params[0] && ADDRESS.test(params[0].to) && target(params[0].to) && /^0x[0-9a-fA-F]{8,2048}$/.test(params[0].data) && !params[0].value && !params[0].from && BLOCK.test(params[1]);
   return false;

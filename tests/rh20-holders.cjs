@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {Pool}=require('pg');
-const {Contract,id,toBeHex}=require('ethers');
+const {Contract,ContractFactory,id,toBeHex}=require('ethers');
 const {startMarket}=require('./helpers/rh20-market-chain.cjs');
 let pool,chain,market,engine,config,snapshot;
 const MINT='{"p":"rh-20","op":"mint","tick":"RHSC","amt":"500"}';
@@ -105,4 +105,15 @@ test('unit-price ordering preserves one-wei differences at uint256-sized prices'
   const price=2n**255n,seller=chain.signers[1].address.toLowerCase();
   await pool.query('insert into public.rh20_holder_orders(listing_id,seller,amount,state,price) values(1,$1,21000000,1,$2),(2,$1,21000000,1,$3)',[seller,(price+1n).toString(),price.toString()]);
   assert.deepEqual((await db('rh20_market_board')).ids,['2','1']);
+});
+
+
+test('Sweep attributes final tokens to the buyer and never publishes the helper as a holder',async()=>{
+ const a=require('../rh20/RH20Sweep.json');const helper=await new ContractFactory(a.abi,a.bytecode,chain.signers[0]).deploy();await helper.waitForDeployment();
+ await mint(1);await mint(2);const ids=[await list(1),await list(2)];await sync();assert.equal(await count(),2);
+ await tx(helper.connect(chain.signers[3]).sweep(ids,1000,Math.floor(Date.now()/1000)+600,id('holder-sweep'),{value:20000}));await sync();assert.equal(await count(),1);
+ const rows=(await pool.query('select account,liquid,listed from public.rh20_holder_balances where account=any($1)',[[chain.signers[3].address.toLowerCase(),(await helper.getAddress()).toLowerCase()]])).rows;
+ assert.equal(rows.find(r=>r.account===chain.signers[3].address.toLowerCase()).liquid,'1000');
+ const helperRow=rows.find(r=>r.account===(helper.target).toLowerCase());assert.equal(helperRow.liquid,'0');assert.equal(helperRow.listed,'0');
+ assert.equal((await db('rh20_market_board')).total,0);
 });
