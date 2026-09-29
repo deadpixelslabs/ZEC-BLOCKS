@@ -13,6 +13,7 @@
 - [Ownership and wallet identity](ownership.md)
 - [Transfer and receive NFTs](transfers.md)
 - [Buy and sell](marketplace.md)
+- [RH-20 marketplace](rh20-marketplace.md)
 - [ZECS and ZB-20](zecs.md)
 - [Fees](fees.md)
 - [FAQ](faq.md)

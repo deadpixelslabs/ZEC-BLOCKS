@@ -6,6 +6,32 @@ on:
 permissions:
   contents: read
 jobs:
+  rh20:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned RH-20 tooling
+        run: npm install --no-save --package-lock=false solc@0.8.26 ethers@6.13.5 @foundry-rs/anvil-linux-amd64@1.7.1 playwright@1.55.1
+      - run: npx playwright install --with-deps chromium
+      - name: Check reproducible contract and isolated settlement flows
+        run: |
+          node scripts/build-rh20-market.cjs --check
+          node --check rh20/market.js
+          node --test tests/rh20-market-contract.cjs
+          node --test tests/rh20-market-browser.cjs
+      - name: Verify published pages and read-only chain access
+        if: github.ref == 'refs/heads/main'
+        run: node tests/rh20-market-live.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rh20-marketplace-evidence
+          path: test-results/rh20/
+          if-no-files-found: ignore
   protocol:
     runs-on: ubuntu-latest
     timeout-minutes: 3

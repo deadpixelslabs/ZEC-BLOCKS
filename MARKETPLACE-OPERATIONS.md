@@ -69,3 +69,21 @@ The listing dialog discloses transparent funding and network costs. The seller a
 The private fee-intent table binds exact listing terms and current-address authorization. The verifier checks the exact treasury output and a matching transparent input. A unique confirmed transaction receipt prevents fee reuse across NFT and ZECS listings. Database triggers reject unpaid activations through legacy paths and term changes that try to inherit an existing listing's waiver. No user seed, private key, or real-fund test payment is involved.
 
 Validation adds fee-proof unit tests, browser payment/recovery regressions and PostgreSQL 17 fee/replay/grant tests. Production changes are limited to the marketplace repository and its direct-market backend; mining/minting remains on its existing deployment.
+
+
+## RH-20 marketplace — 29 September 2026
+
+`rh20.html` is the independent RHSC/ETH trading page; `rh20-deploy.html` creates its separate settlement contract. Public navigation links the existing marketplace and live RHSC mint. The core is pinned to `0x4e89Bc6A7A218B338060d428f40d8f551efc8058`. Settlement is bound to treasury `0x81046ab56f41a78077662624ac4116465fdf00cc` and a 3% fee deducted from the lot price. Core balances, minting and existing market rails are unchanged.
+
+The contract escrows whole-token lots, atomically transfers them on exact-price purchases, returns unsold tokens on seller cancellation, and keeps beneficiary-owned withdrawal credit for failed ETH push payments. Active inventory is paginated on-chain without browser log scans. The UI uses same-block snapshots, checks core/market runtime hashes, scopes balances to wallet generations, journals before sending, and serializes sends and recovery across tabs. Confirmed replacement nonces resolve old attempts without resubmitting them. Public cards/activity do not render participant addresses.
+
+The settlement address in `rh20/mainnet.json` starts empty. Deploy using the published owner page and the owner's wallet. Then verify and pin the exact deployment with:
+
+```sh
+node scripts/publish-rh20-market.cjs --tx <confirmed-deployment-hash> --check
+node scripts/publish-rh20-market.cjs --tx <confirmed-deployment-hash>
+```
+
+The checker verifies exact creation/runtime bytecode, chain 4663, fixed treasury/core/fee and deployment event. Use the receipt's L2 block height. Never replace a pinned marketplace or use the core address as its settlement address. Publish the updated manifest/checksums after verification. No key or signing credential belongs in this repository.
+
+Validation uses pinned solc 0.8.26, ethers 6.13.5, Anvil 1.7.1 and Playwright 1.55.1. Run `node scripts/build-rh20-market.cjs --check`, `node --test tests/rh20-market-contract.cjs`, and `node --test tests/rh20-market-browser.cjs`. These cover escrow and payment invariants, replay/cancellation, rejected payments and reentrancy, bounded inventory, deployment verification, wallet changes, storage failure, duplicate clicks, cross-tab coordination, ambiguous broadcasts, and deployment receipt persistence. Existing marketplace and database jobs remain in CI. Main-branch CI additionally runs read-only deployment/source/RPC checks and saves public screenshots. Contract deployment still requires the owner's wallet signature; a published frontend alone does not activate trading.
