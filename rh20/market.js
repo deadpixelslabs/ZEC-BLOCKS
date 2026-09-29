@@ -6,6 +6,11 @@
   const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
   const count = n => BigInt(n).toLocaleString('en-US'), eth = n => E.formatEther(n), short = a => a.slice(0, 6) + '…' + a.slice(-4);
   const feeFor = price => price * 300n / 10000n;
+  const unitEth = lot => E.formatUnits(BigInt(lot.price) * 1000000000n / BigInt(lot.amount), 27);
+  const usdText = value => '$' + (value > 0 && value < 0.00000001 ? value.toExponential(4) : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: value < 0.01 ? 10 : 6 }));
+  const priceUsable = () => S.usd && Date.now() - Date.parse(S.usd.updatedAt) < 300000;
+  const priceDelayed = () => S.usd?.status !== 'ready' || Date.now() - Date.parse(S.usd.updatedAt) > 90000;
+  function usdQuote(lot, perToken = false) { if (!priceUsable()) return 'USD estimate unavailable'; const value = Number(eth(lot.price)) * Number(S.usd.usd) / (perToken ? Number(lot.amount) : 1); return '≈ ' + usdText(value) + (perToken ? ' / RHSC' : ' total') + (priceDelayed() ? ' · delayed rate' : ''); }
   const bounded = (promise, ms = 12000) => new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error('Connection delayed. Check again in a moment.')), ms); promise.then(x => { clearTimeout(timer); resolve(x); }, e => { clearTimeout(timer); reject(e); }); });
   const message = e => e?.code === 4001 || e?.code === 'ACTION_REJECTED' ? 'Request cancelled in your wallet.' : String(e?.shortMessage || e?.message || e).slice(0, 250);
   function status(text, kind = '') { $('status').textContent = text; $('status').className = 'status ' + kind; }
@@ -77,14 +82,65 @@
     const label = document.createElement('span'); label.className = 'muted'; label.textContent = 'RH-20 · Lot #' + lot.id;
     top.append(symbol, label);
     const amount = document.createElement('h3'); amount.textContent = count(lot.amount) + ' RHSC';
-    const unit = document.createElement('p'); unit.className = 'muted'; unit.textContent = 'Buy the complete lot';
+    const unit = document.createElement('p'); unit.className = 'unit-price'; unit.textContent = '≈ ' + unitEth(lot) + ' ETH / RHSC';
+    const unitUsd = document.createElement('p'); unitUsd.className = 'unit-usd'; unitUsd.textContent = usdQuote(lot, true);
     const price = document.createElement('strong'); price.className = 'price'; price.textContent = eth(lot.price) + ' ETH';
+    const totalUsd = document.createElement('p'); totalUsd.className = 'total-usd muted'; totalUsd.textContent = 'Complete lot · ' + usdQuote(lot);
     const button = document.createElement('button'); button.dataset.trade = 'true'; button.className = owned ? 'button secondary wide' : 'button wide';
     if (owned || same(lot.seller, S.account)) { button.textContent = 'Cancel listing'; button.onclick = guard(() => submit('cancel', { id: lot.id.toString() })); }
     else { button.textContent = 'Buy Now'; button.onclick = () => reviewBuy(lot); }
-    card.append(top, amount, unit, price, button); return card;
+    card.append(top, amount, unit, unitUsd, price, totalUsd, button); return card;
   }
-  function paintLots(id, lots, owned) { const node = $(id); node.replaceChildren(); if (!lots.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = owned ? S.account ? 'No active listings in this wallet.' : 'Connect your wallet to manage listings.' : S.config.contractAddress ? 'No RHSC listings yet. Be the first to list a lot.' : 'Listings open after the marketplace settlement contract is deployed.'; node.append(p); } else lots.forEach(lot => node.append(card(lot, owned))); }
+  function paintLots(id, lots, owned) { const node = $(id); node.replaceChildren(); if (!lots.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = owned ? S.account ? 'No active listings in this wallet.' : 'Connect your wallet to manage listings.' : S.boardError || (S.config.contractAddress ? 'No RHSC listings yet. Be the first to list a lot.' : 'Listings open after the marketplace settlement contract is deployed.'); node.append(p); } else lots.forEach(lot => node.append(card(lot, owned))); }
+  async function sortedBoard(market, offset, blockTag) {
+    try {
+      const response = await fetch('/index-api/functions/v1/zecblocks-rh20-holders?view=market&offset=' + offset, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw Error('Sorted listings temporarily unavailable. Refresh to retry.');
+      const board = await response.json();
+      if (board.chainId !== 4663 || board.ticker !== 'RHSC' || !same(board.marketplaceAddress, S.config.contractAddress) || board.sort !== 'unit-price-asc' || board.offset !== offset || !Number.isSafeInteger(board.total) || board.total < 0 || !Array.isArray(board.ids) || board.ids.length > 12 || new Set(board.ids).size !== board.ids.length || board.ids.some(id => !/^[1-9][0-9]{0,77}$/.test(id)) || !Number.isSafeInteger(board.blockNumber) || board.blockNumber > blockTag) throw Error('Sorted listings verification delayed. Refresh to retry.');
+      if (board.status !== 'ready' || !Number.isFinite(Date.parse(board.updatedAt)) || Date.now() - Date.parse(board.updatedAt) > 90000) throw Error('Sorted listings are syncing. Refresh in a moment.');
+      // Read every displayed lot from the settlement contract. The index only
+      // selects globally ordered IDs; it never supplies transaction prices.
+      const lots = await Promise.all(board.ids.map(id => market.listings(id, { blockTag })));
+      const active = lots.filter(lot => lot.state === 1n && lot.tick === 'RHSC' && lot.amount > 0n);
+      active.sort((a, b) => { const left = a.price * b.amount, right = b.price * a.amount; return left < right ? -1 : left > right ? 1 : a.id < b.id ? -1 : 1; });
+      S.boardError = null; S.boardOffset = offset; S.boardBlock = board.blockNumber; return [active, BigInt(board.total)];
+    } catch (error) { S.boardError = message(error); return S.boardOffset === offset ? [S.lots, S.total] : [[], 0n]; }
+  }
+  async function refreshReference() {
+    if (deployMode || S.priceRefreshing) return;
+    S.priceRefreshing = true;
+    try {
+      const response = await fetch('/api/rh20-price', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw Error('Reference unavailable');
+      const data = await response.json(), time = Date.parse(data.updatedAt);
+      if (data.pair !== 'ETH-USD' || data.source !== 'Coinbase Exchange' || !['ready', 'delayed'].includes(data.status) || !Number.isFinite(Number(data.usd)) || Number(data.usd) <= 0 || !Number.isFinite(time) || time > Date.now() + 30000 || Date.now() - time > 300000) throw Error('Invalid reference');
+      S.usd = data;
+    } catch (_) { if (S.usd) S.usd.status = 'delayed'; }
+    finally {
+      S.priceRefreshing = false;
+      $('priceSource').textContent = priceUsable() ? 'USD estimates · ETH/USD ' + usdText(Number(S.usd.usd)) + ' · Coinbase Exchange · ' + new Date(S.usd.updatedAt).toLocaleTimeString('en-US') + (priceDelayed() ? ' · Update delayed' : '') : 'USD estimates unavailable · Prices and settlement remain in ETH';
+      paintLots('lots', S.lots, false); paintLots('ownedLots', S.owned, true); quote();
+      if ($('buyDialog').open && S.selected) paintBuyPrices(S.selected);
+    }
+  }
+  async function refreshHolders() {
+    if (deployMode || S.holdersRefreshing || !S.config?.contractAddress) return;
+    S.holdersRefreshing = true;
+    try {
+      const response = await fetch('/index-api/functions/v1/zecblocks-rh20-holders', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error('Holder count unavailable');
+      const data = await response.json();
+      if (data.chainId !== 4663 || data.ticker !== 'RHSC' || !same(data.coreAddress, CORE) || !same(data.marketplaceAddress, S.config.contractAddress) || !['ready', 'indexing', 'delayed'].includes(data.status)) throw new Error('Invalid holder snapshot');
+      if (data.holders === null) { $('holderHint').textContent = 'Syncing on-chain data'; return; }
+      if (!Number.isSafeInteger(data.holders) || data.holders < 0 || data.holders > 21000000 || !Number.isSafeInteger(data.blockNumber) || !Number.isFinite(Date.parse(data.updatedAt))) throw new Error('Invalid holder count');
+      $('holderCount').textContent = count(data.holders);
+      const current = data.status === 'ready' && Date.now() - Date.parse(data.updatedAt) < 90000;
+      $('holderHint').textContent = current ? 'Includes listed RHSC' : 'Update delayed';
+      $('holderCount').title = 'Unique RHSC owners, including listed balances. Indexed through block ' + data.blockNumber + '. Refreshes every 20 seconds.';
+    } catch (_) { $('holderHint').textContent = 'Update delayed'; }
+    finally { S.holdersRefreshing = false; }
+  }
   async function refresh() {
     if (!S.config) return;
     if (S.refreshing) { S.refreshAgain = true; return; }
@@ -98,7 +154,7 @@
         account ? core.balanceOf('RHSC', account, { blockTag }) : 0n,
         account && market ? core.allowance('RHSC', account, S.config.contractAddress, { blockTag }) : 0n,
         market ? market.stats('RHSC', { blockTag }) : [0n, 0n, 0n, 0n],
-        market && !deployMode ? market.getListings('RHSC', E.ZeroAddress, offset, 12, { blockTag }) : [[], 0n],
+        market && !deployMode ? sortedBoard(market, offset, blockTag) : [[], 0n],
         market && account && !deployMode ? market.getListings('RHSC', account, ownedOffset, 12, { blockTag }) : [[], 0n],
         market && account ? market.claimable(account, { blockTag }) : 0n,
         market && !deployMode ? market.recentSales('RHSC', 0, 12, { blockTag }) : [[], 0n]
@@ -111,10 +167,10 @@
         $('sales').replaceChildren();
         if (!sales[0].length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'Confirmed sales will appear here.'; $('sales').append(p); }
         for (const sale of sales[0]) { const row = document.createElement('div'); row.className = 'sale'; for (const text of ['Lot #' + sale.listingId, count(sale.amount) + ' RHSC', eth(sale.price) + ' ETH', new Date(Number(sale.timestamp) * 1000).toLocaleString('en-US')]) { const span = document.createElement('span'); span.textContent = text; row.append(span); } $('sales').append(row); }
-        $('updated').textContent = 'Updated at block ' + count(blockTag);
+        $('updated').textContent = S.boardError || 'Lowest price per RHSC · Indexed through block ' + count(S.boardBlock || blockTag);
       }
     } catch (e) { if (generation === S.generation) { S.verified = false; status(message(e), 'error'); } }
-    finally { S.refreshing = false; render(); if (S.refreshAgain) { S.refreshAgain = false; void refresh(); } }
+    finally { S.refreshing = false; render(); void refreshHolders(); void refreshReference(); if (S.refreshAgain) { S.refreshAgain = false; void refresh(); } }
   }
   async function updateAccount() {
     if (!S.wallet) return;
@@ -145,8 +201,9 @@
   }
   function parseAmount(required = true) { const value = $('amount')?.value.trim() || ''; if (!/^[1-9][0-9]{0,7}$/.test(value) || BigInt(value) > 21000000n) { if (required) throw new Error('Enter a whole RHSC amount from 1 to 21,000,000.'); return null; } return BigInt(value); }
   function parsePrice() { const text = $('price').value.trim(); if (!/^(0|[1-9][0-9]*)(\.[0-9]{1,18})?$/.test(text)) throw new Error('Enter a total ETH price with up to 18 decimal places.'); const price = E.parseEther(text); if (price < 100n || price > E.MaxUint256) throw new Error('The total price must be at least 0.0000000000000001 ETH.'); return price; }
-  function quote() { render(); try { const price = parsePrice(); $('sellQuote').textContent = 'You receive ' + eth(price - feeFor(price)) + ' ETH · fee ' + eth(feeFor(price)) + ' ETH'; } catch (_) { $('sellQuote').textContent = '3% is deducted from the sale price. Network gas is separate.'; } }
-  function reviewBuy(lot) { S.selected = { id: lot.id.toString(), amount: lot.amount.toString(), price: lot.price.toString() }; $('buyAmount').textContent = count(lot.amount) + ' RHSC'; $('buyPrice').textContent = eth(lot.price) + ' ETH'; $('buyFee').textContent = eth(feeFor(lot.price)) + ' ETH'; $('buyDialog').showModal(); }
+  function quote() { render(); try { const price = parsePrice(), amount = parseAmount(false); $('sellQuote').textContent = 'You receive ' + eth(price - feeFor(price)) + ' ETH · fee ' + eth(feeFor(price)) + ' ETH'; $('sellUnit').textContent = amount ? '≈ ' + unitEth({ price, amount }) + ' ETH / RHSC · ' + usdQuote({ price, amount }, true) + ' · ' + usdQuote({ price, amount }) : ''; } catch (_) { $('sellUnit').textContent = ''; $('sellQuote').textContent = '3% is deducted from the sale price. Network gas is separate.'; } }
+  function paintBuyPrices(lot) { $('buyPrice').textContent = eth(lot.price) + ' ETH'; $('buyUnit').textContent = '≈ ' + unitEth(lot) + ' ETH / RHSC · ' + usdQuote(lot, true); $('buyUsd').textContent = usdQuote(lot); }
+  function reviewBuy(lot) { S.selected = { id: lot.id.toString(), amount: lot.amount.toString(), price: lot.price.toString() }; $('buyAmount').textContent = count(lot.amount) + ' RHSC'; paintBuyPrices(lot); $('buyFee').textContent = eth(feeFor(lot.price)) + ' ETH'; $('buyDialog').showModal(); }
   async function identity(account, generation) { const [accounts, chain] = await Promise.all([S.wallet.request({ method: 'eth_accounts' }), S.wallet.request({ method: 'eth_chainId' })]); if (generation !== S.generation || !same(accounts[0], account) || BigInt(chain) !== 4663n) throw new Error('Wallet or network changed. Review the action again.'); }
   async function submit(kind, args = {}) {
     if (S.busy || !S.config) return;

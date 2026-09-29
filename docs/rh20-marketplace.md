@@ -40,3 +40,28 @@ The deployment page creates `RH20Marketplace` with no constructor arguments. Its
 Activation verifies the creation transaction, runtime hash, fixed settings and `MarketplaceDeployed` event before publishing the official address. Deployment height comes from the RPC receipt. Solidity `block.number` on an Arbitrum chain is not used as the L2 deployment height.
 
 This settlement is independent of the existing native ZEC and Base USDC NFT/ZECS markets. Their rules and fees are unchanged. The hosted interface and RPC proxy remain availability dependencies; no independent security audit is claimed.
+
+## Holder count
+
+The Holders card counts unique addresses whose available RHSC plus active listed RHSC is greater than zero. A seller remains a holder while a lot is listed. A completed sale transfers that ownership to the buyer; a cancellation restores available balance. The settlement escrow address itself is excluded to avoid counting it as an extra owner. This measures addresses, not individual people.
+
+A persistent index follows RH-20 `Transfer` events and official marketplace `Listed`, `Bought`, and `Cancelled` events. It advances through bounded, contiguous block ranges and publishes a count only after catching up to the chain head with a two-block margin. Canonical checkpoints support reversal of orphaned events after a chain reorganization. Failed RPC reads or incomplete backfill retain the last published count and mark it delayed.
+
+The page refreshes every 20 seconds while visible. A scheduled backend update also runs every 20 seconds. The public endpoint returns only the aggregate count, freshness and indexed block. Balances, seller mappings, event journals, leases and database mutation functions are not granted to public client roles. The number depends on hosted indexer and RPC availability; delayed data is labelled rather than replaced with zero.
+
+### Unit prices and USD estimates
+
+Available lots are ordered globally by `total ETH / RHSC amount`, with listing ID
+as the tie-breaker, before pagination. The private event projection records exact
+uint256 prices and indexes the ratio at 30 fractional wei digits. Each displayed
+ID is reread from the settlement contract, and checkout revalidates the exact
+active lot and ETH price. Closed lots are removed on refresh.
+
+Cards, the selling quote and purchase confirmation show ETH per RHSC, indicative
+USD per RHSC and the complete lot's USD estimate. `/api/rh20-price` reads the public
+Coinbase Exchange ETH-USD ticker and its trade timestamp, caches successful reads
+for 15 seconds, and rejects old/invalid references. A retained quote is marked
+as delayed and expires after five minutes. ETH settlement and the included 3%
+fee never depend on the USD feed. Network gas remains separate.
+
+Source API: https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-ticker

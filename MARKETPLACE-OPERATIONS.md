@@ -86,3 +86,24 @@ node scripts/publish-rh20-market.cjs --check
 The checker verifies exact creation/runtime bytecode, chain 4663, fixed treasury/core/fee and deployment event. Use the receipt's L2 block height. Never replace a pinned marketplace or use the core address as its settlement address. Publish the updated manifest/checksums after verification. No key or signing credential belongs in this repository.
 
 Validation uses pinned solc 0.8.26, ethers 6.13.5, Anvil 1.7.1 and Playwright 1.55.1. Run `node scripts/build-rh20-market.cjs --check`, `node --test tests/rh20-market-contract.cjs`, and `node --test tests/rh20-market-browser.cjs`. These cover escrow and payment invariants, replay/cancellation, rejected payments and reentrancy, bounded inventory, deployment verification, wallet changes, storage failure, duplicate clicks, cross-tab coordination, ambiguous broadcasts, and deployment receipt persistence. Existing marketplace and database jobs remain in CI. Main-branch CI additionally runs read-only deployment/source/RPC checks and saves public screenshots. The owner-signed marketplace deployment is pinned; subsequent verification is read-only and must never create another contract.
+
+## RHSC holder index
+
+`zecblocks-rh20-holders` projects the fixed RH-20 core and official marketplace into private PostgreSQL balances, seller escrow allocations, a recent reversible event journal, and canonical block checkpoints. The holder count includes liquid plus listed RHSC per address; it excludes the settlement escrow address. Transfers to existing holders, whole-balance sales, zero balances, listing cancellation and reorganization undo are covered by PostgreSQL 17 plus isolated Anvil integration tests.
+
+The Edge Function retains JWT verification and ignores client-supplied indexing parameters. It uses only server-side service-role credentials for tightly scoped RPCs. Every projection table has RLS and no grants to anon/authenticated; every helper is SECURITY INVOKER and executable only by service_role. Public reads expose aggregates through the existing canonical API proxy. A 90-second lease serializes updates and a 15-second minimum start interval prevents duplicate scans. Each invocation reads at most 40 ranges of at most 1,000 blocks with a 40-second budget. The current head uses a two-block margin. The last 128 checkpoints/event ranges support reorganization undo; deeper reconstruction preserves the published value with an indexing label until complete.
+
+Schedule `zecblocks-rh20-holders` every 20 seconds through the project's existing pg_cron/pg_net. Browser refreshes also request an update, with the lease sharing work across all visitors. No wallet signature, trade or mint is sent by this indexer. `rh20/market.js` refreshes the aggregate separately from trading state, so a holder service outage cannot disable purchases or erase the last known number.
+
+The RHSC index also serves `?view=market&offset=0` with up to 12 globally sorted
+listing IDs (lowest ETH per RHSC). Apply `rh20_market_price_order` and deploy the
+matching event decoder before publishing its UI. The migration preserves the
+published holder count and replays an older projection if existing orders lack
+prices. Public output contains IDs and aggregate metadata, not seller addresses.
+Displayed lots and checkout prices are still verified through the pinned contract.
+
+USD prices are estimates from `/api/rh20-price` (Coinbase Exchange ETH-USD ticker,
+15-second cache). Invalid/stale upstream prices cannot influence settlement.
+The UI labels delayed rates and stops using them after five minutes. Relevant
+checks cover global pagination, one-wei differences at uint256-sized prices,
+escrow ownership, reference outages and exact ETH purchase confirmation.
