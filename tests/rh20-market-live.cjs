@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {createHash}=require('node:crypto');
 const {chromium}=require('playwright');
-const {JsonRpcProvider,keccak256}=require('ethers');
+const {JsonRpcProvider,Contract,keccak256}=require('ethers');
 const {verifyDeployment}=require('../scripts/publish-rh20-market.cjs');
 const config=require('../rh20/mainnet.json');
 const holderConfig=require('../rh20/holder-market.json');
@@ -19,7 +19,13 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
 (async()=>{
  await deployed();
  const provider=new JsonRpcProvider(base+'/api/rh20',4663,{staticNetwork:true,batchMaxCount:1,cacheTimeout:-1});
- try{assert.equal(BigInt(await provider.send('eth_chainId',[])),4663n);assert.equal(keccak256(await provider.getCode(config.coreAddress)),core.runtimeCodeHash);assert.equal(keccak256(await provider.getCode(holderConfig.collectionAddress)),require('../rh20/RobinhoodOrdinal.json').runtimeCodeHash);if(config.contractAddress)await verifyDeployment(provider,config.deploymentTxHash);if(holderConfig.contractAddress)await require('../scripts/publish-rh20-holder-market.cjs').verifyDeployment(provider,holderConfig.deploymentTxHash);if(sweepConfig.contractAddress)await require('../scripts/publish-rh20-sweep.cjs').verifyDeployment(provider,sweepConfig.deploymentTxHash);}finally{provider.destroy();}
+ try{assert.equal(BigInt(await provider.send('eth_chainId',[])),4663n);assert.equal(keccak256(await provider.getCode(config.coreAddress)),core.runtimeCodeHash);assert.equal(keccak256(await provider.getCode(holderConfig.collectionAddress)),require('../rh20/RobinhoodOrdinal.json').runtimeCodeHash);if(config.contractAddress)await verifyDeployment(provider,config.deploymentTxHash);if(holderConfig.contractAddress){
+   await require('../scripts/publish-rh20-holder-market.cjs').verifyDeployment(provider,holderConfig.deploymentTxHash);
+   const blockTag=Number(BigInt(await provider.send('eth_blockNumber',[]))),nft=new Contract(holderConfig.collectionAddress,require('../rh20/RobinhoodOrdinal.json').abi,provider),market=new Contract(holderConfig.contractAddress,require('../rh20/RH20HolderMarketplace.json').abi,provider);
+   const accounts=[holderConfig.contractAddress,config.coreAddress];
+   if(await nft.totalSupply({blockTag})>0n)accounts.push(await nft.ownerOf(1,{blockTag}));
+   for(const account of accounts){const owns=await nft.balanceOf(account,{blockTag});assert.equal(await market.sellerFeeBps(account,{blockTag}),owns>0n?0n:300n);assert.equal(await market.feeForSeller(account,10000,{blockTag}),owns>0n?0n:300n);}
+  }if(sweepConfig.contractAddress)await require('../scripts/publish-rh20-sweep.cjs').verifyDeployment(provider,sweepConfig.deploymentTxHash);}finally{provider.destroy();}
  const rejected=await fetch(base+'/api/rh20',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:47,method:'eth_sendRawTransaction',params:[]}),signal:AbortSignal.timeout(12000)});assert.equal(rejected.status,400);await rejected.arrayBuffer();
  const holderResponse=await fetch(base+'/index-api/functions/v1/zecblocks-rh20-holders',{signal:AbortSignal.timeout(12000)});assert.equal(holderResponse.status,200);
  const holders=await holderResponse.json();assert.equal(holders.chainId,4663);assert.equal(holders.marketplaceAddress,config.contractAddress);if(holderConfig.contractAddress)assert(holders.marketplaceAddresses.some(a=>a.toLowerCase()===holderConfig.contractAddress.toLowerCase()));assert.equal(holders.status,'ready');assert(Number.isSafeInteger(holders.holders)&&holders.holders>=0);assert(Date.now()-Date.parse(holders.updatedAt)<90000);
@@ -34,7 +40,8 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.waitForFunction(()=>/^[0-9,]+$/.test(document.querySelector('#totalSupply').textContent));
   const totalSupply=await page.locator('#totalSupply').innerText();assert.equal(totalSupply,'21,000,000');assert.match(await page.locator('#supplyHint').innerText(),/Fully minted/);
   assert.match(await page.locator('#buyPanel .section-heading').innerText(),/Lowest price per RHSC/);
-  assert.equal(await page.locator('#sellAction').isDisabled(),!config.contractAddress);
+  assert.equal(await page.locator('#sellAction').isDisabled(),!activeConfig.contractAddress);
+  if(holderConfig.contractAddress){assert.equal(await page.locator('#feeRate').innerText(),'0% / 3%');assert.equal(await page.locator('#marketTransition').isVisible(),true);assert.equal((await page.locator('#marketContract').getAttribute('href')).toLowerCase(),(holderConfig.explorerUrl+'/address/'+holderConfig.contractAddress).toLowerCase());}
   if(!config.contractAddress)assert.match(await page.locator('#badge').innerText(),/pending/);
   assert.equal(await page.locator('.ordinal-banner').count(),1);
   assert.equal(await page.locator('.ordinal-mint-link').getAttribute('href'),'https://mine.zecblocks.xyz/ordinal.html');
@@ -43,7 +50,11 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.screenshot({path:path.join(root,'test-results/rh20/live-market.png'),fullPage:true});
   assert.equal(await page.locator('#openSweep').isDisabled(),false);
   await page.locator('#openSweep').click();await page.locator('#sweepDialog').waitFor({state:'visible'});
-  const quoteCount=Math.min(5,board.total);
+  // Use the completed selection, since listings can change after the HTTP snapshot.
+  await page.waitForFunction(()=>!document.querySelector('#previewSweep').disabled,null,{timeout:30000});
+  const selectionMessage=await page.locator('#sweepMessage').innerText();
+  const shortage=/^Only ([0-9]+) eligible lots found\./.exec(selectionMessage);
+  const quoteCount=shortage?Math.min(5,Number(shortage[1])):5;
   if(quoteCount>0&&(holderConfig.contractAddress||sweepConfig.contractAddress)){
     if(quoteCount!==5){await page.locator('#sweepCount').fill(String(quoteCount));await page.locator('#sweepCount').blur();await page.locator('#previewSweep').click();}
     await page.waitForFunction(()=>!document.querySelector('#confirmSweep').disabled,null,{timeout:30000});
@@ -51,8 +62,15 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
     assert.equal(await page.locator('#sweepLots .sweep-lot').count(),quoteCount);
     assert.match(await page.locator('#sweepAmount').innerText(),/RHSC/);
     assert.match(await page.locator('#sweepPrice').innerText(),/ETH/);
-  }else assert.equal(await page.locator('#confirmSweep').isDisabled(),true);
+  }else {assert.match(selectionMessage,/^Only 0 eligible lots found\./);assert.equal(await page.locator('#confirmSweep').isDisabled(),true);}
   await page.screenshot({path:path.join(root,'test-results/rh20/live-sweep.png'),fullPage:true});
+  if(holderConfig.contractAddress){
+    await page.goto(base+'/rh20.html?market=previous');
+    await page.waitForFunction(()=>document.querySelector('#activeCount').textContent!=='—'&&!document.querySelector('#badge').textContent.includes('Checking'));
+    assert.equal(await page.locator('#feeRate').innerText(),'3%');assert.equal(await page.locator('[data-tab="sell"]').isVisible(),false);
+    assert.equal((await page.locator('#marketContract').getAttribute('href')).toLowerCase(),('https://robin.etherscan.io/address/'+config.contractAddress).toLowerCase());
+    assert.equal(await page.locator('[data-tab="owned"]').isVisible(),true);await page.screenshot({path:path.join(root,'test-results/rh20/live-previous-market.png'),fullPage:true});
+  }
   await page.goto(base+'/rh20-sweep-deploy.html');await page.waitForFunction(()=>!document.querySelector('#status').textContent.startsWith('Loading'));
   // The status changes before the asynchronous RPC refresh enables deployment.
   await page.waitForFunction(pinned=>document.querySelector('#deploy').textContent===(pinned?'Sweep deployed':'Deploy Sweep helper') && document.querySelector('#deploy').disabled===pinned,!!sweepConfig.contractAddress,{timeout:20000});
@@ -66,6 +84,6 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   assert.match(await page.locator('main').innerText(),/0% for NFT holder sellers/);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-holder-deploy.png'),fullPage:true});
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:config.contractAddress,coreVerified:true,sweepAddress:sweepConfig.contractAddress,sweepQuoteReady:!!sweepConfig.contractAddress,ordinalBannerVisible:true,readOnly:true,totalSupply,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,holderMarketplaceAddress:holderConfig.contractAddress,holderDeploymentReady:true,pagesVerified:5,pageErrors:0}));
+  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:activeConfig.contractAddress,previousMarketplaceAddress:config.contractAddress,coreVerified:true,sweepAddress:holderConfig.contractAddress||sweepConfig.contractAddress,sweepQuoteReady:quoteCount>0,holderFeeRulesVerified:!!holderConfig.contractAddress,ordinalBannerVisible:true,readOnly:true,totalSupply,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,holderMarketplaceAddress:holderConfig.contractAddress,holderDeploymentReady:true,pagesVerified:holderConfig.contractAddress?6:5,pageErrors:0}));
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
