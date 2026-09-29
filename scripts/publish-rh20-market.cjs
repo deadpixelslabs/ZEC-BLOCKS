@@ -26,9 +26,12 @@ async function verifyDeployment(provider, hash, published = config) {
 }
 if (require.main === module) (async()=>{
   const args=process.argv.slice(2),index=args.indexOf('--tx'),hash=index<0?config.deploymentTxHash:args[index+1];
+  const addressIndex=args.indexOf('--address'),expectedAddress=addressIndex<0?null:args[addressIndex+1];
+  if (addressIndex>=0 && !/^0x[0-9a-f]{40}$/i.test(expectedAddress || '')) throw new Error('Invalid expected deployment address.');
   const provider=new JsonRpcProvider(process.env.RH20_RPC_URL||config.rpcUrl,4663,{staticNetwork:true,batchMaxCount:1,cacheTimeout:-1});
   try {
     const verified=await verifyDeployment(provider,hash);
+    if (expectedAddress && !same(expectedAddress,verified.contractAddress)) throw new Error('The receipt does not match the owner-supplied marketplace address.');
     if (!args.includes('--check')) fs.writeFileSync(path.resolve(__dirname,'../rh20/mainnet.json'),JSON.stringify(verified,null,2)+'\n');
     console.log(JSON.stringify(verified,null,2));
   } finally {provider.destroy();}

@@ -1,5 +1,5 @@
 4df5987693429f55a7b298044dda9e9612244917127a65eeedd68a37800a9ebc  ./.gitbook.yaml
-bc35a308bfea59f3b60ab8a2b29cfd5beaf31fdbb2e0fc27c39cb0a526407488  ./.github/workflows/marketplace-checks.yml
+695cf843979055e27ad393daafab8f00215f0e90ace828971b959df93a902a8a  ./.github/workflows/marketplace-checks.yml
 a1b9b3aabbabe90958f5b13afee01981b529713cc1a54d5109e4ba88c5b0c77f  ./.gitignore
 c6d1cf164e24da9202789532bd6cdade1eef6ea796f97b623e227e19907c0eb2  ./.vercelignore
 093ade134b956abdc0b64e4ae46105fed6341dc1dc9d3fa16bb6847ca503491c  ./AGENTS.md
@@ -79,7 +79,7 @@ b05848ac27a6490685eba935a05a5f67efaddbe21906c1d371ce4b46ea8e2667  ./rh20/market.
 05be51c12ff2c6c090a1efbb2d36f46158a59104c777cff5c626bd762b5ce786  ./rh20/marketplace-compiler-input.json
 4dfa3ed965f1083ab1a5aafaca433b9ca2dee9b6cd6e2bc5b7e4beba50c3ad95  ./script.js
 a5bd25ecdee4b93dc284f72a9b427c0a6ca3b4b0654d61a006ecc426a065f200  ./scripts/build-rh20-market.cjs
-ab7106706b184b3b47167806df3b6753890b56297501425b13bd3b6a8848da42  ./scripts/publish-rh20-market.cjs
+25923d8d4546e8d3806456ece704d27bfd7883b3ae365dcf33f334738ff844a5  ./scripts/publish-rh20-market.cjs
 1eae6b031fe5047da6bc165fe6b631f8fc10b8a310c5d9d1470232b27c42b8f2  ./styles.css
 c58b15e9139ffbc5c4e99422f1645c9b3de356fb718bd409816214c3a3abf60a  ./supabase/DEPLOYED.txt
 e38958736510b3962d8f023832253729dd918fdd4ececbc38e18ffe5f1bbe9d7  ./supabase/functions/zecblocks-index-usdc/deno.json
@@ -107,7 +107,7 @@ cc200f7a0dc25c716ac6f8b24f59352e1098551ab95cdc8baef60acd62420bb7  ./tests/listin
 98fb26f3b4869dc87afa5ab11b664a2258e1f7d007690a6f0d357cf1347686dd  ./tests/listing-fee.test.cjs
 9029b6428df9522d4cc4947c96e708edbfe22fb28eb929bfb229c48e4a68eaf7  ./tests/marketplace.test.cjs
 678613691ac91822bcd77c75d5b8a7e3dddd9f70bf035c8fe8831683bff9fd50  ./tests/rh20-market-browser.cjs
-64f03edeb362f4bb3ba0758ec047709859c7f9fa735fd6ab435196262d8d975a  ./tests/rh20-market-contract.cjs
+781a6ba68aeba6a0473780267bfff576a0717cfb628706240892d6c4494dd940  ./tests/rh20-market-contract.cjs
 6ff03b03dd39658f853fb40767f28c0bede581c0b87d2c177919cffb266ce1da  ./tests/rh20-market-live.cjs
 eb089ed9f6fa18f024d24865b5e6f272ba9ce03e537dbd1e2ca79316267af05e  ./tests/runtime.test.cjs
 c6bfcb8d9c411fb991b645d9959a7b09b838cb7f420709017fa77f5fb5e8c6a7  ./vendor/ETHERS-LICENSE.txt

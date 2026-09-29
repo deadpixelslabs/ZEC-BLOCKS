@@ -23,6 +23,11 @@ jobs:
           node --check rh20/market.js
           node --test tests/rh20-market-contract.cjs
           node --test tests/rh20-market-browser.cjs
+      - name: Verify the owner-deployed marketplace through mainnet RPC
+        run: |
+          mkdir -p test-results/rh20
+          node scripts/publish-rh20-market.cjs --tx 0x1977c9e7ce769c63a43207259f92057f65070f871f5503eca816cecd310ebc18 --address 0x3E6E91232CE0895C6154b66800ee5c8B8EE83CFC --check > test-results/rh20/verified-deployment.json
+          cat test-results/rh20/verified-deployment.json
       - name: Verify published pages and read-only chain access
         if: github.ref == 'refs/heads/main'
         run: node tests/rh20-market-live.cjs

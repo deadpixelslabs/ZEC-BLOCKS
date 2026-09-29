@@ -144,8 +144,9 @@ test('read proxy rejects transaction sends, wrong targets and unbounded batches'
 });
 test('deployment verifier accepts exact receipt, uses RPC height and rejects replacement', async()=>{
   const {verifyDeployment}=require('../scripts/publish-rh20-market.cjs');
-  const verified=await verifyDeployment(chain.provider,chain.marketReceipt.hash);
+  const unpinned={...config,contractAddress:null,deploymentTxHash:null,deploymentBlock:null};
+  const verified=await verifyDeployment(chain.provider,chain.marketReceipt.hash,unpinned);
   assert.equal(verified.contractAddress,await market.getAddress());assert.equal(verified.deploymentBlock,chain.marketReceipt.blockNumber);
-  await assert.rejects(verifyDeployment(chain.provider,chain.receipt.hash));
+  await assert.rejects(verifyDeployment(chain.provider,chain.receipt.hash,unpinned));
   await assert.rejects(verifyDeployment(chain.provider,chain.marketReceipt.hash,{...verified,deploymentTxHash:id('different')}));
 });
