@@ -10,7 +10,7 @@ const {verifyDeployment}=require('../scripts/publish-rh20-market.cjs');
 const config=require('../rh20/mainnet.json');
 const core=require('../rh20/RH20.json');
 const base='https://www.zecblocks.xyz',root=path.resolve(__dirname,'..');
-const files=['rh20.html','rh20-deploy.html','rh20/mainnet.json','rh20/market.js','rh20/market.css','rh20/RH20Marketplace.json','rh20/marketplace-compiler-input.json','contract/RH20Marketplace.sol','rh20/RH20.json','index.html'];
+const files=['rh20.html','rh20/ordinal/block.svg','rh20-deploy.html','rh20/mainnet.json','rh20/market.js','rh20/market.css','rh20/RH20Marketplace.json','rh20/marketplace-compiler-input.json','contract/RH20Marketplace.sol','rh20/RH20.json','index.html'];
 const hash=data=>createHash('sha256').update(data).digest('hex');
 async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){try{await Promise.all(files.map(async file=>{const r=await fetch(base+'/'+file+'?release='+Date.now(),{signal:AbortSignal.timeout(12000)});assert.equal(r.status,200,file);assert.equal(hash(Buffer.from(await r.arrayBuffer())),hash(fs.readFileSync(path.join(root,file))),file);}));return;}catch(e){failure=e;if(attempt<11)await new Promise(r=>setTimeout(r,10000));}}throw failure;}
 (async()=>{
@@ -33,6 +33,9 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   assert.match(await page.locator('#buyPanel .section-heading').innerText(),/Lowest price per RHSC/);
   assert.equal(await page.locator('#sellAction').isDisabled(),!config.contractAddress);
   if(!config.contractAddress)assert.match(await page.locator('#badge').innerText(),/pending/);
+  assert.equal(await page.locator('.ordinal-mint-link').getAttribute('href'),'https://mine.zecblocks.xyz/ordinal.html');
+  assert.match(await page.locator('#ordinalBannerTitle').innerText(),/Robinhood Ordinal/);
+  assert(await page.locator('.ordinal-banner>img').evaluate(img=>img.complete&&img.naturalWidth>0));
   await page.screenshot({path:path.join(root,'test-results/rh20/live-market.png'),fullPage:true});
   await page.goto(base+'/rh20-deploy.html');await page.waitForFunction(()=>!document.querySelector('#status').textContent.startsWith('Loading'));
   await page.waitForFunction(pinned=>document.querySelector('#deploy').disabled===pinned,!!config.contractAddress);
