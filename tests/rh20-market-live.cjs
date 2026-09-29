@@ -43,7 +43,8 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   assert.equal(await page.locator('#confirmSweep').isDisabled(),true);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-sweep.png'),fullPage:true});
   await page.goto(base+'/rh20-sweep-deploy.html');await page.waitForFunction(()=>!document.querySelector('#status').textContent.startsWith('Loading'));
-  await page.waitForFunction(pinned=>document.querySelector('#deploy').textContent===(pinned?'Sweep deployed':'Deploy Sweep helper'),!!sweepConfig.contractAddress);
+  // The status changes before the asynchronous RPC refresh enables deployment.
+  await page.waitForFunction(pinned=>document.querySelector('#deploy').textContent===(pinned?'Sweep deployed':'Deploy Sweep helper') && document.querySelector('#deploy').disabled===pinned,!!sweepConfig.contractAddress,{timeout:20000});
   assert.equal(await page.locator('#deploy').isDisabled(),!!sweepConfig.contractAddress);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-sweep-deploy.png'),fullPage:true});
   await page.goto(base+'/rh20-deploy.html');await page.waitForFunction(()=>!document.querySelector('#status').textContent.startsWith('Loading'));
