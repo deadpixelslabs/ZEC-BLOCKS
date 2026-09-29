@@ -47,6 +47,7 @@ jobs:
         run: |
           node scripts/build-rh20-market.cjs --check
           node --check rh20/market.js
+          node --test tests/rh20-price.cjs
           node --test tests/rh20-market-contract.cjs
           node --test tests/rh20-market-browser.cjs
       - name: Verify the owner-deployed marketplace through mainnet RPC

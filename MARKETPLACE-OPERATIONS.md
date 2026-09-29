@@ -94,3 +94,16 @@ Validation uses pinned solc 0.8.26, ethers 6.13.5, Anvil 1.7.1 and Playwright 1.
 The Edge Function retains JWT verification and ignores client-supplied indexing parameters. It uses only server-side service-role credentials for tightly scoped RPCs. Every projection table has RLS and no grants to anon/authenticated; every helper is SECURITY INVOKER and executable only by service_role. Public reads expose aggregates through the existing canonical API proxy. A 90-second lease serializes updates and a 15-second minimum start interval prevents duplicate scans. Each invocation reads at most 40 ranges of at most 1,000 blocks with a 40-second budget. The current head uses a two-block margin. The last 128 checkpoints/event ranges support reorganization undo; deeper reconstruction preserves the published value with an indexing label until complete.
 
 Schedule `zecblocks-rh20-holders` every 20 seconds through the project's existing pg_cron/pg_net. Browser refreshes also request an update, with the lease sharing work across all visitors. No wallet signature, trade or mint is sent by this indexer. `rh20/market.js` refreshes the aggregate separately from trading state, so a holder service outage cannot disable purchases or erase the last known number.
+
+The RHSC index also serves `?view=market&offset=0` with up to 12 globally sorted
+listing IDs (lowest ETH per RHSC). Apply `rh20_market_price_order` and deploy the
+matching event decoder before publishing its UI. The migration preserves the
+published holder count and replays an older projection if existing orders lack
+prices. Public output contains IDs and aggregate metadata, not seller addresses.
+Displayed lots and checkout prices are still verified through the pinned contract.
+
+USD prices are estimates from `/api/rh20-price` (Coinbase Exchange ETH-USD ticker,
+15-second cache). Invalid/stale upstream prices cannot influence settlement.
+The UI labels delayed rates and stops using them after five minutes. Relevant
+checks cover global pagination, one-wei differences at uint256-sized prices,
+escrow ownership, reference outages and exact ETH purchase confirmation.

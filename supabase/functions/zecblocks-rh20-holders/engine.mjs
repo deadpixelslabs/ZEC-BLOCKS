@@ -18,7 +18,7 @@ export function decodeHolderLog(log, config=CONFIG){
     if(kind===config.topics.listed){
       if(topics[2]!==config.tokenId)return null;
       if(topics.length!==4||!HEX32.test(topics[1]))throw Error('Invalid RHSC listing event');
-      event={kind:'listed',id:BigInt(topics[1]).toString(),seller:topicAddress(topics[3]),amount:word(log.data,1)};
+      event={kind:'listed',id:BigInt(topics[1]).toString(),seller:topicAddress(topics[3]),amount:word(log.data,1),price:word(log.data,2)};
     }else if(kind===config.topics.bought){
       if(topics[2]!==config.tokenId)return null;
       if(topics.length!==4||!HEX32.test(topics[1])||log.data.length!==194)throw Error('Invalid RHSC purchase event');

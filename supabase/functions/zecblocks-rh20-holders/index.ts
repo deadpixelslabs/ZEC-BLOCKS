@@ -14,7 +14,7 @@ async function db(name:string,args:Record<string,unknown>={}){
 }
 async function rpc(method:string,params:unknown[]=[]){
   const response=await fetch(upstream,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params}),signal:AbortSignal.timeout(9000)});
-  if(!response.ok)throw Error('Robinhood Chain RPC unavailable');
+  if(!response.ok)throw Error('Robinhood Chain RPC unavailable: '+method+' HTTP '+response.status);
   const data=await response.json();if(data.error||data.jsonrpc!=='2.0'||data.id!==1||!('result'in data))throw Error('Robinhood Chain RPC read failed');
   return data.result;
 }
@@ -24,6 +24,9 @@ Deno.serve(async req=>{
   // The platform verifies the public anon JWT. Client input never controls
   // the contracts, cursor, accounts, SQL arguments or chain endpoint.
   EdgeRuntime.waitUntil(synchronizeHolders({rpc,db}).catch(error=>console.error('RHSC holder update:',error.message)));
-  try{return new Response(JSON.stringify(await db('rh20_holders_snapshot')),{headers});}
+  const url=new URL(req.url),marketView=url.searchParams.get('view')==='market';
+  const offset=Number(url.searchParams.get('offset')||0);
+  if(marketView&&(!Number.isSafeInteger(offset)||offset<0||offset>1000000))return new Response(JSON.stringify({error:'Invalid market page'}),{status:400,headers});
+  try{return new Response(JSON.stringify(await db(marketView?'rh20_market_board':'rh20_holders_snapshot',marketView?{p_offset:offset,p_limit:12}:{})),{headers});}
   catch(_){return new Response(JSON.stringify({error:'Holder count temporarily unavailable'}),{status:503,headers});}
 });
