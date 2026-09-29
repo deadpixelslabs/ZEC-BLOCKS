@@ -5,9 +5,13 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
 const config = require('../../rh20/mainnet.json');
 const originalConfig = { ...config };
+const sweepConfig = require('../../rh20/sweep.json');
+const originalSweepConfig = { ...sweepConfig };
 const api = require('../../api/rh20.js');
 async function serve(chain) {
   let published = true;
+  let sweepPublished = !!chain.sweep;
+  let sweepOverride = null;
   let overrideAddress = null;
   let holderState = { holders: 2, status: 'ready' };
   let priceState = { usd: '3000', status: 'ready' };
@@ -15,10 +19,13 @@ async function serve(chain) {
   const oldRPC = process.env.RH20_RPC_URL;
   process.env.RH20_RPC_URL = chain.url;
   const configured = () => ({ ...originalConfig, contractAddress: published ? overrideAddress || address : null, deploymentTxHash: published ? chain.marketReceipt.hash : null, deploymentBlock: published ? chain.marketReceipt.blockNumber : null });
+  const sweepAddress = chain.sweep ? await chain.sweep.getAddress() : null;
+  const configuredSweep = () => ({ ...originalSweepConfig, marketplaceAddress: configured().contractAddress, contractAddress: sweepPublished ? sweepOverride || sweepAddress : null, deploymentTxHash: sweepPublished ? chain.sweepReceipt?.hash : null, deploymentBlock: sweepPublished ? chain.sweepReceipt?.blockNumber : null });
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
       res.setHeader('Cache-Control', 'no-store');
+      if (url.pathname === '/rh20/sweep.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(configuredSweep())); return; }
       if (url.pathname === '/rh20/mainnet.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(configured())); return; }
       if (url.pathname === '/api/rh20-price') { res.setHeader('Content-Type', 'application/json'); if (priceState.error) { res.statusCode=503; res.end('{}'); return; } res.end(JSON.stringify({ pair:'ETH-USD',source:'Coinbase Exchange',updatedAt:new Date().toISOString(),...priceState })); return; }
       if (url.pathname === '/index-api/functions/v1/zecblocks-rh20-holders') {
@@ -40,7 +47,7 @@ async function serve(chain) {
           const upstream = await fetch(chain.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: raw });
           res.setHeader('Content-Type', 'application/json'); res.end(await upstream.text()); return;
         }
-        Object.assign(config, configured());
+        Object.assign(config, configured()); Object.assign(sweepConfig, configuredSweep());
         res.status = code => { res.statusCode = code; return res; };
         res.json = data => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(data)); };
         await api(req, res); return;
@@ -53,6 +60,6 @@ async function serve(chain) {
     } catch (error) { res.statusCode = error.code === 'ENOENT' ? 404 : 500; res.end(String(error.message)); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  return { url: 'http://127.0.0.1:' + server.address().port, setPrice: value => { priceState = value; }, setHolders: value => { holderState = value; }, setPublished: value => { published = value; }, setAddress: value => { overrideAddress = value; }, close: async () => { Object.assign(config, originalConfig); if (oldRPC === undefined) delete process.env.RH20_RPC_URL; else process.env.RH20_RPC_URL = oldRPC; await new Promise(resolve => server.close(resolve)); } };
+  return { url: 'http://127.0.0.1:' + server.address().port, setSweepPublished: value => { sweepPublished = value; }, setSweepAddress: value => { sweepOverride = value; }, setPrice: value => { priceState = value; }, setHolders: value => { holderState = value; }, setPublished: value => { published = value; }, setAddress: value => { overrideAddress = value; }, close: async () => { Object.assign(config, originalConfig); Object.assign(sweepConfig, originalSweepConfig); if (oldRPC === undefined) delete process.env.RH20_RPC_URL; else process.env.RH20_RPC_URL = oldRPC; await new Promise(resolve => server.close(resolve)); } };
 }
 module.exports = { serve };

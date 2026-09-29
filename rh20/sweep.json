@@ -1,0 +1,9 @@
+{
+  "chainId": 4663,
+  "coreAddress": "0x4e89Bc6A7A218B338060d428f40d8f551efc8058",
+  "marketplaceAddress": "0x3E6E91232CE0895C6154b66800ee5c8B8EE83CFC",
+  "maxLots": 20,
+  "contractAddress": null,
+  "deploymentTxHash": null,
+  "deploymentBlock": null
+}

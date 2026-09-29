@@ -91,6 +91,15 @@
           "value": "no-store, max-age=0"
         }
       ]
+    },
+    {
+      "source": "/rh20-sweep-deploy.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
     }
   ],
   "rewrites": [

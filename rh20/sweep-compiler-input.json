@@ -1,0 +1,24 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "RH20Sweep.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\n\ninterface IRH20SweepCore {\n    function transfer(string calldata tick, address to, uint256 amount) external returns (bool);\n}\ninterface IRH20SweepMarket {\n    function listings(uint256 id) external view returns (uint256, string memory, address, uint256, uint256, uint8);\n    function buy(uint256 id) external payable;\n}\n\n/// @notice Buys exact RHSC lots from the existing marketplace in one transaction.\n/// @dev All lots settle or all changes revert. No extra fee, owner or upgrades.\ncontract RH20Sweep {\n    address public constant CORE = 0x4e89Bc6A7A218B338060d428f40d8f551efc8058;\n    address public constant MARKETPLACE = 0x3E6E91232CE0895C6154b66800ee5c8B8EE83CFC;\n    bytes32 public constant CORE_CODE_HASH = 0x4b6b4723f377f6d67a31097f71c7d14a7c59bca08dc8cf0d24f796fe7d6a7052;\n    bytes32 public constant MARKET_CODE_HASH = 0xab89d9ba02f343fbf62259fda02f3281f3b5507e69fd68bd8dd175541ed0b511;\n    uint256 public constant CHAIN_ID = 4663;\n    uint256 public constant MAX_LOTS = 20;\n    uint256 private _entered;\n    mapping(address => mapping(bytes32 => bool)) public usedRequests;\n\n    error InvalidConfiguration();\n    error InvalidSelection();\n    error ListingUnavailable(uint256 id);\n    error CannotBuyOwnListing();\n    error IncorrectPayment();\n    error AmountChanged();\n    error QuoteExpired();\n    error RequestAlreadyUsed();\n    error TransferFailed();\n    error ReentrantCall();\n    event SweepDeployed(address indexed core, address indexed marketplace, uint256 maxLots);\n    event Swept(address indexed buyer, bytes32 indexed requestId, bytes32 selectionHash, uint256 lots, uint256 amount, uint256 price);\n\n    constructor() {\n        if (block.chainid != CHAIN_ID || CORE.codehash != CORE_CODE_HASH || MARKETPLACE.codehash != MARKET_CODE_HASH) revert InvalidConfiguration();\n        emit SweepDeployed(CORE, MARKETPLACE, MAX_LOTS);\n    }\n\n    /// @notice Pays the sum of immutable listing prices, including the existing 3% fee.\n    /// @param expectedAmount Exact whole RHSC amount the buyer reviewed.\n    /// @param deadline Unix timestamp after which this signed purchase cannot execute.\n    function sweep(uint256[] calldata ids, uint256 expectedAmount, uint256 deadline, bytes32 requestId) external payable {\n        if (_entered != 0) revert ReentrantCall();\n        _entered = 1;\n        if (ids.length == 0 || ids.length > MAX_LOTS || requestId == bytes32(0)) revert InvalidSelection();\n        if (block.timestamp > deadline) revert QuoteExpired();\n        if (usedRequests[msg.sender][requestId]) revert RequestAlreadyUsed();\n        uint256 totalPrice;\n        uint256 totalAmount;\n        uint256[] memory prices = new uint256[](ids.length);\n        for (uint256 i; i < ids.length; ++i) {\n            for (uint256 j; j < i; ++j) if (ids[i] == ids[j]) revert InvalidSelection();\n            (uint256 amount, uint256 price) = _listing(ids[i]);\n            totalAmount += amount;\n            totalPrice += price;\n            prices[i] = price;\n        }\n        if (msg.value != totalPrice) revert IncorrectPayment();\n        if (totalAmount != expectedAmount) revert AmountChanged();\n        usedRequests[msg.sender][requestId] = true;\n        for (uint256 i; i < ids.length; ++i) IRH20SweepMarket(MARKETPLACE).buy{value: prices[i]}(ids[i]);\n        if (!IRH20SweepCore(CORE).transfer(\"RHSC\", msg.sender, totalAmount)) revert TransferFailed();\n        emit Swept(msg.sender, requestId, keccak256(abi.encode(ids)), ids.length, totalAmount, totalPrice);\n        _entered = 0;\n    }\n\n    function _listing(uint256 id) private view returns (uint256 amount, uint256 price) {\n        (uint256 listingId, string memory tick, address seller, uint256 tokens, uint256 cost, uint8 state) = IRH20SweepMarket(MARKETPLACE).listings(id);\n        if (state != 1 || listingId != id || keccak256(bytes(tick)) != keccak256(\"RHSC\") || tokens == 0) revert ListingUnavailable(id);\n        // The marketplace sees this helper as msg.sender; check the actual buyer here.\n        if (seller == msg.sender) revert CannotBuyOwnListing();\n        return (tokens, cost);\n    }\n\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "evmVersion": "paris",
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode.object",
+          "evm.deployedBytecode.object"
+        ]
+      }
+    }
+  }
+}

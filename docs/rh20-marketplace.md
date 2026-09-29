@@ -65,3 +65,18 @@ as delayed and expires after five minutes. ETH settlement and the included 3%
 fee never depend on the USD feed. Network gas remains separate.
 
 Source API: https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-ticker
+
+
+## Sweep RHSC
+
+Sweep selects 1–20 complete lots by the lowest ETH price per RHSC. It excludes the connected wallet's own listings and displays each lot, the total RHSC, total ETH, average unit price and indicative USD. The current selection scans up to the first 300 globally ordered listings, using one fresh index snapshot and on-chain lot details. If there are not enough eligible lots within that range, choose fewer lots. The index chooses IDs; contract reads determine amounts and prices.
+
+`RH20Sweep` is a new, fixed helper for the existing core and marketplace. It does not replace either contract or migrate listings. It checks every lot, exact total payment, expected token amount, deadline and buyer-scoped request ID, calls the existing `buy` function for each lot, then transfers the combined RHSC to the caller in the same transaction. Source: `contract/RH20Sweep.sol`.
+
+Every selected lot settles, or the whole transaction reverts. A competing purchase can therefore cause a failed transaction with gas charged. There are no partial fills or automatic substitutes. Quotes expire after ten minutes. One wallet transaction still performs multiple on-chain buys; a lower gas cost is not guaranteed.
+
+The existing 3% fee is calculated separately for each lot and included in the total. Sweep adds no fee and grants no administrator permissions. The user does not approve RHSC to buy. Completed purchases leave no purchased RHSC or payment ETH in the helper. Unsolicited transfers have no recovery function.
+
+`rh20/sweep.js` shares the marketplace's wallet lock and durable transaction recovery. Before sending, it rereads selected lots and verifies the helper runtime. Recovery checks the original sender, destination, calldata, value and nonce, canonical receipt block and exact `Swept` event. An unresolved wallet response is never automatically resent. Holder accounting follows the final core transfer to the buyer.
+
+The interface is prepared for helper activation. Checkout remains disabled until an owner-deployed helper is verified and pinned in `rh20/sweep.json`. The setup page is `/rh20-sweep-deploy.html`; it creates one helper, with Solidity 0.8.26, optimizer 200, EVM Paris and no constructor arguments. Existing Buy Now remains available.
