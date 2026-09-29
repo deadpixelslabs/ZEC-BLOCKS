@@ -3,7 +3,7 @@
   "coreAddress": "0x4e89Bc6A7A218B338060d428f40d8f551efc8058",
   "marketplaceAddress": "0x3E6E91232CE0895C6154b66800ee5c8B8EE83CFC",
   "maxLots": 20,
-  "contractAddress": null,
-  "deploymentTxHash": null,
-  "deploymentBlock": null
+  "contractAddress": "0x2fc152Fb31D175BdD4F2b4A7CFf1434D457524Ce",
+  "deploymentTxHash": "0x7574f21e786b2abde24a4261fa0c4fba5e2f6e69bbf18b9cb45965f624e69ef4",
+  "deploymentBlock": 75523981
 }
