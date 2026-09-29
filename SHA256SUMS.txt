@@ -108,7 +108,7 @@ cc200f7a0dc25c716ac6f8b24f59352e1098551ab95cdc8baef60acd62420bb7  ./tests/listin
 9029b6428df9522d4cc4947c96e708edbfe22fb28eb929bfb229c48e4a68eaf7  ./tests/marketplace.test.cjs
 678613691ac91822bcd77c75d5b8a7e3dddd9f70bf035c8fe8831683bff9fd50  ./tests/rh20-market-browser.cjs
 64f03edeb362f4bb3ba0758ec047709859c7f9fa735fd6ab435196262d8d975a  ./tests/rh20-market-contract.cjs
-0a0e11187cae18f5f18bcd81e94ef7c0cc93844f31768cc3fccd18b5f51b2835  ./tests/rh20-market-live.cjs
+6ff03b03dd39658f853fb40767f28c0bede581c0b87d2c177919cffb266ce1da  ./tests/rh20-market-live.cjs
 eb089ed9f6fa18f024d24865b5e6f272ba9ce03e537dbd1e2ca79316267af05e  ./tests/runtime.test.cjs
 c6bfcb8d9c411fb991b645d9959a7b09b838cb7f420709017fa77f5fb5e8c6a7  ./vendor/ETHERS-LICENSE.txt
 c8550f9644492f2d1278467b301c615c768a0d61d5c22d5bcd107ec7c9cbd329  ./vendor/ethers-6.13.5.umd.min.js

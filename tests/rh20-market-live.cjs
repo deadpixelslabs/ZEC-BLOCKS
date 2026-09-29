@@ -26,6 +26,7 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   if(!config.contractAddress)assert.match(await page.locator('#badge').innerText(),/pending/);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-market.png'),fullPage:true});
   await page.goto(base+'/rh20-deploy.html');await page.waitForFunction(()=>!document.querySelector('#status').textContent.startsWith('Loading'));
+  await page.waitForFunction(pinned=>document.querySelector('#deploy').disabled===pinned,!!config.contractAddress);
   assert.equal(await page.locator('#deploy').isDisabled(),!!config.contractAddress);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-deploy.png'),fullPage:true});assert.deepEqual(errors,[]);
   console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:config.contractAddress,coreVerified:true,readOnly:true,pagesVerified:2,pageErrors:0}));
