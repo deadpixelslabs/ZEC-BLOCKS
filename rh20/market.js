@@ -150,6 +150,12 @@
     } catch (_) { $('holderHint').textContent = 'Update delayed'; }
     finally { S.holdersRefreshing = false; }
   }
+  async function previousTradingStats(provider, blockTag) {
+    if (deployMode || !holderMode() || !S.legacyConfig.contractAddress || same(S.legacyConfig.contractAddress, S.config.contractAddress)) return [0n, 0n, 0n, 0n];
+    const address = S.legacyConfig.contractAddress;
+    if (E.keccak256(await bounded(provider.getCode(address, blockTag))) !== S.legacyArtifact.runtimeCodeHash) throw Error('Previous marketplace statistics could not be verified. Refresh to retry.');
+    return new E.Contract(address, S.legacyArtifact.abi, provider).stats('RHSC', { blockTag });
+  }
   async function refresh() {
     if (!S.config) return;
     if (S.refreshing) { S.refreshAgain = true; return; }
@@ -159,7 +165,7 @@
       const provider = reader(), blockTag = Number(BigInt(await bounded(provider.send('eth_blockNumber', []))));
       await validate(provider, S.config.contractAddress, blockTag);
       const core = new E.Contract(CORE, S.coreArtifact.abi, provider), market = S.config.contractAddress ? new E.Contract(S.config.contractAddress, S.artifact.abi, provider) : null;
-      const [balance, allowance, stats, board, owned, credit, sales, sellerBps] = await bounded(Promise.all([
+      const [balance, allowance, stats, board, owned, credit, sales, sellerBps, previousStats] = await bounded(Promise.all([
         account ? core.balanceOf('RHSC', account, { blockTag }) : 0n,
         account && market ? core.allowance('RHSC', account, S.config.contractAddress, { blockTag }) : 0n,
         market ? market.stats('RHSC', { blockTag }) : [0n, 0n, 0n, 0n],
@@ -167,14 +173,17 @@
         market && account && !deployMode ? market.getListings('RHSC', account, ownedOffset, 12, { blockTag }) : [[], 0n],
         market && account ? market.claimable(account, { blockTag }) : 0n,
         market && !deployMode ? market.recentSales('RHSC', 0, 12, { blockTag }) : [[], 0n],
-        holderMode() ? market && account ? market.sellerFeeBps(account, { blockTag }) : null : 300n
+        holderMode() ? market && account ? market.sellerFeeBps(account, { blockTag }) : null : 300n,
+        previousTradingStats(provider, blockTag)
       ]));
       if (generation !== S.generation || account !== S.account || offset !== S.offset || ownedOffset !== S.ownedOffset) return;
       Object.assign(S, { sellerBps, balance, allowance, credit, verified: true, lots: board[0], total: board[1], owned: owned[0], ownedTotal: owned[1] });
       if (!deployMode) {
         if ($('sellerBenefit')) $('sellerBenefit').textContent = holderMode() ? !account ? 'Connect your wallet to check the seller fee. Hold at least 1 Robinhood Ordinal for 0% at settlement.' : sellerBps === 0n ? 'Robinhood Ordinal holder · Your current seller fee is 0%. Keep an NFT in this wallet until the sale settles.' : 'Your current seller fee is 3%. Sellers holding at least 1 Robinhood Ordinal at settlement pay 0%.' : previousMode() ? 'Previous marketplace · All sales retain the original 3% fee. Cancel old listings and relist in the current marketplace for holder benefits.' : 'Seller protocol fee: 3%. Network gas is separate.';
         quote();
-        $('activeCount').textContent = count(stats[0]); $('listedAmount').textContent = count(stats[1]) + ' RHSC'; $('salesCount').textContent = count(stats[2]); $('volume').textContent = eth(stats[3]) + ' ETH';
+        $('activeCount').textContent = count(stats[0]); $('listedAmount').textContent = count(stats[1]) + ' RHSC'; $('salesCount').textContent = count(stats[2] + previousStats[2]); $('volume').textContent = eth(stats[3] + previousStats[3]) + ' ETH';
+        $('volumeHint').textContent = $('salesHint').textContent = holderMode() ? 'Includes previous marketplace' : previousMode() ? 'Previous marketplace only' : 'All confirmed sales';
+        $('volume').dataset.block = String(blockTag);
         paintLots('lots', S.lots, false); paintLots('ownedLots', S.owned, true);
         $('sales').replaceChildren();
         if (!sales[0].length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'Confirmed sales will appear here.'; $('sales').append(p); }

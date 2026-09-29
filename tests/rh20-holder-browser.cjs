@@ -112,3 +112,40 @@ test('holder deployment is one transaction, receipt persists and repeat deployme
   await page.reload();await page.locator('#connect').click();await page.waitForFunction(()=>!document.querySelector('#receipt').hidden);assert.equal(await page.locator('#deploy').isDisabled(),true);assert.equal(await page.evaluate(()=>window.__sendCount),0);assert.deepEqual(errors,[]);
  }finally{await context.close();}
 });
+
+test('sales and volume continue across markets with same-block reads and no partial totals',async()=>{
+ const buyer=chain.signers[1],oldSold=await seedLot(0,chain.market),newSold=await seedLot(2);
+ await tx(chain.market.connect(buyer).buy(oldSold,{value:parseEther('0.01')}));
+ await tx(chain.holderMarket.connect(buyer).buy(newSold,{value:parseEther('0.01')}));
+ const cancelled=await seedLot(0,chain.market);await tx(chain.market.cancelListing(cancelled));
+ await seedLot(0,chain.market);await seedLot(2);
+ const{page,context,errors}=await pageFixture();
+ try{
+  await page.waitForFunction(()=>document.querySelector('#salesCount').textContent==='2');
+  assert.equal(await page.locator('#salesCount').innerText(),'2');assert.equal(await page.locator('#volume').innerText(),'0.02 ETH');
+  assert.equal(await page.locator('#activeCount').innerText(),'1');assert.equal(await page.locator('#listedAmount').innerText(),'500 RHSC');
+  assert.equal(await page.locator('#volumeHint').innerText(),'Includes previous marketplace');
+  const reads=[],statsCall=chain.market.interface.encodeFunctionData('stats',['RHSC']);let failOld=false;
+  await page.route('**/api/rh20',async route=>{
+   const body=route.request().postDataJSON();
+   if(body.method==='eth_call'&&body.params[0].data===statsCall){
+    reads.push({address:body.params[0].to.toLowerCase(),block:body.params[1]});
+    if(failOld&&body.params[0].to.toLowerCase()===chain.market.target.toLowerCase())return route.fulfill({json:{jsonrpc:'2.0',id:body.id,error:{code:-32000,message:'Statistics temporarily unavailable'}}});
+   }
+   await route.continue();
+  });
+  await chain.provider.send('evm_mine',[]);const expectedBlock=Number(BigInt(await chain.provider.send('eth_blockNumber',[])));
+  await page.locator('#refresh').click();await page.waitForFunction(block=>Number(document.querySelector('#volume').dataset.block)===block,expectedBlock);
+  assert.equal(reads.length,2);assert.equal(reads[0].block,reads[1].block);
+  assert.equal(Number(BigInt(reads[0].block)),Number(await page.locator('#volume').getAttribute('data-block')));
+  await page.screenshot({path:path.join(artifacts,'holder-lifetime-stats.png'),fullPage:true});
+  const next=await seedLot(0,chain.market);await tx(chain.market.connect(buyer).buy(next,{value:parseEther('0.01')}));
+  failOld=true;await page.locator('#refresh').click();await page.waitForFunction(()=>document.querySelector('#status').classList.contains('error'));
+  assert.equal(await page.locator('#salesCount').innerText(),'2');assert.equal(await page.locator('#volume').innerText(),'0.02 ETH');
+  failOld=false;await page.locator('#refresh').click();await page.waitForFunction(()=>document.querySelector('#salesCount').textContent==='3');
+  assert.equal(await page.locator('#volume').innerText(),'0.03 ETH');
+  await page.goto(server.url+'/rh20.html?market=previous');await page.waitForFunction(()=>document.querySelector('#activeCount').textContent!=='—');
+  assert.equal(await page.locator('#salesCount').innerText(),'2');assert.equal(await page.locator('#volume').innerText(),'0.02 ETH');
+  assert.equal(await page.locator('#activeCount').innerText(),'1');assert.equal(await page.locator('#volumeHint').innerText(),'Previous marketplace only');assert.deepEqual(errors,[]);
+ }finally{await context.close();}
+});

@@ -14,8 +14,14 @@ async function verifyDeployment(provider,hash,published=config){
  if(!block||!same(block.hash,receipt.blockHash))throw Error('Deployment receipt is not canonical.');
  const address=receipt.contractAddress;
  if(published.contractAddress&&!same(published.contractAddress,address))throw Error('Published address differs.');
+ if(published.contractAddress&&published.deploymentBlock!==receipt.blockNumber)throw Error('Published deployment block differs.');
+ // Initial activation requires historical and current runtime verification.
+ // For an already verified, pinned immutable deployment, retain exact creation
+ // bytecode + canonical receipt/event + current dependency/runtime checks. The
+ // public RPC may prune the historical state after initial verification.
  for(const [target,expected] of [[address,artifact],[published.coreAddress,coreArtifact],[published.collectionAddress,nftArtifact]]){
-  if(keccak256(await provider.getCode(target,receipt.blockNumber))!==expected.runtimeCodeHash||keccak256(await provider.getCode(target))!==expected.runtimeCodeHash)throw Error('Dependency or marketplace bytecode differs.');
+  if(!published.contractAddress&&keccak256(await provider.getCode(target,receipt.blockNumber))!==expected.runtimeCodeHash)throw Error('Dependency or marketplace bytecode differs.');
+  if(keccak256(await provider.getCode(target))!==expected.runtimeCodeHash)throw Error('Dependency or marketplace bytecode differs.');
  }
  const market=new Contract(address,artifact.abi,provider),iface=new Interface(artifact.abi);
  const [core,treasury,collection,fee,maxLots]=await Promise.all([market.CORE(),market.TREASURY(),market.COLLECTION(),market.FEE_BPS(),market.MAX_LOTS()]);

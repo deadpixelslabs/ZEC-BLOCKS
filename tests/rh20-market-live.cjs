@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {createHash}=require('node:crypto');
 const {chromium}=require('playwright');
-const {JsonRpcProvider,Contract,keccak256}=require('ethers');
+const {JsonRpcProvider,Contract,keccak256,formatEther}=require('ethers');
 const {verifyDeployment}=require('../scripts/publish-rh20-market.cjs');
 const config=require('../rh20/mainnet.json');
 const holderConfig=require('../rh20/holder-market.json');
@@ -16,6 +16,17 @@ const base='https://www.zecblocks.xyz',root=path.resolve(__dirname,'..');
 const files=['rh20-holder-deploy.html','rh20/holder-market.json','rh20/RH20HolderMarketplace.json','rh20/RobinhoodOrdinal.json','rh20/holder-marketplace-compiler-input.json','contract/RH20HolderMarketplace.sol','rh20-sweep-deploy.html','rh20/sweep.js','rh20/sweep.json','rh20/RH20Sweep.json','rh20/sweep-compiler-input.json','contract/RH20Sweep.sol','rh20.html','rh20/ordinal/block.svg','rh20-deploy.html','rh20/mainnet.json','rh20/market.js','rh20/market.css','rh20/RH20Marketplace.json','rh20/marketplace-compiler-input.json','contract/RH20Marketplace.sol','rh20/RH20.json','index.html'];
 const hash=data=>createHash('sha256').update(data).digest('hex');
 async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){try{await Promise.all(files.map(async file=>{const r=await fetch(base+'/'+file+'?release='+Date.now(),{signal:AbortSignal.timeout(12000)});assert.equal(r.status,200,file);assert.equal(hash(Buffer.from(await r.arrayBuffer())),hash(fs.readFileSync(path.join(root,file))),file);}));return;}catch(e){failure=e;if(attempt<11)await new Promise(r=>setTimeout(r,10000));}}throw failure;}
+async function verifyDisplayedStats(page,combined){
+ const shown=await page.evaluate(()=>({block:Number(document.querySelector('#volume').dataset.block),volume:document.querySelector('#volume').textContent,sales:document.querySelector('#salesCount').textContent,active:document.querySelector('#activeCount').textContent}));
+ assert(Number.isSafeInteger(shown.block)&&shown.block>0);
+ const rpc=new JsonRpcProvider(base+'/api/rh20',4663,{staticNetwork:true,batchMaxCount:1,cacheTimeout:-1});
+ try{
+  const current=new Contract(combined?holderConfig.contractAddress:config.contractAddress,require(combined?'../rh20/RH20HolderMarketplace.json':'../rh20/RH20Marketplace.json').abi,rpc);
+  const [selected,previous]=await Promise.all([current.stats('RHSC',{blockTag:shown.block}),combined?new Contract(config.contractAddress,require('../rh20/RH20Marketplace.json').abi,rpc).stats('RHSC',{blockTag:shown.block}):[0n,0n,0n,0n]]);
+  assert.equal(shown.sales,(selected[2]+previous[2]).toLocaleString('en-US'));assert.equal(shown.volume,formatEther(selected[3]+previous[3])+' ETH');assert.equal(shown.active,selected[0].toLocaleString('en-US'));
+  return shown;
+ }finally{rpc.destroy();}
+}
 (async()=>{
  await deployed();
  const provider=new JsonRpcProvider(base+'/api/rh20',4663,{staticNetwork:true,batchMaxCount:1,cacheTimeout:-1});
@@ -38,6 +49,7 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.waitForFunction(()=>/^[0-9,]+$/.test(document.querySelector('#holderCount').textContent));
   await page.waitForFunction(()=>document.querySelector('#priceSource').textContent.includes('Coinbase Exchange'));
   await page.waitForFunction(()=>/^[0-9,]+$/.test(document.querySelector('#totalSupply').textContent));
+  const lifetimeStats=await verifyDisplayedStats(page,!!holderConfig.contractAddress);
   const totalSupply=await page.locator('#totalSupply').innerText();assert.equal(totalSupply,'21,000,000');assert.match(await page.locator('#supplyHint').innerText(),/Fully minted/);
   assert.match(await page.locator('#buyPanel .section-heading').innerText(),/Lowest price per RHSC/);
   assert.equal(await page.locator('#sellAction').isDisabled(),!activeConfig.contractAddress);
@@ -67,6 +79,7 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   if(holderConfig.contractAddress){
     await page.goto(base+'/rh20.html?market=previous');
     await page.waitForFunction(()=>document.querySelector('#activeCount').textContent!=='—'&&!document.querySelector('#badge').textContent.includes('Checking'));
+    await verifyDisplayedStats(page,false);
     assert.equal(await page.locator('#feeRate').innerText(),'3%');assert.equal(await page.locator('[data-tab="sell"]').isVisible(),false);
     assert.equal((await page.locator('#marketContract').getAttribute('href')).toLowerCase(),('https://robin.etherscan.io/address/'+config.contractAddress).toLowerCase());
     assert.equal(await page.locator('[data-tab="owned"]').isVisible(),true);await page.screenshot({path:path.join(root,'test-results/rh20/live-previous-market.png'),fullPage:true});
@@ -84,6 +97,6 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   assert.match(await page.locator('main').innerText(),/0% for NFT holder sellers/);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-holder-deploy.png'),fullPage:true});
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:activeConfig.contractAddress,previousMarketplaceAddress:config.contractAddress,coreVerified:true,sweepAddress:holderConfig.contractAddress||sweepConfig.contractAddress,sweepQuoteReady:quoteCount>0,holderFeeRulesVerified:!!holderConfig.contractAddress,ordinalBannerVisible:true,readOnly:true,totalSupply,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,holderMarketplaceAddress:holderConfig.contractAddress,holderDeploymentReady:true,pagesVerified:holderConfig.contractAddress?6:5,pageErrors:0}));
+  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:activeConfig.contractAddress,previousMarketplaceAddress:config.contractAddress,coreVerified:true,sweepAddress:holderConfig.contractAddress||sweepConfig.contractAddress,sweepQuoteReady:quoteCount>0,holderFeeRulesVerified:!!holderConfig.contractAddress,ordinalBannerVisible:true,readOnly:true,totalSupply,lifetimeSales:lifetimeStats.sales,lifetimeVolume:lifetimeStats.volume,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,holderMarketplaceAddress:holderConfig.contractAddress,holderDeploymentReady:true,pagesVerified:holderConfig.contractAddress?6:5,pageErrors:0}));
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

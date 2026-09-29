@@ -98,3 +98,17 @@ test('fee snapshots resist NFT movement in an earlier seller payout and rejectin
  await tx(m.connect(buyer).buy(last,{value:10000}));assert.equal(await m.claimable(rec2.target),10000n);await assert.rejects(m.connect(other).withdraw(other.address));
  await tx(rec2.take(other.address));assert.equal(await m.claimable(rec2.target),0n);await assert.rejects(rec2.take(other.address));
 });
+
+test('pinned deployment rechecks remain strict when the RPC prunes historical state',async()=>{
+ const unpinned={...config,contractAddress:null,deploymentTxHash:null,deploymentBlock:null};
+ const pinned=await verifyDeployment(c.provider,c.holderReceipt.hash,unpinned);
+ const pruned=new Proxy(c.provider,{get:(t,k)=>k==='getCode'?async(address,block)=>{if(typeof block==='number')throw Error('historical state is not available');return t.getCode(address,block);}:typeof t[k]==='function'?t[k].bind(t):t[k]});
+ await assert.rejects(verifyDeployment(pruned,c.holderReceipt.hash,unpinned),/historical state/);
+ assert.equal((await verifyDeployment(pruned,c.holderReceipt.hash,pinned)).contractAddress,m.target);
+ await assert.rejects(verifyDeployment(pruned,c.holderReceipt.hash,{...pinned,deploymentBlock:pinned.deploymentBlock+1}),/block differs/);
+ await assert.rejects(verifyDeployment(pruned,c.marketReceipt.hash,pinned),/already pinned/);
+ const noncanonical=new Proxy(pruned,{get:(t,k)=>k==='getBlock'?async()=>({hash:rid()}):typeof t[k]==='function'?t[k].bind(t):t[k]});
+ await assert.rejects(verifyDeployment(noncanonical,c.holderReceipt.hash,pinned),/canonical/);
+ await c.provider.send('anvil_setCode',[m.target,'0x00']);
+ await assert.rejects(verifyDeployment(pruned,c.holderReceipt.hash,pinned),/bytecode differs/);
+});
