@@ -141,6 +141,18 @@
     } catch (_) { $('holderHint').textContent = 'Update delayed'; }
     finally { S.holdersRefreshing = false; }
   }
+  async function refreshSupply(core, blockTag) {
+    if (S.supplyRefreshing) return;
+    S.supplyRefreshing = true;
+    try {
+      const token = await bounded(core.getToken('RHSC', { blockTag }));
+      if (!token.exists || token.tick !== 'RHSC' || token.maxSupply !== 21000000n || token.totalSupply < 0n || token.totalSupply > token.maxSupply) throw Error('Invalid RHSC supply');
+      $('totalSupply').textContent = count(token.totalSupply);
+      $('totalSupply').title = 'RHSC minted on-chain through block ' + blockTag;
+      $('supplyHint').textContent = 'RHSC minted · Max: ' + count(token.maxSupply);
+    } catch (_) { $('supplyHint').textContent = 'Max: 21,000,000 RHSC · Update delayed'; }
+    finally { S.supplyRefreshing = false; }
+  }
   async function refresh() {
     if (!S.config) return;
     if (S.refreshing) { S.refreshAgain = true; return; }
@@ -150,6 +162,7 @@
       const provider = reader(), blockTag = Number(BigInt(await bounded(provider.send('eth_blockNumber', []))));
       await validate(provider, S.config.contractAddress, blockTag);
       const core = new E.Contract(CORE, S.coreArtifact.abi, provider), market = S.config.contractAddress ? new E.Contract(S.config.contractAddress, S.artifact.abi, provider) : null;
+      if (!deployMode) void refreshSupply(core, blockTag);
       const [balance, allowance, stats, board, owned, credit, sales] = await bounded(Promise.all([
         account ? core.balanceOf('RHSC', account, { blockTag }) : 0n,
         account && market ? core.allowance('RHSC', account, S.config.contractAddress, { blockTag }) : 0n,

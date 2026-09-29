@@ -28,6 +28,8 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.waitForFunction(()=>document.querySelector('#activeCount').textContent!=='—',{timeout:20000});
   await page.waitForFunction(()=>/^[0-9,]+$/.test(document.querySelector('#holderCount').textContent));
   await page.waitForFunction(()=>document.querySelector('#priceSource').textContent.includes('Coinbase Exchange'));
+  await page.waitForFunction(()=>/^[0-9,]+$/.test(document.querySelector('#totalSupply').textContent));
+  const totalSupply=await page.locator('#totalSupply').innerText();assert(BigInt(totalSupply.replaceAll(',',''))<=21000000n);assert.match(await page.locator('#supplyHint').innerText(),/Max: 21,000,000/);
   assert.match(await page.locator('#buyPanel .section-heading').innerText(),/Lowest price per RHSC/);
   assert.equal(await page.locator('#sellAction').isDisabled(),!config.contractAddress);
   if(!config.contractAddress)assert.match(await page.locator('#badge').innerText(),/pending/);
@@ -36,6 +38,6 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.waitForFunction(pinned=>document.querySelector('#deploy').disabled===pinned,!!config.contractAddress);
   assert.equal(await page.locator('#deploy').isDisabled(),!!config.contractAddress);
   await page.screenshot({path:path.join(root,'test-results/rh20/live-deploy.png'),fullPage:true});assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:config.contractAddress,coreVerified:true,readOnly:true,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,pagesVerified:2,pageErrors:0}));
+  console.log(JSON.stringify({live:base,verifiedFiles:files.length,chainId:4663,marketplaceAddress:config.contractAddress,coreVerified:true,readOnly:true,totalSupply,holders:holders.holders,holderBlock:holders.blockNumber,ethUsd:reference.usd,sortedListings:board.total,pagesVerified:2,pageErrors:0}));
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
