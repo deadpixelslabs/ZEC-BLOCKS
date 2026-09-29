@@ -40,3 +40,11 @@ The deployment page creates `RH20Marketplace` with no constructor arguments. Its
 Activation verifies the creation transaction, runtime hash, fixed settings and `MarketplaceDeployed` event before publishing the official address. Deployment height comes from the RPC receipt. Solidity `block.number` on an Arbitrum chain is not used as the L2 deployment height.
 
 This settlement is independent of the existing native ZEC and Base USDC NFT/ZECS markets. Their rules and fees are unchanged. The hosted interface and RPC proxy remain availability dependencies; no independent security audit is claimed.
+
+## Holder count
+
+The Holders card counts unique addresses whose available RHSC plus active listed RHSC is greater than zero. A seller remains a holder while a lot is listed. A completed sale transfers that ownership to the buyer; a cancellation restores available balance. The settlement escrow address itself is excluded to avoid counting it as an extra owner. This measures addresses, not individual people.
+
+A persistent index follows RH-20 `Transfer` events and official marketplace `Listed`, `Bought`, and `Cancelled` events. It advances through bounded, contiguous block ranges and publishes a count only after catching up to the chain head with a two-block margin. Canonical checkpoints support reversal of orphaned events after a chain reorganization. Failed RPC reads or incomplete backfill retain the last published count and mark it delayed.
+
+The page refreshes every 20 seconds while visible. A scheduled backend update also runs every 20 seconds. The public endpoint returns only the aggregate count, freshness and indexed block. Balances, seller mappings, event journals, leases and database mutation functions are not granted to public client roles. The number depends on hosted indexer and RPC availability; delayed data is labelled rather than replaced with zero.

@@ -48,6 +48,7 @@ export async function synchronizeHolders({rpc,db,config=CONFIG,budgetMs=40000,ma
     const [core,market]=await Promise.all([rpc('eth_getCode',[config.coreAddress,'latest']),rpc('eth_getCode',[config.contractAddress,'latest'])]);
     if(core.toLowerCase()!==config.coreRuntime.toLowerCase()||market.toLowerCase()!==config.marketRuntime.toLowerCase())throw Error('Contract runtime differs');
     const head=Math.max(state.start-1,integer(await rpc('eth_blockNumber',[]))-confirmations);
+    if(head<state.cursor)throw Error('RPC head is behind the verified holder cursor');
     let cursor=state.cursor,cursorHash=state.hash;
     if(cursorHash){
       let canonical=null;try{canonical=cursor<=head?await block(cursor):null;}catch(_){/* probe retained checkpoints below */}
@@ -72,6 +73,7 @@ export async function synchronizeHolders({rpc,db,config=CONFIG,budgetMs=40000,ma
       await db('rh20_holders_apply',{p_lease:lease,p_from:from,p_to:to,p_hash:after.hash.toLowerCase(),p_head:head,p_events:events});
       cursor=to;cursorHash=after.hash.toLowerCase();processed++;
     }
+    if(cursor===head)await db('rh20_holders_touch',{p_lease:lease,p_block:cursor,p_hash:cursorHash});
     return {cursor,head,processed};
   }catch(error){failure=String(error?.message||error).slice(0,250);throw error;}
   finally{await db('rh20_holders_finish',{p_lease:lease,p_error:failure});}

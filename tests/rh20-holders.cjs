@@ -11,8 +11,9 @@ const MINT='{"p":"rh-20","op":"mint","tick":"RHSC","amt":"500"}';
 const tx=async p=>(await p).wait();
 before(async()=>{
   pool=new Pool();await pool.query("do $$ begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if; if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role bypassrls; end if; end $$;");
-  const name=fs.readdirSync(path.join(__dirname,'../supabase/migrations')).find(n=>n.endsWith('_rh20_holder_index.sql'));
-  await pool.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations',name),'utf8'));
+  const names=fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(n=>/_rh20_holder_(index|freshness)\.sql$/.test(n)).sort();
+  assert.equal(names.length,2);
+  for(const name of names)await pool.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations',name),'utf8'));
   engine=await import('../supabase/functions/zecblocks-rh20-holders/engine.mjs');
   const {CONFIG}=await import('../supabase/functions/zecblocks-rh20-holders/config.mjs');config={...CONFIG,startBlock:1,deploymentBlock:1};
   chain=await startMarket();
@@ -68,6 +69,19 @@ test('a changed chain checkpoint rolls back orphaned events and recounts the new
 test('a partial historical scan never publishes an incomplete holder count',async()=>{
   await mint(1);await chain.provider.send('anvil_mine',['0x7d0']);const partial=await sync({maxRanges:1});assert(partial.cursor<partial.head);assert.equal(await count(),null);
   await sync();assert.equal(await count(),1);
+});
+test('a healthy unchanged chain refreshes an old aggregate and clears a recovered outage',async()=>{
+  await mint(1);await sync();const before=await db('rh20_holders_snapshot');
+  await pool.query("update public.rh20_holder_state set published_at=now()-interval '5 minutes',status='delayed',last_error='Fixture outage'");
+  assert.equal((await db('rh20_holders_snapshot')).status,'delayed');
+  const result=await sync(),after=await db('rh20_holders_snapshot');
+  assert.equal(result.processed,0);assert.equal(after.holders,1);assert.equal(after.blockNumber,before.blockNumber);assert.equal(after.status,'ready');
+  assert(Date.now()-Date.parse(after.updatedAt)<10000);
+});
+test('a lagging RPC head keeps the previously verified count and cursor',async()=>{
+  await mint(1);await sync();const before=await db('rh20_holders_snapshot');
+  await assert.rejects(sync({rpc:async(name,args)=>name==='eth_blockNumber'?toBeHex(before.blockNumber-1):rpc(name,args)}),/behind/);
+  const after=await db('rh20_holders_snapshot');assert.equal(after.holders,before.holders);assert.equal(after.blockNumber,before.blockNumber);assert.equal(after.updatedAt,before.updatedAt);assert.equal(after.status,'delayed');
 });
 test('lease serialization, batch replay checks and private grants prevent duplicate or public writes',async()=>{
   const first=crypto.randomUUID(),second=crypto.randomUUID();const acquired=await db('rh20_holders_acquire',{p_lease:first});assert(acquired);assert.equal(await db('rh20_holders_acquire',{p_lease:second}),null);

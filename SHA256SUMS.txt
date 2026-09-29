@@ -5,7 +5,7 @@ c6d1cf164e24da9202789532bd6cdade1eef6ea796f97b623e227e19907c0eb2  ./.vercelignor
 093ade134b956abdc0b64e4ae46105fed6341dc1dc9d3fa16bb6847ca503491c  ./AGENTS.md
 7cb87c2f1760b6927264b68f3e611ba6bcbb3dad2f786ce3f2d34bc4051e13cf  ./CONTRIBUTING.md
 e710ec02b50d5b3eecb161db9f5cf9c1eac10e12ec17ddbf562c99e66dacf336  ./GITBOOK-PUBLISHING.md
-2b0bf724c05efa8289bcfab52cc73e90b7a265770658886a4ad6c64a0e336a91  ./MARKETPLACE-OPERATIONS.md
+a17e37a9b8c8d24b3ed8e7537a7a9f4a349d23252fec3c0f0899ca0a14bc861a  ./MARKETPLACE-OPERATIONS.md
 af264188faea1c15f32c7a66505e9a7ba5594a747516873414aae962f844dd38  ./README.md
 4d31e17e53360dcf1eb71c0de89e46a6e878bd3e7c51cce5d64b6ed342f937ea  ./README.txt
 f5b64799067661d4272398f06b88526bb833a0c9010faf8cdb44c73a5712a929  ./USDC-PRODUCTION.txt
@@ -42,7 +42,7 @@ a5a6a5ebe5815221de4583fce1664619946371392425515527205940981dc271  ./docs/mining.
 d1e0d541f4533883f9be688d543e644a9f06654e755dff5e426972e23b44287a  ./docs/ownership.md
 0b71e1394318dfe34098f1f2c908ca08acbffc9a3ceaf88ef34a14e9e098ea67  ./docs/protocol-rules.md
 5891432bc6dbe38b9880e2d2d32dae999eb1cf2b6a0e9525a653ce12951f3a7a  ./docs/reference-implementation.md
-1cd2b45d10a45e0a22867e72290e2e42955890b6b498faf521873dc22c3311a4  ./docs/rh20-marketplace.md
+1c8b99e578bc5d2281aacc774931117f378552513d070d4d99f2f8585673f1c9  ./docs/rh20-marketplace.md
 100951c98e9e09bf09248a4816e537dc1279c8867923e680d611019986891b5d  ./docs/roadmap.md
 268bbafe3eaad8212e16ca80ef63e11ceca7ba6dc3fc0986bf8ea88700605101  ./docs/state-reconstruction.md
 5a3982251ecdf8732d607e07782adf88b31e86ceb3296fa7098ea8553b319516  ./docs/transfers.md
@@ -89,8 +89,8 @@ c53cd34c8ba11e292cfab16cf9426742644b5437fbde3e8d2d7299569d2dd477  ./supabase/fun
 8d0b05a4c256b0e100434668837129e84d99e91d7376b0ecf8d88a86908d55d7  ./supabase/functions/zecblocks-nft-address/index.ts
 acf6d2096c69bdd5f115e4eb6c12550cd63e8deea97748184eddf7116a8e5cbd  ./supabase/functions/zecblocks-rh20-holders/config.mjs
 abc291643b07014623312a36ac75913500dc06d2682be85e35a7619a1981c2ee  ./supabase/functions/zecblocks-rh20-holders/deno.json
-b30a8dc27de8e3e4f5631e1733c7c8920c466c5d7804d61b53fca6ca27c5f861  ./supabase/functions/zecblocks-rh20-holders/engine.mjs
-22cc7fbcc16080cc61afed2abb2a53f194383e1ec0b06d950b9ad3ecd96b568b  ./supabase/functions/zecblocks-rh20-holders/index.ts
+1c3f6b2c6b6d95238b7f56d0aef60facd34050815a64d63b0485a63009fd187b  ./supabase/functions/zecblocks-rh20-holders/engine.mjs
+aa1e2f6fd1b498a94b5a348b35116747fbb1207ae6cdbd9b0015f97879a62740  ./supabase/functions/zecblocks-rh20-holders/index.ts
 e38958736510b3962d8f023832253729dd918fdd4ececbc38e18ffe5f1bbe9d7  ./supabase/functions/zecblocks-usdc-buy-preflight/deno.json
 6de33d7efd8abafb7ed9d679ac9826686509077424ce76a14b9e86511c1be476  ./supabase/functions/zecblocks-usdc-buy-preflight/index.ts
 e38958736510b3962d8f023832253729dd918fdd4ececbc38e18ffe5f1bbe9d7  ./supabase/functions/zecblocks-zb20-market/deno.json
@@ -101,6 +101,8 @@ f6e16cfa1e3c1e63c4af2e40a6fe6096aa94a15d2d1bf2727fe31a1f9646b700  ./supabase/mig
 3a78f28dae99cd789e0099ce8fbcc79dde7f3baf8d2b96adde2eb8abd570b660  ./supabase/migrations/20260922132144_verified_nft_address_directory.sql
 93c0bc90412187e2d25ef52b7ccefcd74d41815e0667f352c10dcedeb76396cd  ./supabase/migrations/20260925011044_native_zec_listing_fee.sql
 8568596385e51189adf7c1f11d593a6ccde882a40f5e1976fe6e3b064e0fa26e  ./supabase/migrations/20260929050121_rh20_holder_index.sql
+21eeca73804cba61c80daa5992d2433643b23955d8a303951da2c5b13e29870d  ./supabase/migrations/20260929050915_rh20_holder_freshness.sql
+574b5e8892a90c91e0a10c0df0975844650cf3bbe325f44e180ba866c894a4b4  ./supabase/rh20-holder-schedule.sql
 e9ea3ecc3dec0a8fd4434ddeb14ad62da76fee1340dc3d1142d1cf502deba663  ./tests/activity-privacy.test.cjs
 2b4feb7b467ee49caf275f864c1862237b7517c1f6712a959447ec9f11e96fa6  ./tests/address-identity.test.cjs
 d17c6cabc5ab9c7b692adc5bf704b77a22433dacd0db45d3a226b936ae1c811d  ./tests/fixtures/address.cjs
@@ -111,10 +113,10 @@ cc200f7a0dc25c716ac6f8b24f59352e1098551ab95cdc8baef60acd62420bb7  ./tests/listin
 2abc9777e4a268ee35ac228930f2c4baf0d0a15d731877a48436a2353479df56  ./tests/listing-fee-db.sql
 98fb26f3b4869dc87afa5ab11b664a2258e1f7d007690a6f0d357cf1347686dd  ./tests/listing-fee.test.cjs
 9029b6428df9522d4cc4947c96e708edbfe22fb28eb929bfb229c48e4a68eaf7  ./tests/marketplace.test.cjs
-a4d44d6bbfb4c3b08a25e79c92d3cffbcdfb886cbf9d303bb015925680d46123  ./tests/rh20-holders.cjs
+c29aa1d012cbcd326c76cfe6207b909b6e8baa97623856573bb39f931c543d4f  ./tests/rh20-holders.cjs
 6d7c02889261b96902bb42398385a9f2e4d2001a02c6ce807ff721ecf937032b  ./tests/rh20-market-browser.cjs
 781a6ba68aeba6a0473780267bfff576a0717cfb628706240892d6c4494dd940  ./tests/rh20-market-contract.cjs
-6ff03b03dd39658f853fb40767f28c0bede581c0b87d2c177919cffb266ce1da  ./tests/rh20-market-live.cjs
+eb5c45867c73e19e172790b2b2d50666b442bd6b2d48c2fcf5035d3431b9eeca  ./tests/rh20-market-live.cjs
 eb089ed9f6fa18f024d24865b5e6f272ba9ce03e537dbd1e2ca79316267af05e  ./tests/runtime.test.cjs
 c6bfcb8d9c411fb991b645d9959a7b09b838cb7f420709017fa77f5fb5e8c6a7  ./vendor/ETHERS-LICENSE.txt
 c8550f9644492f2d1278467b301c615c768a0d61d5c22d5bcd107ec7c9cbd329  ./vendor/ethers-6.13.5.umd.min.js

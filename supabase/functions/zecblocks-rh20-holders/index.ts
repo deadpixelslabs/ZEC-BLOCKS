@@ -9,7 +9,8 @@ const headers={'Content-Type':'application/json','Cache-Control':'no-store','Acc
 async function db(name:string,args:Record<string,unknown>={}){
   const response=await fetch(project+'/rest/v1/rpc/'+name,{method:'POST',headers:{'Content-Type':'application/json',apikey:service,Authorization:'Bearer '+service},body:JSON.stringify(args),signal:AbortSignal.timeout(12000)});
   if(!response.ok)throw Error('Holder database operation failed: '+name);
-  return response.json();
+  // PostgREST returns an empty body for SQL functions returning void.
+  const body=await response.text();return body?JSON.parse(body):null;
 }
 async function rpc(method:string,params:unknown[]=[]){
   const response=await fetch(upstream,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params}),signal:AbortSignal.timeout(9000)});
