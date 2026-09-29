@@ -66,6 +66,10 @@ jobs:
         run: |
           node scripts/publish-rh20-sweep.cjs --tx 0x7574f21e786b2abde24a4261fa0c4fba5e2f6e69bbf18b9cb45965f624e69ef4 --address 0x2fc152Fb31D175BdD4F2b4A7CFf1434D457524Ce --check > test-results/rh20/verified-sweep-deployment.json
           cat test-results/rh20/verified-sweep-deployment.json
+      - name: Verify the owner-deployed holder marketplace through mainnet RPC
+        run: |
+          node scripts/publish-rh20-holder-market.cjs --tx 0x32b408a844a097b7e324160abb09c6894ecb3e44ec260be64db4849ebeb12935 --address 0x57B2C099A571DE3eC6bc53f46237A1b7848cF366 --check --index-sql test-results/rh20/holder-register.sql > test-results/rh20/verified-holder-deployment.json
+          cat test-results/rh20/verified-holder-deployment.json
       - name: Verify published pages and read-only chain access
         if: github.ref == 'refs/heads/main'
         run: node tests/rh20-market-live.cjs

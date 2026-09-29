@@ -1,5 +1,5 @@
 4df5987693429f55a7b298044dda9e9612244917127a65eeedd68a37800a9ebc  ./.gitbook.yaml
-2049340411572d472afbd696b65b4230e36011758271a08021a4aed2e3a11fb3  ./.github/workflows/marketplace-checks.yml
+b3731c2d9abb0cc078a7e14e649f7c765a5313208154eb6df3d26e0dcafbd21f  ./.github/workflows/marketplace-checks.yml
 a1b9b3aabbabe90958f5b13afee01981b529713cc1a54d5109e4ba88c5b0c77f  ./.gitignore
 c6d1cf164e24da9202789532bd6cdade1eef6ea796f97b623e227e19907c0eb2  ./.vercelignore
 093ade134b956abdc0b64e4ae46105fed6341dc1dc9d3fa16bb6847ca503491c  ./AGENTS.md
