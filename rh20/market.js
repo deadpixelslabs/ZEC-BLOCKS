@@ -17,7 +17,7 @@
   function guard(fn) { return (...args) => Promise.resolve().then(() => fn(...args)).catch(e => status(message(e), 'error')); }
   const sweep = window.createRH20Sweep({ S, E, $, same, bounded, status, guard, render, submit, connect, reader, identity, count, eth, unitEth, usdQuote, feeFor, deployMode });
   const deploymentKind = holderDeployMode ? 'deployHolder' : sweepDeployMode ? 'deploySweep' : 'deploy';
-  const holderMode = () => S.config === S.holderConfig;
+  const holderMode = () => !!S.holderConfig && S.config === S.holderConfig;
   const previousMode = () => !deployMode && !holderMode() && !!S.holderConfig?.contractAddress;
   function artifactForRecord(record) { return record.kind === 'deployHolder' || same(record.to, S.holderConfig?.contractAddress) ? S.holderArtifact : record.kind === 'deploySweep' || same(record.to, S.oldSweepConfig?.contractAddress) ? S.oldSweepArtifact : S.legacyArtifact; }
   function indexQuery(offset) { return '/index-api/functions/v1/zecblocks-rh20-holders?view=market&offset=' + offset + '&market=' + S.config.contractAddress; }
@@ -57,7 +57,7 @@
     $('recovery').hidden = !S.pending;
     if (S.pending) { $('recoveryText').textContent = S.pending.hash ? 'Transaction saved. Check its confirmation without sending again.' : 'Your wallet request is unresolved. Paste its transaction hash from wallet activity to recover it. This page will not resend it.'; $('checkPending').hidden = !S.pending.hash; }
     if (deployMode) {
-      $('deploy').disabled = !deploymentArtifact() || S.busy || !!S.pending || (S.completed?.kind === deploymentKind && !!S.completed.contractAddress) || !!deploymentConfig()?.contractAddress;
+      $('deploy').disabled = !deploymentArtifact() || !S.verified || S.busy || !!S.pending || (S.completed?.kind === deploymentKind && !!S.completed.contractAddress) || !!deploymentConfig()?.contractAddress;
       $('deploy').textContent = deploymentConfig()?.contractAddress || (S.completed?.kind === deploymentKind && S.completed.contractAddress) ? (sweepDeployMode ? 'Sweep deployed' : 'Marketplace deployed') : S.busy ? 'Check your wallet…' : S.pending ? 'Deployment pending' : sweepDeployMode ? 'Deploy Sweep helper' : 'Deploy marketplace'; receiptView(S.completed); return;
     }
     $('badge').textContent = !S.config?.contractAddress ? 'Settlement deployment pending' : S.verified ? 'Robinhood Chain · ETH' : 'Checking market';
@@ -334,7 +334,7 @@
           await sweep.validate(provider, receipt.contractAddress, receipt.blockNumber);
         } else await validate(provider, receipt.contractAddress, receipt.blockNumber, artifactForRecord(record));
         const completed = { ...updated, completed: true, contractAddress: receipt.contractAddress, deploymentBlock: receipt.blockNumber }; save(completed);
-        if (same(S.account, record.account)) { S.pending = null; S.completed = completed; receiptView(completed); }
+        if (same(S.account, record.account)) { S.pending = null; S.completed = completed; receiptView(completed); render(); }
       } else if (record.kind === 'sweep') {
         await sweep.validate(provider, record.to, receipt.blockNumber);
         if (!sweep.verifiedEvent(receipt, record)) throw Error('Expected Sweep settlement event is missing. The recovery record is retained.');
@@ -377,7 +377,7 @@
     if (holderMode()) {
       $('feeRate').textContent = '0% / 3%'; $('feeHint').textContent = 'Holder sellers / other sellers';
       $('buyFeeHint').textContent = 'Total payment · seller fee included (0% or 3%)';
-      $('sweepFeeHint').textContent = 'Seller fees are 0% for Robinhood Ordinal holders and 3% otherwise, checked at settlement. No additional Sweep fee. Network gas is separate.';
+      $('sweepFeeHint').textContent = '· Seller fees are 0% for Robinhood Ordinal holders and 3% otherwise, checked at settlement. No additional Sweep fee. Network gas is separate.';
       $('footerFee').textContent = 'Settlement in ETH on Robinhood Chain. Seller protocol fee: 0% when holding at least 1 Robinhood Ordinal at settlement; otherwise 3%. Gas and NFT mint fees are separate. Buyer pays the listed price.';
     } else {
       const tab = document.querySelector('[data-tab="sell"]'); if (tab) tab.hidden = true;

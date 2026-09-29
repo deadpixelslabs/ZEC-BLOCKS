@@ -106,7 +106,7 @@ test('native Sweep recovery works from the previous view without another transac
 });
 test('holder deployment is one transaction, receipt persists and repeat deployment is disabled',async()=>{
  server.setHolderPublished(false);const{page,context,errors}=await pageFixture({route:'/rh20-holder-deploy.html',wallet:0});
- try{await page.locator('#deploy').click();await page.waitForFunction(()=>!document.querySelector('#receipt').hidden);
+ try{await page.locator('#deploy').click();await page.waitForFunction(()=>!document.querySelector('#receipt').hidden && document.querySelector('#deploy').textContent==='Marketplace deployed' && document.querySelector('#recovery').hidden);
   assert.equal(await page.evaluate(()=>window.__sendCount),1);assert.match(await page.locator('#deployedAddress').innerText(),/^0x[0-9a-f]{40}$/i);assert.equal(await page.locator('#deploy').isDisabled(),true);
   await page.screenshot({path:path.join(artifacts,'holder-deploy-receipt.png'),fullPage:true});
   await page.reload();await page.locator('#connect').click();await page.waitForFunction(()=>!document.querySelector('#receipt').hidden);assert.equal(await page.locator('#deploy').isDisabled(),true);assert.equal(await page.evaluate(()=>window.__sendCount),0);assert.deepEqual(errors,[]);
