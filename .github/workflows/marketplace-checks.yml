@@ -6,6 +6,32 @@ on:
 permissions:
   contents: read
 jobs:
+  rh20-holders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: isolated-holders
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-holders
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false pg@8.23.0 ethers@6.13.5 @foundry-rs/anvil-linux-amd64@1.7.1
+      - name: Verify canonical holder accounting and private database permissions
+        run: node --test tests/rh20-holders.cjs
   rh20:
     runs-on: ubuntu-latest
     timeout-minutes: 12

@@ -85,6 +85,23 @@
     card.append(top, amount, unit, price, button); return card;
   }
   function paintLots(id, lots, owned) { const node = $(id); node.replaceChildren(); if (!lots.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = owned ? S.account ? 'No active listings in this wallet.' : 'Connect your wallet to manage listings.' : S.config.contractAddress ? 'No RHSC listings yet. Be the first to list a lot.' : 'Listings open after the marketplace settlement contract is deployed.'; node.append(p); } else lots.forEach(lot => node.append(card(lot, owned))); }
+  async function refreshHolders() {
+    if (deployMode || S.holdersRefreshing || !S.config?.contractAddress) return;
+    S.holdersRefreshing = true;
+    try {
+      const response = await fetch('/index-api/functions/v1/zecblocks-rh20-holders', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error('Holder count unavailable');
+      const data = await response.json();
+      if (data.chainId !== 4663 || data.ticker !== 'RHSC' || !same(data.coreAddress, CORE) || !same(data.marketplaceAddress, S.config.contractAddress) || !['ready', 'indexing', 'delayed'].includes(data.status)) throw new Error('Invalid holder snapshot');
+      if (data.holders === null) { $('holderHint').textContent = 'Syncing on-chain data'; return; }
+      if (!Number.isSafeInteger(data.holders) || data.holders < 0 || data.holders > 21000000 || !Number.isSafeInteger(data.blockNumber) || !Number.isFinite(Date.parse(data.updatedAt))) throw new Error('Invalid holder count');
+      $('holderCount').textContent = count(data.holders);
+      const current = data.status === 'ready' && Date.now() - Date.parse(data.updatedAt) < 90000;
+      $('holderHint').textContent = current ? 'Includes listed RHSC' : 'Update delayed';
+      $('holderCount').title = 'Unique RHSC owners, including listed balances. Indexed through block ' + data.blockNumber + '. Refreshes every 20 seconds.';
+    } catch (_) { $('holderHint').textContent = 'Update delayed'; }
+    finally { S.holdersRefreshing = false; }
+  }
   async function refresh() {
     if (!S.config) return;
     if (S.refreshing) { S.refreshAgain = true; return; }
@@ -114,7 +131,7 @@
         $('updated').textContent = 'Updated at block ' + count(blockTag);
       }
     } catch (e) { if (generation === S.generation) { S.verified = false; status(message(e), 'error'); } }
-    finally { S.refreshing = false; render(); if (S.refreshAgain) { S.refreshAgain = false; void refresh(); } }
+    finally { S.refreshing = false; render(); void refreshHolders(); if (S.refreshAgain) { S.refreshAgain = false; void refresh(); } }
   }
   async function updateAccount() {
     if (!S.wallet) return;

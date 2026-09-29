@@ -9,6 +9,7 @@ const api = require('../../api/rh20.js');
 async function serve(chain) {
   let published = true;
   let overrideAddress = null;
+  let holderState = { holders: 2, status: 'ready' };
   const address = await chain.market.getAddress();
   const oldRPC = process.env.RH20_RPC_URL;
   process.env.RH20_RPC_URL = chain.url;
@@ -18,6 +19,11 @@ async function serve(chain) {
       const url = new URL(req.url, 'http://localhost');
       res.setHeader('Cache-Control', 'no-store');
       if (url.pathname === '/rh20/mainnet.json') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(configured())); return; }
+      if (url.pathname === '/index-api/functions/v1/zecblocks-rh20-holders') {
+        res.setHeader('Content-Type', 'application/json');
+        if (holderState.error) { res.statusCode = 503; res.end(JSON.stringify({ error: 'Fixture unavailable' })); return; }
+        res.end(JSON.stringify({ ...holderState, chainId: 4663, ticker: 'RHSC', coreAddress: config.coreAddress, marketplaceAddress: configured().contractAddress, blockNumber: 75380000, updatedAt: new Date().toISOString() })); return;
+      }
       if (url.pathname === '/_fixture/rpc' || url.pathname === '/api/rh20') {
         let raw = ''; for await (const part of req) raw += part;
         req.body = JSON.parse(raw);
@@ -38,6 +44,6 @@ async function serve(chain) {
     } catch (error) { res.statusCode = error.code === 'ENOENT' ? 404 : 500; res.end(String(error.message)); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  return { url: 'http://127.0.0.1:' + server.address().port, setPublished: value => { published = value; }, setAddress: value => { overrideAddress = value; }, close: async () => { Object.assign(config, originalConfig); if (oldRPC === undefined) delete process.env.RH20_RPC_URL; else process.env.RH20_RPC_URL = oldRPC; await new Promise(resolve => server.close(resolve)); } };
+  return { url: 'http://127.0.0.1:' + server.address().port, setHolders: value => { holderState = value; }, setPublished: value => { published = value; }, setAddress: value => { overrideAddress = value; }, close: async () => { Object.assign(config, originalConfig); if (oldRPC === undefined) delete process.env.RH20_RPC_URL; else process.env.RH20_RPC_URL = oldRPC; await new Promise(resolve => server.close(resolve)); } };
 }
 module.exports = { serve };

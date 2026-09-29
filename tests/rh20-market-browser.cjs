@@ -160,3 +160,11 @@ test('wallet changes during preflight stop signing and storage failure stops bro
     assert.equal(await page.evaluate(()=>window.__sendCount),0);assert.equal((await chain.market.stats('RHSC')).sales,0n);
   }finally{await context.close();}
 });
+test('holder snapshots refresh and an outage preserves the last count without disabling trading',async()=>{
+  server.setHolders({holders:2,status:'ready'});const{page,context,errors}=await pageFixture();
+  try{await page.waitForFunction(()=>document.querySelector('#holderCount').textContent==='2');
+    server.setHolders({holders:3,status:'ready'});await page.locator('#refresh').click();await page.waitForFunction(()=>document.querySelector('#holderCount').textContent==='3');
+    server.setHolders({error:true});await page.locator('#refresh').click();await page.waitForFunction(()=>document.querySelector('#holderHint').textContent==='Update delayed');
+    assert.equal(await page.locator('#holderCount').innerText(),'3');assert.equal(await page.locator('#sellAction').isDisabled(),false);assert.deepEqual(errors,[]);
+  }finally{server.setHolders({holders:2,status:'ready'});await context.close();}
+});
