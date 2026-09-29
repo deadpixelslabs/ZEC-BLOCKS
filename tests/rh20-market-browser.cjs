@@ -176,7 +176,7 @@ test('global cheapest-per-RHSC order survives pagination and USD estimates never
     await page.waitForFunction(()=>document.querySelector('#lots .unit-usd')?.textContent.includes('$0.012'));
     assert.match(await page.locator('#lots .lot-top').first().innerText(),new RegExp('Lot #'+cheapest+'$'));
     assert.match(await page.locator('#lots .unit-price').first().innerText(),/0.000004 ETH/);
-    await page.locator('#next').click();await page.waitForFunction(()=>document.querySelector('#pageNumber').textContent==='Page 2');assert.equal(await page.locator('#lots .lot').count(),1);
+    await page.locator('#next').click();await page.waitForFunction(()=>document.querySelector('#pageNumber').textContent==='Page 2'&&document.querySelectorAll('#lots .lot').length===1);assert.equal(await page.locator('#lots .lot').count(),1);
     await page.locator('#prev').click();await page.waitForFunction(()=>document.querySelector('#lots .unit-usd')?.textContent.includes('$0.012'));
     await page.locator('#lots button').first().click();assert.equal(await page.locator('#buyPrice').innerText(),'0.002 ETH');assert.match(await page.locator('#buyUsd').innerText(),/\$6\.00 total/);
     server.setPrice({error:true});await page.locator('#closeDialog').click();await page.locator('#refresh').click();await page.waitForFunction(()=>document.querySelector('#priceSource').textContent.includes('delayed'));

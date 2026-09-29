@@ -116,7 +116,7 @@ cc200f7a0dc25c716ac6f8b24f59352e1098551ab95cdc8baef60acd62420bb7  ./tests/listin
 98fb26f3b4869dc87afa5ab11b664a2258e1f7d007690a6f0d357cf1347686dd  ./tests/listing-fee.test.cjs
 9029b6428df9522d4cc4947c96e708edbfe22fb28eb929bfb229c48e4a68eaf7  ./tests/marketplace.test.cjs
 ba14bc23d37daed3772c71a07d3d0c349588b8235fd243ef1603fc629a10d5f8  ./tests/rh20-holders.cjs
-9ea2c11c53b22599ca07e284b6956d07cb566a4314456045a049d5940bf3bfb3  ./tests/rh20-market-browser.cjs
+24b0e5e02ef8bbc42d96b25b3731789d96ad74d592ace7d6911f40bdc8ccf2db  ./tests/rh20-market-browser.cjs
 781a6ba68aeba6a0473780267bfff576a0717cfb628706240892d6c4494dd940  ./tests/rh20-market-contract.cjs
 68733005937d5abe1807ed9992d9a6225c53b9591e4668830a5ca88abcba2532  ./tests/rh20-market-live.cjs
 bfe59078abb90d97c4024d0e9f3155169a7372642a848d6c6ba2ead312852c8d  ./tests/rh20-price.cjs
