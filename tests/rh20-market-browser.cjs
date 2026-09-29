@@ -71,7 +71,7 @@ test('unpublished market is honest and disables trading; mobile theme has no ove
 });
 test('seller approves, lists and cancels through real contract; balances recover',async()=>{
   await tx(chain.core.connect(chain.signers[1]).inscribe(MINT));const{page,context,errors}=await pageFixture();
-  try{await connected(page);await page.waitForFunction(()=>document.querySelector('#totalSupply').textContent==='500');assert.match(await page.locator('#supplyHint').innerText(),/Max: 21,000,000/);await page.locator('[data-tab="sell"]').click();await page.locator('#price').fill('0.01');
+  try{await connected(page);await page.locator('[data-tab="sell"]').click();await page.locator('#price').fill('0.01');
     await page.locator('#sellAction').click();await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Approval confirmed'));
     await page.waitForFunction(()=>document.querySelector('#sellAction').textContent==='Create listing');await page.locator('#sellAction').click();
     await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('Listing confirmed'));

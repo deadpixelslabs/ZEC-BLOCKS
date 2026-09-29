@@ -29,7 +29,7 @@ async function deployed(){let failure;for(let attempt=0;attempt<12;attempt++){tr
   await page.waitForFunction(()=>/^[0-9,]+$/.test(document.querySelector('#holderCount').textContent));
   await page.waitForFunction(()=>document.querySelector('#priceSource').textContent.includes('Coinbase Exchange'));
   await page.waitForFunction(()=>/^[0-9,]+$/.test(document.querySelector('#totalSupply').textContent));
-  const totalSupply=await page.locator('#totalSupply').innerText();assert(BigInt(totalSupply.replaceAll(',',''))<=21000000n);assert.match(await page.locator('#supplyHint').innerText(),/Max: 21,000,000/);
+  const totalSupply=await page.locator('#totalSupply').innerText();assert.equal(totalSupply,'21,000,000');assert.match(await page.locator('#supplyHint').innerText(),/Fully minted/);
   assert.match(await page.locator('#buyPanel .section-heading').innerText(),/Lowest price per RHSC/);
   assert.equal(await page.locator('#sellAction').isDisabled(),!config.contractAddress);
   if(!config.contractAddress)assert.match(await page.locator('#badge').innerText(),/pending/);

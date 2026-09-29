@@ -108,4 +108,4 @@ The UI labels delayed rates and stops using them after five minutes. Relevant
 checks cover global pagination, one-wei differences at uint256-sized prices,
 escrow ownership, reference outages and exact ETH purchase confirmation.
 
-The RHSC statistics also display **Total supply** from the pinned core's `getToken("RHSC")` response, alongside the maximum 21,000,000 RHSC. The display refreshes with the normal market poll; a failed informational supply read retains its last value and does not disable trading.
+The owner confirmed RHSC minting is complete on 29 September 2026. The marketplace displays **Total supply: 21,000,000 RHSC** immediately with **Fully minted**, without an additional supply RPC request.
