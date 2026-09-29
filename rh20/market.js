@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const E = window.ethers, $ = id => document.getElementById(id), sweepDeployMode = document.body.dataset.mode === 'sweep-deploy', deployMode = sweepDeployMode || document.body.dataset.mode === 'deploy';
+  const E = window.ethers, $ = id => document.getElementById(id), holderDeployMode = document.body.dataset.mode === 'holder-deploy', sweepDeployMode = document.body.dataset.mode === 'sweep-deploy', deployMode = holderDeployMode || sweepDeployMode || document.body.dataset.mode === 'deploy';
   const S = { account: null, chain: null, wallet: null, wallets: [], generation: 0, busy: false, verified: false, refreshing: false, checking: false, pending: null, completed: null, offset: 0, ownedOffset: 0, total: 0n, ownedTotal: 0n, lots: [], owned: [], balance: 0n, allowance: 0n, credit: 0n, tab: 'buy' };
   const CORE = '0x4e89Bc6A7A218B338060d428f40d8f551efc8058', TREASURY = '0x81046ab56F41a78077662624aC4116465fDf00cc';
   const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
@@ -16,7 +16,11 @@
   function status(text, kind = '') { $('status').textContent = text; $('status').className = 'status ' + kind; }
   function guard(fn) { return (...args) => Promise.resolve().then(() => fn(...args)).catch(e => status(message(e), 'error')); }
   const sweep = window.createRH20Sweep({ S, E, $, same, bounded, status, guard, render, submit, connect, reader, identity, count, eth, unitEth, usdQuote, feeFor, deployMode });
-  const deploymentKind = sweepDeployMode ? 'deploySweep' : 'deploy';
+  const deploymentKind = holderDeployMode ? 'deployHolder' : sweepDeployMode ? 'deploySweep' : 'deploy';
+  const holderMode = () => S.config === S.holderConfig;
+  const previousMode = () => !deployMode && !holderMode() && !!S.holderConfig?.contractAddress;
+  function artifactForRecord(record) { return record.kind === 'deployHolder' || same(record.to, S.holderConfig?.contractAddress) ? S.holderArtifact : record.kind === 'deploySweep' || same(record.to, S.oldSweepConfig?.contractAddress) ? S.oldSweepArtifact : S.legacyArtifact; }
+  function indexQuery(offset) { return '/index-api/functions/v1/zecblocks-rh20-holders?view=market&offset=' + offset + '&market=' + S.config.contractAddress; }
   const deploymentConfig = () => sweepDeployMode ? S.sweepConfig : S.config;
   const deploymentArtifact = () => sweepDeployMode ? S.sweepArtifact : S.artifact;
   function theme(value) { document.documentElement.dataset.theme = value; $('theme').textContent = value === 'dark' ? '☀' : '☾'; $('theme').setAttribute('aria-label', 'Switch to ' + (value === 'dark' ? 'light' : 'dark') + ' theme'); try { localStorage.setItem('rh20-theme', value); } catch (_) {} }
@@ -36,8 +40,8 @@
     let record;
     try { record = JSON.parse(localStorage.getItem(key()) || 'null'); } catch (_) { throw new Error('Enable site storage to keep transaction recovery available.'); }
     if (record) {
-      if (!same(record.account, S.account) || record.chainId !== 4663 || !/^0x[0-9a-f]+$/i.test(record.data || '') || !['deploy', 'deploySweep', 'sweep', 'approve', 'list', 'buy', 'cancel', 'withdraw'].includes(record.kind)) throw new Error('Invalid transaction recovery record.');
-      if (['deploy', 'deploySweep'].includes(record.kind) ? record.to !== null || record.data !== (record.kind === 'deploySweep' ? S.sweepArtifact : S.artifact)?.bytecode : record.kind === 'sweep' ? !same(record.to, S.sweepConfig?.contractAddress) : ![CORE, S.config.contractAddress].some(a => same(a, record.to))) throw new Error('Saved transaction targets a different deployment.');
+      if (!same(record.account, S.account) || record.chainId !== 4663 || !/^0x[0-9a-f]+$/i.test(record.data || '') || !['deploy', 'deployHolder', 'deploySweep', 'sweep', 'approve', 'list', 'buy', 'cancel', 'withdraw'].includes(record.kind)) throw new Error('Invalid transaction recovery record.');
+      if (['deploy', 'deployHolder', 'deploySweep'].includes(record.kind) ? record.to !== null || record.data !== artifactForRecord(record)?.bytecode : ![CORE, S.legacyConfig.contractAddress, S.holderConfig.contractAddress, S.oldSweepConfig?.contractAddress].some(a => same(a, record.to))) throw new Error('Saved transaction targets a different deployment.');
       if (record.completed) S.completed = record; else S.pending = record;
     }
   }
@@ -62,7 +66,7 @@
     $('withdraw').disabled = !S.verified || S.busy || !!S.pending || !S.account || S.credit === 0n;
     const ready = S.verified && !S.busy && !S.pending;
     const amount = parseAmount(false);
-    $('sellAction').disabled = !ready || !S.config?.contractAddress;
+    $('sellAction').disabled = !ready || !S.config?.contractAddress || previousMode();
     $('sellAction').textContent = S.busy ? 'Check your wallet…' : S.pending ? 'Transaction pending' : !S.account ? 'Connect wallet to sell' : amount && S.allowance >= amount ? 'Create listing' : amount ? 'Approve ' + count(amount) + ' RHSC' : 'Approve RHSC';
     document.querySelectorAll('[data-trade]').forEach(b => { b.disabled = !ready; });
     $('prev').disabled = S.offset === 0; $('next').disabled = BigInt(S.offset + 12) >= S.total;
@@ -70,13 +74,14 @@
     $('pageNumber').textContent = 'Page ' + (S.offset / 12 + 1); $('ownedPage').textContent = 'Page ' + (S.ownedOffset / 12 + 1);
     $('confirmBuy').disabled = !ready; sweep.paint();
   }
-  async function validate(provider, market = S.config.contractAddress, blockTag = 'latest') {
+  async function validate(provider, market = S.config.contractAddress, blockTag = 'latest', artifact = S.artifact) {
     if (BigInt(await bounded(provider.send('eth_chainId', []))) !== 4663n) throw new Error('Switch to Robinhood Chain.');
+    if (artifact === S.holderArtifact && E.keccak256(await bounded(provider.getCode(S.holderConfig.collectionAddress, blockTag))) !== S.nftArtifact.runtimeCodeHash) throw Error('NFT collection verification failed.');
     const coreCode = await bounded(provider.getCode(CORE, blockTag));
     if (E.keccak256(coreCode) !== S.coreArtifact.runtimeCodeHash) throw new Error('RH-20 contract verification failed. Trading is disabled.');
     if (market) {
       const code = await bounded(provider.getCode(market, blockTag));
-      if (E.keccak256(code) !== S.artifact.runtimeCodeHash) throw new Error('Marketplace verification failed. Trading is disabled.');
+      if (E.keccak256(code) !== artifact.runtimeCodeHash) throw new Error('Marketplace verification failed. Trading is disabled.');
     }
   }
   function card(lot, owned) {
@@ -98,7 +103,7 @@
   function paintLots(id, lots, owned) { const node = $(id); node.replaceChildren(); if (!lots.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = owned ? S.account ? 'No active listings in this wallet.' : 'Connect your wallet to manage listings.' : S.boardError || (S.config.contractAddress ? 'No RHSC listings yet. Be the first to list a lot.' : 'Listings open after the marketplace settlement contract is deployed.'); node.append(p); } else lots.forEach(lot => node.append(card(lot, owned))); }
   async function sortedBoard(market, offset, blockTag) {
     try {
-      const response = await fetch('/index-api/functions/v1/zecblocks-rh20-holders?view=market&offset=' + offset, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      const response = await fetch(indexQuery(offset), { cache: 'no-store', signal: AbortSignal.timeout(10000) });
       if (!response.ok) throw Error('Sorted listings temporarily unavailable. Refresh to retry.');
       const board = await response.json();
       if (board.chainId !== 4663 || board.ticker !== 'RHSC' || !same(board.marketplaceAddress, S.config.contractAddress) || board.sort !== 'unit-price-asc' || board.offset !== offset || !Number.isSafeInteger(board.total) || board.total < 0 || !Array.isArray(board.ids) || board.ids.length > 12 || new Set(board.ids).size !== board.ids.length || board.ids.some(id => !/^[1-9][0-9]{0,77}$/.test(id)) || !Number.isSafeInteger(board.blockNumber) || board.blockNumber > blockTag) throw Error('Sorted listings verification delayed. Refresh to retry.');
@@ -135,7 +140,7 @@
       const response = await fetch('/index-api/functions/v1/zecblocks-rh20-holders', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
       if (!response.ok) throw new Error('Holder count unavailable');
       const data = await response.json();
-      if (data.chainId !== 4663 || data.ticker !== 'RHSC' || !same(data.coreAddress, CORE) || !same(data.marketplaceAddress, S.config.contractAddress) || !['ready', 'indexing', 'delayed'].includes(data.status)) throw new Error('Invalid holder snapshot');
+      if (data.chainId !== 4663 || data.ticker !== 'RHSC' || !same(data.coreAddress, CORE) || ![data.marketplaceAddress, ...(data.marketplaceAddresses || [])].some(address => same(address, S.config.contractAddress)) || !['ready', 'indexing', 'delayed'].includes(data.status)) throw new Error('Invalid holder snapshot');
       if (data.holders === null) { $('holderHint').textContent = 'Syncing on-chain data'; return; }
       if (!Number.isSafeInteger(data.holders) || data.holders < 0 || data.holders > 21000000 || !Number.isSafeInteger(data.blockNumber) || !Number.isFinite(Date.parse(data.updatedAt))) throw new Error('Invalid holder count');
       $('holderCount').textContent = count(data.holders);
@@ -154,18 +159,21 @@
       const provider = reader(), blockTag = Number(BigInt(await bounded(provider.send('eth_blockNumber', []))));
       await validate(provider, S.config.contractAddress, blockTag);
       const core = new E.Contract(CORE, S.coreArtifact.abi, provider), market = S.config.contractAddress ? new E.Contract(S.config.contractAddress, S.artifact.abi, provider) : null;
-      const [balance, allowance, stats, board, owned, credit, sales] = await bounded(Promise.all([
+      const [balance, allowance, stats, board, owned, credit, sales, sellerBps] = await bounded(Promise.all([
         account ? core.balanceOf('RHSC', account, { blockTag }) : 0n,
         account && market ? core.allowance('RHSC', account, S.config.contractAddress, { blockTag }) : 0n,
         market ? market.stats('RHSC', { blockTag }) : [0n, 0n, 0n, 0n],
         market && !deployMode ? sortedBoard(market, offset, blockTag) : [[], 0n],
         market && account && !deployMode ? market.getListings('RHSC', account, ownedOffset, 12, { blockTag }) : [[], 0n],
         market && account ? market.claimable(account, { blockTag }) : 0n,
-        market && !deployMode ? market.recentSales('RHSC', 0, 12, { blockTag }) : [[], 0n]
+        market && !deployMode ? market.recentSales('RHSC', 0, 12, { blockTag }) : [[], 0n],
+        holderMode() ? market && account ? market.sellerFeeBps(account, { blockTag }) : null : 300n
       ]));
       if (generation !== S.generation || account !== S.account || offset !== S.offset || ownedOffset !== S.ownedOffset) return;
-      Object.assign(S, { balance, allowance, credit, verified: true, lots: board[0], total: board[1], owned: owned[0], ownedTotal: owned[1] });
+      Object.assign(S, { sellerBps, balance, allowance, credit, verified: true, lots: board[0], total: board[1], owned: owned[0], ownedTotal: owned[1] });
       if (!deployMode) {
+        if ($('sellerBenefit')) $('sellerBenefit').textContent = holderMode() ? !account ? 'Connect your wallet to check the seller fee. Hold at least 1 Robinhood Ordinal for 0% at settlement.' : sellerBps === 0n ? 'Robinhood Ordinal holder · Your current seller fee is 0%. Keep an NFT in this wallet until the sale settles.' : 'Your current seller fee is 3%. Sellers holding at least 1 Robinhood Ordinal at settlement pay 0%.' : previousMode() ? 'Previous marketplace · All sales retain the original 3% fee. Cancel old listings and relist in the current marketplace for holder benefits.' : 'Seller protocol fee: 3%. Network gas is separate.';
+        quote();
         $('activeCount').textContent = count(stats[0]); $('listedAmount').textContent = count(stats[1]) + ' RHSC'; $('salesCount').textContent = count(stats[2]); $('volume').textContent = eth(stats[3]) + ' ETH';
         paintLots('lots', S.lots, false); paintLots('ownedLots', S.owned, true);
         $('sales').replaceChildren();
@@ -179,7 +187,7 @@
   async function updateAccount() {
     if (!S.wallet) return;
     const generation = ++S.generation;
-    S.verified = false; S.account = null; S.pending = null; S.completed = null; S.balance = 0n; S.allowance = 0n; S.credit = 0n;
+    S.verified = false; S.account = null; S.pending = null; S.completed = null; S.balance = 0n; S.allowance = 0n; S.credit = 0n; S.sellerBps = null;
     if (!deployMode) { S.owned = []; paintLots('ownedLots', [], true); $('buyDialog').close(); sweep.reset(); $('sweepDialog').close(); }
     render();
     const [accounts, chain] = await Promise.all([S.wallet.request({ method: 'eth_accounts' }), S.wallet.request({ method: 'eth_chainId' })]);
@@ -205,29 +213,48 @@
   }
   function parseAmount(required = true) { const value = $('amount')?.value.trim() || ''; if (!/^[1-9][0-9]{0,7}$/.test(value) || BigInt(value) > 21000000n) { if (required) throw new Error('Enter a whole RHSC amount from 1 to 21,000,000.'); return null; } return BigInt(value); }
   function parsePrice() { const text = $('price').value.trim(); if (!/^(0|[1-9][0-9]*)(\.[0-9]{1,18})?$/.test(text)) throw new Error('Enter a total ETH price with up to 18 decimal places.'); const price = E.parseEther(text); if (price < 100n || price > E.MaxUint256) throw new Error('The total price must be at least 0.0000000000000001 ETH.'); return price; }
-  function quote() { render(); try { const price = parsePrice(), amount = parseAmount(false); $('sellQuote').textContent = 'You receive ' + eth(price - feeFor(price)) + ' ETH · fee ' + eth(feeFor(price)) + ' ETH'; $('sellUnit').textContent = amount ? '≈ ' + unitEth({ price, amount }) + ' ETH / RHSC · ' + usdQuote({ price, amount }, true) + ' · ' + usdQuote({ price, amount }) : ''; } catch (_) { $('sellUnit').textContent = ''; $('sellQuote').textContent = '3% is deducted from the sale price. Network gas is separate.'; } }
+  function quote() {
+    render();
+    try {
+      const price = parsePrice(), amount = parseAmount(false), bps = holderMode() ? S.sellerBps : 300n;
+      if (bps == null) $('sellQuote').textContent = 'Connect your wallet to check the fee. Holder sellers pay 0%; other sellers pay 3%. Ownership is checked again at settlement.';
+      else { const fee = bps === 0n ? 0n : feeFor(price); $('sellQuote').textContent = 'You receive ' + eth(price - fee) + ' ETH · fee ' + eth(fee) + ' ETH (' + bps / 100n + '%)' + (holderMode() ? ' · Based on current NFT ownership; checked again at sale.' : ''); }
+      $('sellUnit').textContent = amount ? '≈ ' + unitEth({price,amount}) + ' ETH / RHSC · ' + usdQuote({price,amount},true) + ' · ' + usdQuote({price,amount}) : '';
+    } catch (_) { $('sellUnit').textContent = ''; $('sellQuote').textContent = holderMode() ? 'Holder seller: 0%. Other seller: 3%. NFT ownership is checked at settlement. Network gas is separate.' : '3% is deducted from the sale price. Network gas is separate.'; }
+  }
   function paintBuyPrices(lot) { $('buyPrice').textContent = eth(lot.price) + ' ETH'; $('buyUnit').textContent = '≈ ' + unitEth(lot) + ' ETH / RHSC · ' + usdQuote(lot, true); $('buyUsd').textContent = usdQuote(lot); }
-  function reviewBuy(lot) { S.selected = { id: lot.id.toString(), amount: lot.amount.toString(), price: lot.price.toString() }; $('buyAmount').textContent = count(lot.amount) + ' RHSC'; paintBuyPrices(lot); $('buyFee').textContent = eth(feeFor(lot.price)) + ' ETH'; $('buyDialog').showModal(); }
+  async function reviewBuy(lot) {
+    const selected = { id: lot.id.toString(), amount: lot.amount.toString(), price: lot.price.toString() };
+    S.selected = selected; $('buyAmount').textContent = count(lot.amount) + ' RHSC'; paintBuyPrices(lot);
+    $('buyFee').textContent = holderMode() ? 'Checking seller fee…' : eth(feeFor(lot.price)) + ' ETH'; $('buyDialog').showModal();
+    if (holderMode()) try {
+      const market = new E.Contract(S.config.contractAddress, S.artifact.abi, reader());
+      const fee = await bounded(market.feeForSeller(lot.seller, lot.price));
+      if (S.selected === selected) $('buyFee').textContent = eth(fee) + ' ETH · seller eligibility checked at settlement';
+    } catch (_) { if (S.selected === selected) $('buyFee').textContent = '0–3% · determined by seller NFT ownership at settlement'; }
+  }
   async function identity(account, generation) { const [accounts, chain] = await Promise.all([S.wallet.request({ method: 'eth_accounts' }), S.wallet.request({ method: 'eth_chainId' })]); if (generation !== S.generation || !same(accounts[0], account) || BigInt(chain) !== 4663n) throw new Error('Wallet or network changed. Review the action again.'); }
   async function submit(kind, args = {}) {
     if (S.busy || !S.config) return;
     S.busy = true; render();
     let intent = null, walletRequested = false;
     try {
-      if (kind !== 'deploy' && !S.config.contractAddress) throw new Error('The marketplace settlement contract has not been published yet.');
-      if (kind === 'deploy' && S.config.contractAddress) throw new Error('The official marketplace is already deployed.');
+      if (!['deploy', 'deployHolder'].includes(kind) && !S.config.contractAddress) throw new Error('The marketplace settlement contract has not been published yet.');
+      if (['deploy', 'deployHolder'].includes(kind) && S.config.contractAddress) throw new Error('The official marketplace is already deployed.');
       if (kind === 'deploySweep' && S.sweepConfig?.contractAddress) throw new Error('The official Sweep helper is already deployed.');
       await ensureChain();
       const account = S.account, generation = S.generation, provider = S.provider;
       const run = async () => {
-        load(); if (S.pending || (['deploy', 'deploySweep'].includes(kind) && S.completed?.kind === kind && S.completed?.contractAddress)) throw new Error('Recover the saved transaction before continuing.');
+        load(); if (S.pending || (['deploy', 'deployHolder', 'deploySweep'].includes(kind) && S.completed?.kind === kind && S.completed?.contractAddress)) throw new Error('Recover the saved transaction before continuing.');
         await validate(provider);
         const core = new E.Contract(CORE, S.coreArtifact.abi, provider), market = S.config.contractAddress ? new E.Contract(S.config.contractAddress, S.artifact.abi, provider) : null;
         let to = S.config.contractAddress, data, value = 0n;
-        if (kind === 'deploy') { to = null; data = S.artifact.bytecode; }
+        if (['deploy', 'deployHolder'].includes(kind)) { to = null; data = S.artifact.bytecode; }
         if (kind === 'deploySweep') { if (!S.sweepArtifact) throw Error('Sweep configuration unavailable.'); to = null; data = S.sweepArtifact.bytecode; }
         if (kind === 'sweep') ({ to, data, value } = await sweep.prepare(args, provider, account, generation));
         if (kind === 'approve' || kind === 'list') {
+          if (previousMode()) throw Error('Create new listings in the current marketplace. Previous listings can still be cancelled here.');
+          args.marketAddress = S.config.contractAddress;
           const amount = BigInt(args.amount), price = BigInt(args.price);
           const [balance, allowance] = await Promise.all([core.balanceOf('RHSC', account), core.allowance('RHSC', account, to)]);
           if (balance < amount) throw new Error('Your available RHSC balance is too low.');
@@ -291,21 +318,21 @@
         if (!same(tx.from, record.account) || Number(tx.nonce) !== record.nonce || (tx.chainId != null && BigInt(tx.chainId) !== 4663n)) throw new Error('This transaction does not match the saved wallet and nonce.');
         const replacement = await bounded(provider.getTransactionReceipt(hash));
         if (!replacement) throw new Error('Replacement transaction is not confirmed yet. The recovery record is retained.');
-        if (['sweep', 'deploySweep'].includes(record.kind)) await canonicalReceipt(provider, replacement);
+        await canonicalReceipt(provider, replacement);
         clear(record);
         if (generation === S.generation) status('A different transaction consumed the saved nonce. The previous attempt is resolved. Review current balances and listings before taking another action.');
         await refresh(); return;
       }
       const updated = { ...record, hash }; save(updated);
       const receipt = await bounded(provider.getTransactionReceipt(hash)); if (!receipt) { status('Waiting for confirmation.'); return; }
-      if (['sweep', 'deploySweep'].includes(record.kind)) await canonicalReceipt(provider, receipt);
+      await canonicalReceipt(provider, receipt);
       if (receipt.status !== 1) { clear(record); if (generation === S.generation) status('Transaction reverted. Network gas may have been charged.', 'error'); return; }
-      if (['deploy', 'deploySweep'].includes(record.kind)) {
+      if (['deploy', 'deployHolder', 'deploySweep'].includes(record.kind)) {
         if (!receipt.contractAddress) throw new Error('Deployment receipt has no contract address.');
         if (record.kind === 'deploySweep') {
-          await validate(provider, S.config.contractAddress, receipt.blockNumber);
+          await validate(provider, S.legacyConfig.contractAddress, receipt.blockNumber, S.legacyArtifact);
           await sweep.validate(provider, receipt.contractAddress, receipt.blockNumber);
-        } else await validate(provider, receipt.contractAddress, receipt.blockNumber);
+        } else await validate(provider, receipt.contractAddress, receipt.blockNumber, artifactForRecord(record));
         const completed = { ...updated, completed: true, contractAddress: receipt.contractAddress, deploymentBlock: receipt.blockNumber }; save(completed);
         if (same(S.account, record.account)) { S.pending = null; S.completed = completed; receiptView(completed); }
       } else if (record.kind === 'sweep') {
@@ -313,14 +340,14 @@
         if (!sweep.verifiedEvent(receipt, record)) throw Error('Expected Sweep settlement event is missing. The recovery record is retained.');
         clear(record);
       } else {
-        const iface = record.kind === 'approve' ? S.coreInterface : S.iface;
+        const iface = record.kind === 'approve' ? S.coreInterface : new E.Interface(artifactForRecord(record).abi);
         const events = receipt.logs.filter(log => same(log.address, record.to)).map(log => { try { return iface.parseLog(log); } catch (_) { return null; } }).filter(Boolean);
         const a = record.args;
-        const found = events.some(log => record.kind === 'approve' ? log.name === 'Approval' && log.args.tokenId === E.id('RHSC') && same(log.args.account, record.account) && same(log.args.spender, S.config.contractAddress) && log.args.amount === BigInt(a.amount) : record.kind === 'list' ? log.name === 'Listed' && same(log.args.seller, record.account) && log.args.requestId === a.requestId && log.args.amount === BigInt(a.amount) && log.args.price === BigInt(a.price) : record.kind === 'buy' ? log.name === 'Bought' && log.args.id === BigInt(a.id) && same(log.args.buyer, record.account) && log.args.amount === BigInt(a.amount) && log.args.price === BigInt(a.price) : record.kind === 'cancel' ? log.name === 'Cancelled' && log.args.id === BigInt(a.id) && same(log.args.seller, record.account) : log.name === 'Withdrawn' && same(log.args.account, record.account));
+        const found = events.some(log => record.kind === 'approve' ? log.name === 'Approval' && log.args.tokenId === E.id('RHSC') && same(log.args.account, record.account) && same(log.args.spender, S.coreInterface.decodeFunctionData('approve', record.data)[1]) && log.args.amount === BigInt(a.amount) : record.kind === 'list' ? log.name === 'Listed' && same(log.args.seller, record.account) && log.args.requestId === a.requestId && log.args.amount === BigInt(a.amount) && log.args.price === BigInt(a.price) : record.kind === 'buy' ? log.name === 'Bought' && log.args.id === BigInt(a.id) && same(log.args.buyer, record.account) && log.args.amount === BigInt(a.amount) && log.args.price === BigInt(a.price) : record.kind === 'cancel' ? log.name === 'Cancelled' && log.args.id === BigInt(a.id) && same(log.args.seller, record.account) : log.name === 'Withdrawn' && same(log.args.account, record.account));
         if (!found) throw new Error('Expected settlement event is missing. Your recovery record is retained.');
         clear(record);
       }
-      if (generation === S.generation) { status(record.kind === 'deploySweep' ? 'Sweep helper deployed. Copy its address and transaction hash below for activation.' : record.kind === 'sweep' ? 'Sweep confirmed. All selected RHSC lots received in your wallet.' : record.kind === 'deploy' ? 'Deployment confirmed. Copy the address and transaction hash below to publish this marketplace.' : record.kind === 'approve' ? 'Approval confirmed. You can now create the listing.' : record.kind === 'list' ? 'Listing confirmed. Your RHSC lot is available to buy.' : record.kind === 'buy' ? 'Purchase confirmed. RHSC received in your wallet.' : record.kind === 'cancel' ? 'Listing cancelled. RHSC returned to your wallet.' : 'ETH withdrawal confirmed.', 'success'); }
+      if (generation === S.generation) { status(record.kind === 'deploySweep' ? 'Sweep helper deployed. Copy its address and transaction hash below for activation.' : record.kind === 'sweep' ? 'Sweep confirmed. All selected RHSC lots received in your wallet.' : ['deploy', 'deployHolder'].includes(record.kind) ? 'Deployment confirmed. Copy the address and transaction hash below to publish this marketplace.' : record.kind === 'approve' ? 'Approval confirmed. You can now create the listing.' : record.kind === 'list' ? 'Listing confirmed. Your RHSC lot is available to buy.' : record.kind === 'buy' ? 'Purchase confirmed. RHSC received in your wallet.' : record.kind === 'cancel' ? 'Listing cancelled. RHSC returned to your wallet.' : 'ETH withdrawal confirmed.', 'success'); }
       await refresh();
     } finally { S.checking = false; render(); }
   }
@@ -342,9 +369,28 @@
     $('ownedNext').onclick = () => { S.ownedOffset += 12; void refresh(); };
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; document.querySelectorAll('[data-tab]').forEach(x => { x.classList.toggle('selected', x === b); x.setAttribute('aria-selected', String(x === b)); }); document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== S.tab; }); });
   }
+  function configureMarketView() {
+    if (!S.holderConfig.contractAddress) return;
+    $('marketTransition').hidden = false;
+    $('marketViewLabel').textContent = holderMode() ? 'Current marketplace · Holder seller fee: 0%' : 'Previous marketplace · Seller fee: 3%';
+    $('marketViewHint').textContent = holderMode() ? 'Old listings stay in the previous marketplace. Cancel there, then approve and relist here to use holder benefits.' : 'Manage, cancel or buy earlier listings here. New listings belong in the current marketplace.';
+    if (holderMode()) {
+      $('feeRate').textContent = '0% / 3%'; $('feeHint').textContent = 'Holder sellers / other sellers';
+      $('buyFeeHint').textContent = 'Total payment · seller fee included (0% or 3%)';
+      $('sweepFeeHint').textContent = 'Seller fees are 0% for Robinhood Ordinal holders and 3% otherwise, checked at settlement. No additional Sweep fee. Network gas is separate.';
+      $('footerFee').textContent = 'Settlement in ETH on Robinhood Chain. Seller protocol fee: 0% when holding at least 1 Robinhood Ordinal at settlement; otherwise 3%. Gas and NFT mint fees are separate. Buyer pays the listed price.';
+    } else {
+      const tab = document.querySelector('[data-tab="sell"]'); if (tab) tab.hidden = true;
+      $('sellAction').disabled = true;
+    }
+  }
   async function init() {
     const read = async url => { const response = await fetch(url, { cache: 'no-store' }); if (!response.ok) throw new Error('Market configuration could not be loaded.'); return response.json(); };
-    [S.config, S.artifact, S.coreArtifact] = await Promise.all(['/rh20/mainnet.json', '/rh20/RH20Marketplace.json', '/rh20/RH20.json'].map(read));
+    [S.legacyConfig, S.legacyArtifact, S.coreArtifact, S.holderConfig, S.holderArtifact, S.nftArtifact] = await Promise.all(['/rh20/mainnet.json', '/rh20/RH20Marketplace.json', '/rh20/RH20.json', '/rh20/holder-market.json', '/rh20/RH20HolderMarketplace.json', '/rh20/RobinhoodOrdinal.json'].map(read));
+    if (S.holderConfig.chainId !== 4663 || !same(S.holderConfig.coreAddress, CORE) || !same(S.holderConfig.treasury, TREASURY) || !same(S.holderConfig.collectionAddress, '0x6e049af563A804Ef834b4f6d1c8958a488571b21') || S.holderConfig.feeBps !== 300 || S.holderConfig.holderFeeBps !== 0 || S.holderConfig.maxLots !== 20) throw Error('Unexpected holder marketplace settings.');
+    if (S.holderConfig.contractAddress && (!E.isAddress(S.holderConfig.contractAddress) || !/^0x[0-9a-f]{64}$/i.test(S.holderConfig.deploymentTxHash || '') || !Number.isSafeInteger(S.holderConfig.deploymentBlock))) throw Error('Incomplete holder marketplace deployment receipt.');
+    const useHolder = holderDeployMode || (!deployMode && S.holderConfig.contractAddress && new URLSearchParams(location.search).get('market') !== 'previous');
+    S.config = useHolder ? S.holderConfig : S.legacyConfig; S.artifact = useHolder ? S.holderArtifact : S.legacyArtifact;
     if (S.config.chainId !== 4663 || !same(S.config.coreAddress, CORE) || !same(S.config.treasury, TREASURY) || S.config.feeBps !== 300 || S.config.rpcUrl !== 'https://rpc.mainnet.chain.robinhood.com' || S.config.explorerUrl !== 'https://robin.etherscan.io') throw new Error('Unexpected marketplace settings.');
     if (S.config.contractAddress && (!E.isAddress(S.config.contractAddress) || !/^0x[0-9a-f]{64}$/i.test(S.config.deploymentTxHash || '') || !Number.isSafeInteger(S.config.deploymentBlock))) throw new Error('Incomplete marketplace deployment receipt.');
     try { await sweep.init(read); } catch (e) { S.sweepInterface = null; S.sweepArtifact = null; if (sweepDeployMode) throw e; if (!deployMode) $('sweepMessage').textContent = message(e); }
@@ -352,7 +398,8 @@
     S.publicReader = new E.JsonRpcProvider(location.origin + '/api/rh20', 4663, { staticNetwork: true, batchMaxCount: 1, cacheTimeout: -1 });
     if (S.config.contractAddress) { $('marketContract').textContent = short(S.config.contractAddress); $('marketContract').href = S.config.explorerUrl + '/address/' + S.config.contractAddress; }
     else $('marketContract').textContent = 'Settlement deployment pending';
-    status(sweepDeployMode ? 'Deploy one Sweep helper for the existing RHSC marketplace. Review the fixed settings below.' : deployMode ? 'Deploy one settlement contract. RH-20 and RHSC are already deployed.' : S.config.contractAddress ? 'Connect your wallet to trade RHSC.' : 'The marketplace is ready for settlement deployment. Trading opens after the contract is published.');
+    if (!deployMode) configureMarketView();
+    status(holderDeployMode ? 'Deploy the holder-fee marketplace with built-in Sweep. Your wallet signs one deployment transaction.' : sweepDeployMode ? 'Deploy one Sweep helper for the existing RHSC marketplace. Review the fixed settings below.' : deployMode ? 'Deploy one settlement contract. RH-20 and RHSC are already deployed.' : S.config.contractAddress ? 'Connect your wallet to trade RHSC.' : 'The marketplace is ready for settlement deployment. Trading opens after the contract is published.');
     await refresh(); render();
     const poll = async () => { if (!document.hidden && !S.busy) { if (S.pending?.hash) await guard(() => checkPending())(); await refresh(); } S.timer = setTimeout(poll, 20000); };
     S.timer = setTimeout(poll, 20000); document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(); });

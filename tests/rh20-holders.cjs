@@ -5,14 +5,14 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {Pool}=require('pg');
 const {Contract,ContractFactory,id,toBeHex}=require('ethers');
-const {startMarket}=require('./helpers/rh20-market-chain.cjs');
+const {startHolderMarket:startMarket}=require('./helpers/rh20-holder-chain.cjs');
 let pool,chain,market,engine,config,snapshot;
 const MINT='{"p":"rh-20","op":"mint","tick":"RHSC","amt":"500"}';
 const tx=async p=>(await p).wait();
 before(async()=>{
   pool=new Pool();await pool.query("do $$ begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if; if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role bypassrls; end if; end $$;");
-  const names=fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(n=>/_rh20_(holder_(index|freshness)|market_price_order)\.sql$/.test(n)).sort();
-  assert.equal(names.length,3);
+  const names=fs.readdirSync(path.join(__dirname,'../supabase/migrations')).filter(n=>/_rh20_(holder_(index|freshness)|market_price_order|multi_market)\.sql$/.test(n)).sort();
+  assert.equal(names.length,4);
   for(const name of names)await pool.query(fs.readFileSync(path.join(__dirname,'../supabase/migrations',name),'utf8'));
   engine=await import('../supabase/functions/zecblocks-rh20-holders/engine.mjs');
   const {CONFIG}=await import('../supabase/functions/zecblocks-rh20-holders/config.mjs');config={...CONFIG,startBlock:1,deploymentBlock:1};
@@ -24,10 +24,12 @@ before(async()=>{
 beforeEach(async()=>{
   snapshot=await chain.provider.send('evm_snapshot',[]);
   await pool.query('truncate public.rh20_holder_balances,public.rh20_holder_orders,public.rh20_holder_events,public.rh20_holder_checkpoints; update public.rh20_holder_state set start_block=1,cursor_block=0,cursor_hash=null,computed_holders=0,published_holders=null,published_block=null,published_at=null,status=\'indexing\',lease_id=null,lease_until=null,last_started_at=null,last_error=null;');
+  await pool.query('delete from public.rh20_markets where address<>$1;',[config.contractAddress.toLowerCase()]);
+  await pool.query('update public.rh20_markets set deployment_block=1');
 });
 afterEach(async()=>{await chain.provider.send('evm_revert',[snapshot]);});
 after(async()=>{await chain?.close();await pool?.end();});
-async function db(name,args={}){assert.match(name,/^rh20_(holders_[a-z]+|market_board)$/);const keys=Object.keys(args);keys.forEach(k=>assert.match(k,/^p_[a-z_]+$/));const values=keys.map(k=>typeof args[k]==='object'&&args[k]!==null?JSON.stringify(args[k]):args[k]);const result=await pool.query('select public.'+name+'('+keys.map((k,i)=>k+'=> $'+(i+1)).join(',')+') as value',values);return result.rows[0].value;}
+async function db(name,args={}){assert.match(name,/^rh20_(holders_[a-z]+|market_board(?:_for)?|register_market)$/);const keys=Object.keys(args);keys.forEach(k=>assert.match(k,/^p_[a-z_]+$/));const values=keys.map(k=>typeof args[k]==='object'&&args[k]!==null?JSON.stringify(args[k]):args[k]);const result=await pool.query('select public.'+name+'('+keys.map((k,i)=>k+'=> $'+(i+1)).join(',')+') as value',values);return result.rows[0].value;}
 const rpc=(name,args)=>chain.provider.send(name,args);
 async function sync(overrides={}){await pool.query('update public.rh20_holder_state set last_started_at=null');return engine.synchronizeHolders({rpc,db,config,confirmations:0,...overrides});}
 const count=async()=>(await db('rh20_holders_snapshot')).holders;
@@ -116,4 +118,37 @@ test('Sweep attributes final tokens to the buyer and never publishes the helper 
  assert.equal(rows.find(r=>r.account===chain.signers[3].address.toLowerCase()).liquid,'1000');
  const helperRow=rows.find(r=>r.account===(helper.target).toLowerCase());assert.equal(helperRow.liquid,'0');assert.equal(helperRow.listed,'0');
  assert.equal((await db('rh20_market_board')).total,0);
+});
+
+
+test('two marketplaces retain colliding lot IDs, separate boards and one beneficial holder count',async()=>{
+ const current=chain.holderMarket,addr=current.target.toLowerCase();
+ await db('rh20_register_market',{p_address:addr,p_block:1,p_runtime:chain.holderArtifact.deployedBytecode});
+ await mint(1);const oldId=await list(1);await mint(2);
+ await tx(chain.core.connect(chain.signers[2]).approve('RHSC',addr,500));
+ await tx(current.connect(chain.signers[2]).createListing('RHSC',500,5000,id('new-lot')));await sync();
+ assert.equal(oldId,1n);assert.equal(await count(),2);
+ assert.deepEqual((await db('rh20_market_board')).ids,['1']);
+ assert.deepEqual((await db('rh20_market_board_for',{p_market:addr})).ids,['1']);
+ assert.equal((await pool.query('select count(*) from public.rh20_holder_orders')).rows[0].count,'2');
+ await tx(current.connect(chain.signers[3]).sweep([1],500,Math.floor(Date.now()/1000)+600,id('new-sweep'),{value:5000}));await sync();
+ assert.equal(await count(),2);assert.equal((await db('rh20_market_board_for',{p_market:addr})).total,0);assert.equal((await db('rh20_market_board')).total,1);
+ await tx(market.connect(chain.signers[3]).buy(1,{value:10000}));await sync();assert.equal(await count(),1);
+ assert((await db('rh20_holders_snapshot')).marketplaceAddresses.includes(addr));
+ await assert.rejects(db('rh20_market_board_for',{p_market:chain.signers[5].address}));
+});
+test('registering a verified market preserves the last count and replays missed escrow events',async()=>{
+ await mint(1);await sync();assert.equal(await count(),1);
+ const current=chain.holderMarket;await tx(chain.core.connect(chain.signers[1]).approve('RHSC',current.target,500));await tx(current.connect(chain.signers[1]).createListing('RHSC',500,10000,id('before-registration')));
+ await db('rh20_register_market',{p_address:current.target,p_block:1,p_runtime:chain.holderArtifact.deployedBytecode});
+ const during=await db('rh20_holders_snapshot');assert.equal(during.holders,1);assert.equal(during.status,'indexing');
+ await sync();assert.equal(await count(),1);const row=(await pool.query('select listed from public.rh20_holder_balances where account=$1',[chain.signers[1].address.toLowerCase()])).rows[0];assert.equal(row.listed,'500');
+ await assert.rejects(db('rh20_register_market',{p_address:current.target,p_block:1,p_runtime:'0x00'}));
+ for(const role of ['anon','authenticated']){const client=await pool.connect();try{await client.query('set role '+role);await assert.rejects(client.query('select * from public.rh20_markets'));await assert.rejects(client.query("select public.rh20_register_market('0x0000000000000000000000000000000000000001',1,'0x00')"));}finally{await client.query('reset role');client.release();}}
+});
+test('new market sales rewind without changing an identical old lot ID',async()=>{
+ const current=chain.holderMarket;await db('rh20_register_market',{p_address:current.target,p_block:1,p_runtime:chain.holderArtifact.deployedBytecode});
+ await mint(1);await list(1);await mint(2);await tx(chain.core.connect(chain.signers[2]).approve('RHSC',current.target,500));await tx(current.connect(chain.signers[2]).createListing('RHSC',500,10000,id('reorg-new')));await sync();
+ const branch=await chain.provider.send('evm_snapshot',[]);await tx(current.connect(chain.signers[1]).buy(1,{value:10000}));await sync();assert.equal(await count(),1);
+ await chain.provider.send('evm_revert',[branch]);await tx(current.connect(chain.signers[2]).cancelListing(1));await sync();assert.equal(await count(),2);assert.equal((await db('rh20_market_board')).total,1);assert.equal((await db('rh20_market_board_for',{p_market:current.target})).total,0);
 });

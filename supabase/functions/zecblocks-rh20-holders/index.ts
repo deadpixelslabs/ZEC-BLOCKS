@@ -22,11 +22,14 @@ Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
   if(!['GET','POST'].includes(req.method))return new Response(JSON.stringify({error:'Method not allowed'}),{status:405,headers});
   // The platform verifies the public anon JWT. Client input never controls
-  // the contracts, cursor, accounts, SQL arguments or chain endpoint.
+  // the registry, cursor, accounts or chain endpoint. A requested market is
+  // a read-only filter checked against the private registry by the database.
   EdgeRuntime.waitUntil(synchronizeHolders({rpc,db}).catch(error=>console.error('RHSC holder update:',error.message)));
   const url=new URL(req.url),marketView=url.searchParams.get('view')==='market';
   const offset=Number(url.searchParams.get('offset')||0);
+  const market=url.searchParams.get('market')||CONFIG.contractAddress;
+  if(!/^0x[0-9a-f]{40}$/i.test(market))return new Response(JSON.stringify({error:'Invalid market'}),{status:400,headers});
   if(marketView&&(!Number.isSafeInteger(offset)||offset<0||offset>1000000))return new Response(JSON.stringify({error:'Invalid market page'}),{status:400,headers});
-  try{return new Response(JSON.stringify(await db(marketView?'rh20_market_board':'rh20_holders_snapshot',marketView?{p_offset:offset,p_limit:12}:{})),{headers});}
+  try{return new Response(JSON.stringify(await db(marketView?'rh20_market_board_for':'rh20_holders_snapshot',marketView?{p_market:market.toLowerCase(),p_offset:offset,p_limit:12}:{})),{headers});}
   catch(_){return new Response(JSON.stringify({error:'Holder count temporarily unavailable'}),{status:503,headers});}
 });

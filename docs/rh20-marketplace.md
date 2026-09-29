@@ -80,3 +80,13 @@ The existing 3% fee is calculated separately for each lot and included in the to
 `rh20/sweep.js` shares the marketplace's wallet lock and durable transaction recovery. Before sending, it rereads selected lots and verifies the helper runtime. Recovery checks the original sender, destination, calldata, value and nonce, canonical receipt block and exact `Swept` event. An unresolved wallet response is never automatically resent. Holder accounting follows the final core transfer to the buyer.
 
 The official Sweep helper is `0x2fc152Fb31D175BdD4F2b4A7CFf1434D457524Ce`, deployed in transaction `0x7574f21e786b2abde24a4261fa0c4fba5e2f6e69bbf18b9cb45965f624e69ef4` at Robinhood Chain RPC block 75523981. Exact creation/runtime bytecode, canonical receipt, fixed dependencies and the deployment event were verified before pinning `rh20/sweep.json`. Sweep checkout is enabled; the setup page `/rh20-sweep-deploy.html` now prevents another official deployment. The build uses Solidity 0.8.26, optimizer 200, EVM Paris and no constructor arguments. Existing Buy Now remains available.
+
+## Robinhood Ordinal seller benefits
+
+The holder-fee marketplace is prepared for deployment. The currently deployed market keeps its original 3% fee until the new contract is verified and activated.
+
+The new settlement rules check the **seller's** Robinhood Ordinal balance when the transaction executes. Holding at least one NFT makes that seller's protocol fee 0%; otherwise it is 3%. The buyer pays the listed ETH price in either case. Moving the last NFT out of the selling wallet before settlement removes eligibility. Network gas and NFT mint fees are separate.
+
+Buy Now and Sweep use the same rules. Sweep is built into the new marketplace, with up to 20 whole lots per transaction and no additional Sweep fee. Every seller's fee is determined before payout callbacks; if any selected lot cannot settle, the entire purchase reverts.
+
+After activation, earlier listings stay available in **Previous listings & activity**, with their original 3% fee. A seller can cancel there, approve the current marketplace and create a new listing to use holder benefits. The previous marketplace remains available for deferred withdrawals and historical activity. The token, NFT collection, supply and treasury are unchanged.

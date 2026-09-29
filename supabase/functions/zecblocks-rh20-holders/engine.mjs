@@ -14,7 +14,7 @@ export function decodeHolderLog(log, config=CONFIG){
     if(topics[1]!==config.tokenId)return null;
     if(topics.length!==4||log.data.length!==66)throw Error('Invalid RHSC transfer event');
     event={kind:'transfer',from:topicAddress(topics[2]),to:topicAddress(topics[3]),amount:word(log.data,0)};
-  }else if(address===config.contractAddress.toLowerCase()){
+  }else if((config.markets || [config]).some(m=>address===m.contractAddress.toLowerCase())){
     if(kind===config.topics.listed){
       if(topics[2]!==config.tokenId)return null;
       if(topics.length!==4||!HEX32.test(topics[1]))throw Error('Invalid RHSC listing event');
@@ -28,6 +28,7 @@ export function decodeHolderLog(log, config=CONFIG){
       event={kind:'cancelled',id:BigInt(topics[1]).toString(),seller:topicAddress(topics[2])};
     }else return null;
   }else return null;
+  if(event.kind!=='transfer') event.market=address;
   if(!HEX32.test(log.blockHash)||!HEX32.test(log.transactionHash))throw Error('Missing canonical log identity');
   return {...event,block:integer(log.blockNumber),blockHash:log.blockHash.toLowerCase(),txHash:log.transactionHash.toLowerCase(),logIndex:integer(log.logIndex)};
 }
@@ -41,12 +42,15 @@ export function normalizeHolderLogs(logs,from,to,config=CONFIG){
 export async function synchronizeHolders({rpc,db,config=CONFIG,budgetMs=40000,maxRanges=40,confirmations=2}){
   const lease=crypto.randomUUID(),state=await db('rh20_holders_acquire',{p_lease:lease});
   if(!state)return {busy:true};
+  config={...config,markets:state.markets || config.markets || [config]};
   const began=Date.now();let failure=null,processed=0;
   const block=async number=>{const value=await rpc('eth_getBlockByNumber',[hex(number),false]);if(!value||!HEX32.test(value.hash)||integer(value.number)!==number)throw Error('Canonical block unavailable');return value;};
   try{
     if(BigInt(await rpc('eth_chainId',[]))!==4663n)throw Error('Wrong upstream chain');
-    const [core,market]=await Promise.all([rpc('eth_getCode',[config.coreAddress,'latest']),rpc('eth_getCode',[config.contractAddress,'latest'])]);
-    if(core.toLowerCase()!==config.coreRuntime.toLowerCase()||market.toLowerCase()!==config.marketRuntime.toLowerCase())throw Error('Contract runtime differs');
+    const core=await rpc('eth_getCode',[config.coreAddress,'latest']);
+    if(core.toLowerCase()!==config.coreRuntime.toLowerCase())throw Error('Contract runtime differs');
+    if(!Array.isArray(config.markets)||!config.markets.length||config.markets.length>2)throw Error('Invalid market registry');
+    for(const market of config.markets){if(!ADDRESS.test(market.contractAddress)||!Number.isSafeInteger(market.deploymentBlock)||market.deploymentBlock<1||!/^0x[0-9a-f]+$/i.test(market.marketRuntime)||(await rpc('eth_getCode',[market.contractAddress,'latest'])).toLowerCase()!==market.marketRuntime.toLowerCase())throw Error('Contract runtime differs');}
     const head=Math.max(state.start-1,integer(await rpc('eth_blockNumber',[]))-confirmations);
     if(head<state.cursor)throw Error('RPC head is behind the verified holder cursor');
     let cursor=state.cursor,cursorHash=state.hash;
@@ -64,7 +68,7 @@ export async function synchronizeHolders({rpc,db,config=CONFIG,budgetMs=40000,ma
       const from=cursor+1,to=Math.min(head,cursor+1000),before=await block(to);
       const [transfers,marketEvents]=await Promise.all([
         rpc('eth_getLogs',[{address:config.coreAddress,fromBlock:hex(from),toBlock:hex(to),topics:[config.topics.transfer,config.tokenId]}]),
-        to<config.deploymentBlock?[]:rpc('eth_getLogs',[{address:config.contractAddress,fromBlock:hex(Math.max(from,config.deploymentBlock)),toBlock:hex(to),topics:[[config.topics.listed,config.topics.bought,config.topics.cancelled]]}])
+        Promise.all(config.markets.map(market=>to<market.deploymentBlock?[]:rpc('eth_getLogs',[{address:market.contractAddress,fromBlock:hex(Math.max(from,market.deploymentBlock)),toBlock:hex(to),topics:[[config.topics.listed,config.topics.bought,config.topics.cancelled]]}]))).then(groups=>groups.flat())
       ]);
       if(!Array.isArray(transfers)||!Array.isArray(marketEvents))throw Error('RPC logs unavailable');
       const events=normalizeHolderLogs([...transfers,...marketEvents],from,to,config),after=await block(to);

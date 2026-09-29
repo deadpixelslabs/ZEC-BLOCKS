@@ -1,7 +1,8 @@
 'use strict';
 const config = require('../rh20/mainnet.json');
 const sweep = require('../rh20/sweep.json');
-const target = address => [config.coreAddress, config.contractAddress, sweep.contractAddress].some(a => a && a.toLowerCase() === address.toLowerCase());
+const holder = require('../rh20/holder-market.json');
+const target = address => [config.coreAddress, config.contractAddress, sweep.contractAddress, holder.contractAddress, holder.collectionAddress].some(a => a && a.toLowerCase() === address.toLowerCase());
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 const BLOCK = /^(latest|safe|finalized|pending|0x[0-9a-fA-F]+)$/;

@@ -1,0 +1,15 @@
+{
+  "chainId": 4663,
+  "chainName": "Robinhood Chain",
+  "rpcUrl": "https://rpc.mainnet.chain.robinhood.com",
+  "explorerUrl": "https://robin.etherscan.io",
+  "coreAddress": "0x4e89Bc6A7A218B338060d428f40d8f551efc8058",
+  "treasury": "0x81046ab56F41a78077662624aC4116465fDf00cc",
+  "feeBps": 300,
+  "contractAddress": null,
+  "deploymentTxHash": null,
+  "deploymentBlock": null,
+  "collectionAddress": "0x6e049af563A804Ef834b4f6d1c8958a488571b21",
+  "holderFeeBps": 0,
+  "maxLots": 20
+}
