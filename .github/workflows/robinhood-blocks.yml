@@ -1,0 +1,21 @@
+name: Robinhood blocks collection
+on:
+  push:
+    branches: [main]
+    paths: ['collections/robinhood-blocks/**', 'api/robinhood-blocks.js', 'robinhood-blocks/**', 'tests/robinhood-blocks.test.cjs', 'vercel.json', '.github/workflows/robinhood-blocks.yml']
+  pull_request:
+    paths: ['collections/robinhood-blocks/**', 'api/robinhood-blocks.js', 'robinhood-blocks/**', 'tests/robinhood-blocks.test.cjs', 'vercel.json', '.github/workflows/robinhood-blocks.yml']
+permissions:
+  contents: read
+jobs:
+  collection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node collections/robinhood-blocks/generate.cjs --check
+      - run: node --check robinhood-blocks/collection.js
+      - run: node --test tests/robinhood-blocks.test.cjs

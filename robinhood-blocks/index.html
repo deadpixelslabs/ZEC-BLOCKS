@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>ZEC BLOCKS — Robinhood Collection</title>
+ <meta name="description" content="4,444 geometric SVG artworks. Explore the ZEC BLOCKS Robinhood collection, its seven visual traits and collection rarity ranks.">
+ <link rel="canonical" href="https://www.zecblocks.xyz/robinhood-blocks/">
+ <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/robinhood-blocks/collection.css">
+</head>
+<body>
+ <header><a class="brand" href="/">▧ <span>ZEC BLOCKS</span></a><span class="chain"><i></i> ROBINHOOD COLLECTION</span></header>
+ <main>
+  <section class="hero"><div class="hero-copy"><p class="eyebrow">THE NEXT FORM OF THE BLOCK.</p><h1>4,444 blocks.<br><em>Every one distinct.</em></h1><p class="intro">The original gold geometry, reimagined for Robinhood Chain. Seven visual traits. Thousands of individual patterns.</p><a class="button gold" href="#collection">EXPLORE THE COLLECTION <span>↗</span></a><div class="hero-stats"><div><b>4,444</b><span>UNIQUE ARTWORKS</span></div><div><b>7</b><span>VISUAL TRAITS</span></div><div><b>46</b><span>TRAIT VARIATIONS</span></div></div></div><div class="hero-art"><img src="/robinhood-blocks/images/25.svg" width="600" height="600" alt="Gold ZEC BLOCKS artwork with a geometric halo core"><div><span>ZEC BLOCKS #25</span><span>ORIGINAL GEOMETRY / NEW CHAIN</span></div></div></section>
+  <section id="collection"><div class="section-heading"><div><p class="eyebrow">THE COLLECTION</p><h2>Find your block.</h2></div><p id="count" aria-live="polite">Loading collection…</p></div><div class="filters"><label class="search-label"><span>SEARCH BY TOKEN ID</span><input id="search" type="search" placeholder="e.g. 125" autocomplete="off"></label><label><span>RARITY</span><select id="rarity"><option value="">All rarities</option><option>Legendary</option><option>Epic</option><option>Rare</option><option>Uncommon</option><option>Common</option></select></label><label><span>SORT</span><select id="sort"><option value="id">Token ID</option><option value="rank">Rarest first</option></select></label><button id="traits-toggle" class="button outline" aria-expanded="false" aria-controls="trait-filters">ALL TRAITS +</button><button id="reset" class="text-button">Reset</button></div><div id="trait-filters" class="trait-filters" hidden></div><p id="error" role="alert" hidden></p><div id="grid" class="grid"></div><div class="load-row"><button id="more" class="button outline" hidden>LOAD MORE BLOCKS ↓</button><span id="showing"></span></div></section>
+  <section class="rarity-section"><div><p class="eyebrow">EVERY DETAIL COUNTS</p><h2>Rarity follows<br><em>the artwork.</em></h2><p>Material, background, frame, core, pattern, ornament and aura. Each trait changes what you see.</p><p>Collection ranks use the actual frequency of each visual trait across all 4,444 blocks. These are project ranks; marketplace rankings may differ.</p></div><div id="tiers" class="tier-list"></div></section>
+  <section class="metadata-section"><div><p class="eyebrow">COLLECTION METADATA</p><h2>Ready to reveal.</h2><p>Images and metadata are available for IDs 1–4,444. Minting and ownership are managed by the collection contract on Robinhood Chain.</p></div><div class="uri-box"><label for="base-uri">BASE URI</label><input id="base-uri" readonly value="https://www.zecblocks.xyz/robinhood-blocks/metadata/"><div><button class="button gold" id="copy">COPY BASE URI</button><a class="button outline" href="/robinhood-blocks/metadata.csv">METADATA CSV ↓</a></div><p id="copy-status" role="status">Keep the trailing slash when setting the Base URI.</p><a href="/robinhood-blocks/metadata/1" target="_blank" rel="noopener">View token #1 metadata ↗</a></div></section>
+ </main>
+ <footer><a class="brand" href="/">▧ <span>ZEC BLOCKS</span></a><span>ROBINHOOD COLLECTION / 4,444 SVG ARTWORKS</span></footer>
+ <dialog id="detail"><button id="close" aria-label="Close artwork details">×</button><div class="detail-layout"><img id="detail-image" width="600" height="600" alt=""><div><p class="eyebrow">ROBINHOOD COLLECTION</p><h2 id="detail-title"></h2><p id="detail-rank" class="rank-label"></p><dl id="detail-traits"></dl><a id="detail-json" class="text-link" target="_blank" rel="noopener">View metadata ↗</a></div></div></dialog>
+ <script src="/robinhood-blocks/collection.js" defer></script>
+</body>
+</html>

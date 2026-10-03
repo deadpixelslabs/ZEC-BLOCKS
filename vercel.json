@@ -8,6 +8,10 @@
     },
     "api/rh20.js": {
       "maxDuration": 15
+    },
+    "api/robinhood-blocks.js": {
+      "maxDuration": 10,
+      "includeFiles": "collections/robinhood-blocks/{renderer.cjs,manifest.json}"
     }
   },
   "headers": [
@@ -103,6 +107,34 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/robinhood-blocks/metadata/:id",
+      "destination": "/api/robinhood-blocks?kind=metadata&id=:id"
+    },
+    {
+      "source": "/robinhood-blocks/images/:id",
+      "destination": "/api/robinhood-blocks?kind=image&id=:id"
+    },
+    {
+      "source": "/robinhood-blocks/summary.json",
+      "destination": "/api/robinhood-blocks?kind=summary"
+    },
+    {
+      "source": "/robinhood-blocks/catalog.json",
+      "destination": "/api/robinhood-blocks?kind=catalog"
+    },
+    {
+      "source": "/robinhood-blocks/metadata.csv",
+      "destination": "/api/robinhood-blocks?kind=csv"
+    },
+    {
+      "source": "/robinhood-blocks",
+      "destination": "/robinhood-blocks/index.html"
+    },
+    {
+      "source": "/robinhood-blocks/",
+      "destination": "/robinhood-blocks/index.html"
+    },
     {
       "source": "/index-api/:path*",
       "destination": "/api/index?path=:path*"
