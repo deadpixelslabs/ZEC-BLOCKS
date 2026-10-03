@@ -2,9 +2,9 @@ name: Robinhood blocks collection
 on:
   push:
     branches: [main]
-    paths: ['collections/robinhood-blocks/**', 'api/robinhood-blocks.js', 'robinhood-blocks/**', 'tests/robinhood-blocks.test.cjs', 'vercel.json', '.github/workflows/robinhood-blocks.yml']
+    paths: ['collections/robinhood-blocks/**', 'api/robinhood-blocks.js', 'robinhood-blocks/**', 'tests/robinhood-blocks*.cjs', 'vercel.json', '.github/workflows/robinhood-blocks.yml']
   pull_request:
-    paths: ['collections/robinhood-blocks/**', 'api/robinhood-blocks.js', 'robinhood-blocks/**', 'tests/robinhood-blocks.test.cjs', 'vercel.json', '.github/workflows/robinhood-blocks.yml']
+    paths: ['collections/robinhood-blocks/**', 'api/robinhood-blocks.js', 'robinhood-blocks/**', 'tests/robinhood-blocks*.cjs', 'vercel.json', '.github/workflows/robinhood-blocks.yml']
 permissions:
   contents: read
 jobs:
@@ -19,3 +19,6 @@ jobs:
       - run: node collections/robinhood-blocks/generate.cjs --check
       - run: node --check robinhood-blocks/collection.js
       - run: node --test tests/robinhood-blocks.test.cjs
+      - name: Verify production metadata and artwork
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: node tests/robinhood-blocks-live.cjs
